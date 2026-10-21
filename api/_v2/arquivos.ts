@@ -71,5 +71,5 @@ export async function baixarArquivo(ex: Executor, id: string): Promise<Res | nul
   const r = await ex.query('select nome, mime, conteudo from arq_arquivos where id = $1', [id])
   const a = r.rows[0]
   if (!a) return null
-  return { status: 200, binario: { mime: a.mime, nome: a.nome, dados: a.conteudo as Buffer } }
+  return { status: 200, binario: { mime: a.mime, nome: a.nome, dados: Buffer.from(a.conteudo as Uint8Array) } }
 }

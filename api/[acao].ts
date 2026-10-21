@@ -90,13 +90,17 @@ export default async function handler(req: Req, res: ServerResponse) {
 
     if (acao === 'sessao' && req.method === 'GET') return json(res, 200, { colaboradorId: sessao.colaboradorId })
 
-    // Acessos (logins): só a administração lista, cria, redefine senha, ativa ou desativa.
+    // Acessos (logins): a administração gerencia todos; o RH, apenas de colaboradores e gestores (nunca de RH, diretoria ou admin).
     if (acao === 'usuarios') {
       const quem = (await db().query("select dados->>'papel' as papel from app_colaboradores where id = $1", [sessao.colaboradorId])).rows[0]
-      if (quem?.papel !== 'admin') return json(res, 403, { erro: 'Apenas a administração gerencia acessos.' })
+      if (quem?.papel !== 'admin' && quem?.papel !== 'rh') return json(res, 403, { erro: 'Apenas RH ou administração gerenciam acessos.' })
+      const podeGerir = (papelAlvo: string) => quem.papel === 'admin' || papelAlvo === 'colaborador' || papelAlvo === 'gestor'
 
       if (req.method === 'GET') {
-        const r = await db().query('select colaborador_id, ativo, ultimo_acesso from usuarios')
+        const um = new URL(req.url ?? '/', 'http://x').searchParams.get('colaboradorId')
+        const r = um
+          ? await db().query('select colaborador_id, ativo, ultimo_acesso from usuarios where colaborador_id = $1', [um])
+          : await db().query('select colaborador_id, ativo, ultimo_acesso from usuarios')
         return json(res, 200, { acessos: r.rows.map((u) => ({ colaboradorId: u.colaborador_id, ativo: u.ativo, ultimoAcesso: u.ultimo_acesso })) })
       }
 
@@ -109,6 +113,7 @@ export default async function handler(req: Req, res: ServerResponse) {
 
         const pessoa = (await db().query("select dados->>'email' as email, dados->>'papel' as papel, dados->>'status' as status from app_colaboradores where id = $1", [colaboradorId])).rows[0]
         if (!pessoa?.email) return json(res, 404, { erro: 'Pessoa não encontrada.' })
+        if (!podeGerir(pessoa.papel)) return json(res, 403, { erro: 'Apenas a administração gerencia o acesso de RH, diretoria e administradores.' })
         if (pessoa.status === 'encerrado' && ativo !== false) return json(res, 400, { erro: 'Parceria encerrada — o acesso não pode ser liberado.' })
 
         const atual = (await db().query('select id from usuarios where colaborador_id = $1', [colaboradorId])).rows[0]

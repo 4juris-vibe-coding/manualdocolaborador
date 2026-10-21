@@ -12,6 +12,7 @@ import { ACAO_LABEL, historico, nivelDe } from '@/domain/gamificacao'
 import { PAPEL_LABEL } from '@/domain/permissions'
 import { ocultar } from '@/domain/validacao'
 import { PessoaForm } from './PessoaForm'
+import { AcessoPortal } from '@/components/AcessoPortal'
 import { TIPOS_DOC } from '../Perfil'
 import { STATUS_PERIODO } from '../Disponibilidade'
 import { ExigenciaForm, SITUACAO_EX, validadeEx } from './Exigencias'
@@ -116,6 +117,10 @@ export default function PessoaDetalhe() {
             <Row label="Matrícula / código externo" value={[p.matricula, p.codigoExterno].filter(Boolean).join(' · ')} />
             <Row label="Fuso · camiseta" value={[p.fusoHorario, p.tamanhoCamisa].filter(Boolean).join(' · ')} />
           </dl></Card>
+          {s.pode('pessoas:gerenciar') && (
+            <AcessoPortal pessoa={p} ehVoce={p.id === s.realUser().id}
+              pode={s.pode('admin:usuarios') || p.papel === 'colaborador' || p.papel === 'gestor'} />
+          )}
         </div>
       )}
       {tab === 'feedbacks' && <FeedbacksTab pessoaId={id} />}

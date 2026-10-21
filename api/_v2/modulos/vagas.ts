@@ -317,7 +317,7 @@ async function abrirRodada(t: Executor, v: Record<string, any>, u: Usuario | nul
 function estadoParaPublicar(v: Record<string, any>, hoje: string) {
   return camposFaltantes({
     titulo: v.titulo, setorId: v.setor_id, qtdPosicoes: v.qtd_posicoes, responsabilidades: v.responsabilidades, resumo: v.resumo, modalidade: v.modalidade,
-    cidade: v.cidade, estado: v.estado, textoPublico: v.texto_publico, canais: v.canais, encerraCandidaturasEm: v.encerra_candidaturas_em ? String(v.encerra_candidaturas_em).slice(0, 10) : null,
+    cidade: v.cidade, estado: v.estado, textoPublico: v.texto_publico, canais: v.canais, encerraCandidaturasEm: dataStr(v.encerra_candidaturas_em),
   }, 'publicar', hoje)
 }
 const dataStr = (d: unknown) => (d instanceof Date ? d.toISOString().slice(0, 10) : d ? String(d).slice(0, 10) : null)

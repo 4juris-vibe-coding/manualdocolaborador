@@ -14,7 +14,7 @@ export async function criarVaga(m: Mundo, o: OpcoesVaga = {}): Promise<{ id: str
   const r = await m.pg.query<{ id: string }>(
     `insert into rec_vagas (codigo, slug, titulo, resumo, status, setor_id, qtd_posicoes, recrutador_id, perguntas_triagem, divulgar_salario, salario_min, salario_max,
        observacoes_rh, texto_publico, publicada_em, encerra_candidaturas_em, arquivada, gestor_solicitante_id)
-     values ($1,$2,$3,'Resumo da vaga',$4,$5,$6,$7,$8::jsonb,$9,5000,9000,'SEGREDO-RH','Descrição pública', now(), $10, $11, 'ger1') returning id`,
+     values ($1,$2,$3,'Resumo da vaga',$4,$5,$6,$7,$8::jsonb,$9,5000,9000,'SEGREDO-RH','Descrição pública', now(), $10, $11, null) returning id`,
     [`VAG-T-${n}`, slug, o.titulo ?? 'Advogado(a) Pleno', o.status ?? 'publicada', o.setorId ?? 's1', o.qtd ?? 1, o.recrutador === undefined ? 'rec1' : o.recrutador,
       JSON.stringify(o.perguntas ?? []), o.divulgarSalario ?? false, o.encerraEm ?? null, o.arquivada ?? false])
   const id = r.rows[0].id

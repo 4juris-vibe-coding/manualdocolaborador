@@ -142,7 +142,7 @@ function FuncaoDetalhe({ c, onClose, onEditar }: { c: Cargo; onClose: () => void
   const pessoas = s.colaboradores.filter((p) => p.cargoId === c.id && p.status !== 'encerrado')
   return (
     <Modal open onClose={onClose} wide title={c.nome} subtitle={`${s.setorNome(c.setorId)} · ${c.nivel}${c.codigoCBO ? ` · CBO ${c.codigoCBO}` : ''}`}
-      footer={<><Button variant="subtle" icon="Trash2" onClick={() => setRemover(true)}>Remover</Button><Button variant="ghost" icon="Pencil" onClick={onEditar}>Editar</Button><Button onClick={onClose}>Fechar</Button></>}>
+      footer={<><Button variant="subtle" icon="Trash2" onClick={() => setRemover(true)}>Remover</Button><Link to={`/cargos/${c.id}`}><Button variant="ghost" icon="FileBadge">Ficha oficial do cargo</Button></Link><Button variant="ghost" icon="Pencil" onClick={onEditar}>Editar</Button><Button onClick={onClose}>Fechar</Button></>}>
       {c.descricao && <p className="text-[13.5px] text-ink-2 mb-4">{c.descricao}</p>}
       <div className="grid md:grid-cols-2 gap-5">
         <div>

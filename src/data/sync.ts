@@ -116,8 +116,8 @@ export async function entrarComSenha(email: string, senha: string): Promise<stri
 /* ---------- acessos (logins) — somente administração ---------- */
 export interface AcessoUsuario { colaboradorId: string; ativo: boolean; ultimoAcesso: string | null }
 
-export async function listarAcessos(): Promise<AcessoUsuario[]> {
-  const r = await chamar<{ acessos: AcessoUsuario[] }>('usuarios')
+export async function listarAcessos(colaboradorId?: string): Promise<AcessoUsuario[]> {
+  const r = await chamar<{ acessos: AcessoUsuario[] }>(colaboradorId ? `usuarios?colaboradorId=${encodeURIComponent(colaboradorId)}` : 'usuarios')
   return r.ok ? r.dados.acessos : []
 }
 

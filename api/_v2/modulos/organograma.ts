@@ -150,9 +150,11 @@ export const rotas: Rota[] = [
     metodo: 'GET', padrao: 'organograma/busca', cap: 'org:ver',
     h: async ({ db, usuario, req }) => {
       const q = nomeBusca(req.query.q ?? '').trim()
-      if (q.length < 2) return ok({ itens: [] })
+      if (q.length < 2 && !req.query.id) return ok({ itens: [] })
       const b = await carregarBase(db, usuario)
-      const achados = b.legado.filter((p) => p.status !== 'encerrado' && (nomeBusca(p.nome).includes(q) || nomeBusca(p.nomeSocial ?? '').includes(q))).slice(0, 20)
+      const achados = (req.query.id
+        ? b.legado.filter((p) => p.id === req.query.id && p.status !== 'encerrado')
+        : b.legado.filter((p) => p.status !== 'encerrado' && (nomeBusca(p.nome).includes(q) || nomeBusca(p.nomeSocial ?? '').includes(q)))).slice(0, 20)
       return ok({
         itens: achados.map((p) => ({
           id: p.id, nome: p.nome, cargo: b.cargos.find((c) => c.id === p.cargoId)?.nome ?? null, setor: b.setores.find((s) => s.id === p.setorId)?.nome ?? null,

@@ -101,7 +101,8 @@ export function useOrganograma(filtros: FiltrosOrg) {
 
   return {
     base, pessoas, filhosDe, raizes, expandidos, alternar, revelar, expandirTudo, recolherTudo, visiveis,
-    vagasPorGestor, vagasSemGestor, carregandoRamo, faltaCarregar, recarregar: base.recarregar,
+    vagasPorGestor, vagasSemGestor, carregandoRamo, faltaCarregar,
+    recarregar: () => { setExtras({}); base.recarregar() },
   }
 }
 

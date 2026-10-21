@@ -97,7 +97,7 @@ export async function criarCandidatura(ex: Executor, n: NovaCandidatura): Promis
     "insert into rec_candidatura_movs (candidatura_id, colaborador_id, para_etapa_id, para_status, motivo) values ($1,$2,$3,'ativa','Candidatura recebida')",
     [candidaturaId, n.colaboradorId ?? null, primeira.id])
   await ex.query('update rec_vagas set primeira_candidatura_em = coalesce(primeira_candidatura_em, now()) where id = $1', [n.vagaId])
-  return { candidaturaId, candidatoId, candidatoReutilizado: reutilizado, outrasCandidaturas: outras - 1, etapaId: primeira.id }
+  return { candidaturaId, candidatoId, candidatoReutilizado: reutilizado, outrasCandidaturas: outras, etapaId: primeira.id }
 }
 
 /** Conclui a contratação: candidatura "contratado", +1 posição preenchida e, se completou, encerra a vaga como "preenchida". */
