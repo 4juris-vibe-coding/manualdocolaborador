@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { ToastHost } from '@/components/toast'
 import { ErroPagina } from '@/components/ErroPagina'
 import Login from '@/pages/Login'
+import RedefinirSenha from '@/pages/RedefinirSenha'
 
 // Páginas carregadas sob demanda (reduz o tamanho do carregamento inicial).
 const Dashboard = lazy(() => import('@/pages/Dashboard'))
@@ -89,6 +90,7 @@ export function App() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/redefinir-senha" element={<RedefinirSenha />} />
         <Route element={<AppLayout />}>
           <Route element={<PaginaSegura />}>
             <Route path="/" element={<Dashboard />} />

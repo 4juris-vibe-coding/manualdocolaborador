@@ -118,6 +118,13 @@ export async function pedirRedefinicaoSenha(email: string): Promise<string | nul
   } catch { return 'Servidor indisponível. Tente novamente.' }
 }
 
+export async function redefinirSenha(token: string, senha: string): Promise<string | null> {
+  try {
+    const r = await chamar('redefinir-senha', { method: 'POST', body: JSON.stringify({ token, senha }) })
+    return r.ok ? null : r.dados.erro ?? 'Não foi possível redefinir a senha.'
+  } catch { return 'Servidor indisponível. Tente novamente.' }
+}
+
 export async function sairDoServidor(): Promise<void> {
   if (!MODO_API) return
   clearTimeout(timer)

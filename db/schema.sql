@@ -23,6 +23,15 @@ create table if not exists usuarios (
 create unique index if not exists usuarios_email_uk on usuarios (lower(email));
 alter table usuarios enable row level security;
 
+create table if not exists redefinicoes_senha (
+  token_hash text primary key,
+  usuario_id uuid not null references usuarios(id) on delete cascade,
+  expira_em timestamptz not null,
+  usado_em timestamptz,
+  criado_em timestamptz not null default now()
+);
+alter table redefinicoes_senha enable row level security;
+
 do $$
 declare c text;
 begin

@@ -1,6 +1,7 @@
-/* Rotas: POST /api/login · POST /api/logout · GET /api/sessao · GET|PUT /api/estado */
+/* Rotas: POST /api/login · POST /api/logout · POST /api/esqueci-senha · POST /api/redefinir-senha · GET /api/sessao · GET|PUT /api/estado */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { carregarEstado, confereSenha, cookieLimpo, db, emitirCookie, gravarColecoes, lerSessao } from './_lib.js'
+import { carregarEstado, confereSenha, cookieLimpo, db, emitirCookie, enviarEmailRedefinicao, gravarColecoes, hashSenha, hashToken, lerSessao, urlPortal } from './_lib.js'
+import { randomBytes } from 'node:crypto'
 
 type Req = IncomingMessage & { query?: Record<string, string | string[] | undefined>; body?: unknown }
 
@@ -55,8 +56,26 @@ export default async function handler(req: Req, res: ServerResponse) {
     if (acao === 'esqueci-senha' && req.method === 'POST') {
       const { email } = await corpoJSON(req) as { email?: string }
       if (typeof email !== 'string' || !email.trim()) return json(res, 400, { erro: 'Informe o e-mail.' })
-      // TODO(Resend): gerar token de redefinição e enviar o e-mail aqui.
+      const u = (await db().query('select id from usuarios where lower(email) = lower($1) and ativo', [email.trim()])).rows[0]
+      if (u) {
+        const token = randomBytes(32).toString('base64url')
+        await db().query('delete from redefinicoes_senha where usuario_id = $1', [u.id])
+        await db().query("insert into redefinicoes_senha (token_hash, usuario_id, expira_em) values ($1, $2, now() + interval '1 hour')", [hashToken(token), u.id])
+        await enviarEmailRedefinicao(email.trim(), `${urlPortal()}/redefinir-senha?token=${token}`)
+      }
       // Resposta sempre igual, exista ou não o e-mail, para não revelar quem tem conta.
+      return json(res, 200, { ok: true })
+    }
+
+    if (acao === 'redefinir-senha' && req.method === 'POST') {
+      const { token, senha } = await corpoJSON(req) as { token?: string; senha?: string }
+      if (typeof token !== 'string' || typeof senha !== 'string' || !token) return json(res, 400, { erro: 'Link inválido.' })
+      if (senha.length < 10) return json(res, 400, { erro: 'A senha precisa ter ao menos 10 caracteres.' })
+      const r = await db().query(
+        'update redefinicoes_senha set usado_em = now() where token_hash = $1 and usado_em is null and expira_em > now() returning usuario_id',
+        [hashToken(token)])
+      if (!r.rowCount) return json(res, 400, { erro: 'Link inválido ou expirado. Peça um novo.' })
+      await db().query('update usuarios set senha_hash = $2 where id = $1', [r.rows[0].usuario_id, hashSenha(senha)])
       return json(res, 200, { ok: true })
     }
 

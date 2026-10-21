@@ -5,7 +5,7 @@
    além do `pg`.
    ============================================================ */
 import pg from 'pg'
-import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
+import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 
 export const COLECOES = [
   'colaboradores', 'setores', 'unidades', 'cargos', 'contratos', 'documentos', 'reembolsos', 'notas', 'periodos',
@@ -42,6 +42,27 @@ export function confereSenha(senha: string, guardado: string): boolean {
   if (!esperado.length) return false
   const h = scryptSync(senha, Buffer.from(salHex, 'hex'), esperado.length)
   return timingSafeEqual(h, esperado)
+}
+
+/* ---------- redefinição de senha ---------- */
+export const hashToken = (t: string) => createHash('sha256').update(t).digest('hex')
+export const urlPortal = () => (process.env.PORTAL_URL || 'https://portaldocolaborador.somos4juris.com.br').replace(/\/$/, '')
+
+/** Envia pelo Resend (RESEND_API_KEY + RESEND_FROM). Sem a chave, só registra o link no log do servidor. */
+export async function enviarEmailRedefinicao(para: string, link: string): Promise<void> {
+  const chave = process.env.RESEND_API_KEY
+  if (!chave) { console.warn(`[redefinição de senha] RESEND_API_KEY ausente. Link para ${para}: ${link}`); return }
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${chave}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: process.env.RESEND_FROM || '4JURIS <nao-responda@somos4juris.com.br>',
+      to: [para],
+      subject: 'Redefinição de senha · Portal 4JURIS',
+      html: `<p>Recebemos um pedido para redefinir a sua senha no Portal 4JURIS.</p><p><a href="${link}">Criar nova senha</a></p><p>O link vale por 1 hora. Se não foi você, ignore este e-mail.</p>`,
+    }),
+  })
+  if (!r.ok) console.error('[redefinição de senha] Resend respondeu', r.status, await r.text())
 }
 
 /* ---------- sessão (cookie assinado) ---------- */
