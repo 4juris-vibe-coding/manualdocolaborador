@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useStore } from '@/lib/store'
 import type { Pergunta, Pesquisa, TipoPergunta } from '@/lib/types'
 import { PageHeader, Card, CardHead, Button, Field, Badge, Select, Callout, EmptyState, BarList } from '@/components/ui'
-import { Modal } from '@/components/Modal'
+import { Modal, ConfirmModal } from '@/components/Modal'
 import { feedback, toast } from '@/components/toast'
 import { fmtDate, uid } from '@/lib/utils'
 import { hojeISO, somarDias } from '@/domain/datas'
@@ -50,6 +50,7 @@ function Resultados({ p, onEditar }: { p: Pesquisa; onEditar: () => void }) {
   const res = agregar(p, s.respostas, setor || undefined)
   const convidados = s.colaboradores.filter((c) => c.status !== 'encerrado' && (p.setoresAlvo.length === 0 || p.setoresAlvo.includes(c.setorId))).length
   const participacoes = s.participacoes.filter((x) => x.pesquisaId === p.id).length
+  const [excluir, setExcluir] = useState(false)
   const mudarStatus = (status: Pesquisa['status']) => feedback(s.salvarPesquisa({ ...p, status }, p.id), status === 'aberta' ? 'Pesquisa aberta.' : 'Pesquisa encerrada.')
 
   const exportar = () => {
@@ -63,6 +64,8 @@ function Resultados({ p, onEditar }: { p: Pesquisa; onEditar: () => void }) {
 
   return (
     <div className="space-y-6">
+      <ConfirmModal open={excluir} onClose={() => setExcluir(false)} titulo="Excluir pesquisa?" confirmar="Excluir" texto={`"${p.titulo}" será apagada junto com todas as respostas recebidas. Esta ação não pode ser desfeita.`}
+        onConfirm={() => { if (feedback(s.excluirPesquisa(p.id), 'Pesquisa excluída.')) setExcluir(false) }} />
       <Card className="p-5">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0"><Badge tone={STATUS[p.status].tone} dot>{STATUS[p.status].label}</Badge><h2 className="text-[17px] font-bold text-ink mt-2">{p.titulo}</h2><p className="text-[13px] text-muted mt-0.5">{p.descricao}</p></div>
@@ -71,6 +74,7 @@ function Resultados({ p, onEditar }: { p: Pesquisa; onEditar: () => void }) {
             {p.status !== 'aberta' && <Button size="sm" variant="soft" icon="Play" onClick={() => mudarStatus('aberta')}>Abrir</Button>}
             {p.status === 'aberta' && <Button size="sm" variant="ghost" icon="Square" onClick={() => mudarStatus('encerrada')}>Encerrar</Button>}
             <Button size="sm" variant="ghost" icon="Download" onClick={exportar}>Exportar</Button>
+            <Button size="sm" variant="subtle" icon="Trash2" onClick={() => setExcluir(true)}>Excluir</Button>
           </div>
         </div>
         <div className="grid sm:grid-cols-3 gap-4 mt-5">

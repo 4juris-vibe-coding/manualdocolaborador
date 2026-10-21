@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '@/lib/store'
 import { PageHeader, Card, CardHead, StatCard, Badge, Button, Avatar, Icon, Tabs, EmptyState, Field, Progress } from '@/components/ui'
-import { Modal } from '@/components/Modal'
-import { toast } from '@/components/toast'
+import { Modal, ConfirmModal } from '@/components/Modal'
+import { toast, feedback } from '@/components/toast'
 import { brl, fmtDate, STATUS_SOLIC, NF_ETAPAS, cn } from '@/lib/utils'
 import type { NotaFiscal, StatusNota } from '@/lib/types'
 
@@ -46,6 +46,7 @@ export default function NotasAdmin({ onVerColaborador }: { onVerColaborador: () 
   const [drag, setDrag] = useState<string | null>(null)
   const [over, setOver] = useState<string | null>(null)
   const [nova, setNova] = useState(false)
+  const [excluir, setExcluir] = useState<string | null>(null)
 
   const nomeDe = (id: string) => s.colaboradores.find((c) => c.id === id)?.nome ?? '—'
   const colabDe = (id: string) => s.colaboradores.find((c) => c.id === id)
@@ -199,7 +200,7 @@ export default function NotasAdmin({ onVerColaborador }: { onVerColaborador: () 
                 <table className="w-full text-[13.5px] min-w-[760px]">
                   <thead>
                     <tr className="text-left text-[11px] font-bold uppercase tracking-wide text-muted bg-surface-2 border-b border-line">
-                      <th className="px-5 py-3">Colaborador</th><th className="px-5 py-3">CNPJ</th><th className="px-5 py-3">Valor</th><th className="px-5 py-3">Envio / Pagamento</th><th className="px-5 py-3 w-[220px]">Status</th>
+                      <th className="px-5 py-3">Colaborador</th><th className="px-5 py-3">CNPJ</th><th className="px-5 py-3">Valor</th><th className="px-5 py-3">Envio / Pagamento</th><th className="px-5 py-3 w-[220px]">Status</th><th className="px-5 py-3 w-[60px]"><span className="sr-only">Ações</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -220,6 +221,7 @@ export default function NotasAdmin({ onVerColaborador }: { onVerColaborador: () 
                             <div className="text-[11.5px] text-muted">{n.pagaEm ? `Paga ${fmtDate(n.pagaEm)}` : `Previsto ${fmtDate(n.pagamentoEm)}`}</div>
                           </td>
                           <td className="px-5 py-3"><StatusSelect value={n.status as StatusNota} onChange={(st) => mudar(n.id, st)} /></td>
+                          <td className="px-5 py-3"><Button size="icon-sm" variant="subtle" icon="Trash2" aria-label="Excluir nota fiscal" onClick={() => setExcluir(n.id)} /></td>
                         </tr>
                       )
                     })}
@@ -297,6 +299,8 @@ export default function NotasAdmin({ onVerColaborador }: { onVerColaborador: () 
           <p className="text-[12px] text-muted">O prazo de envio (dia 22) e o pagamento (dia 25) são definidos automaticamente pela competência.</p>
         </form>
       </Modal>
+      <ConfirmModal open={!!excluir} onClose={() => setExcluir(null)} titulo="Excluir nota fiscal?" confirmar="Excluir" texto="O registro da nota será apagado definitivamente (fica na auditoria)."
+        onConfirm={() => { if (excluir && feedback(s.excluirNota(excluir), 'Nota fiscal excluída.')) setExcluir(null) }} />
     </div>
   )
 }

@@ -5,7 +5,8 @@ import { Topbar } from './Topbar'
 import { useStore } from '@/lib/store'
 import { itemDaRota } from '@/lib/nav'
 import { can } from '@/domain/permissions'
-import { MODO_DEMO, API_PENDENTE } from '@/data/config'
+import { MODO_DEMO, MODO_API } from '@/data/config'
+import { useSync, sairCompleto } from '@/data/sync'
 import { Eye, FlaskConical, AlertTriangle } from 'lucide-react'
 import { CaixaSugestoes } from '@/components/CaixaSugestoes'
 
@@ -18,14 +19,17 @@ export function AppLayout() {
   const [menuAberto, setMenuAberto] = useState(false)
 
   const real = useStore((s) => s.realUser())
-  const sair = useStore((s) => s.sair)
+  const sessaoApi = useSync((s) => s.sessao)
+  const erroSync = useSync((s) => s.erro)
   // Parceria encerrada (ou cadastro removido) perde o acesso.
   const sessaoInvalida = !!sessaoId && (real.id !== sessaoId || real.status === 'encerrado')
 
   useEffect(() => { setMenuAberto(false) }, [pathname])
   useEffect(() => { window.scrollTo(0, 0) }, [pathname])
-  useEffect(() => { if (sessaoInvalida) sair() }, [sessaoInvalida, sair])
+  useEffect(() => { if (sessaoInvalida) void sairCompleto() }, [sessaoInvalida])
 
+  if (MODO_API && sessaoApi === 'carregando') return <div className="min-h-screen flex items-center justify-center text-muted text-[14px]" aria-busy="true">Carregando…</div>
+  if (MODO_API && sessaoApi === 'erro') return <div role="alert" className="min-h-screen flex items-center justify-center text-danger text-[14px] px-6 text-center">Não foi possível conectar ao servidor. Recarregue a página em instantes.</div>
   if (!sessaoId || sessaoInvalida) return <Navigate to="/login" replace state={{ de: pathname }} />
 
   // Guarda de rota: sem a capacidade exigida, volta ao início.
@@ -40,13 +44,13 @@ export function AppLayout() {
       <Sidebar aberto={menuAberto} onFechar={() => setMenuAberto(false)} />
       <div className="flex-1 min-w-0 flex flex-col">
         <Topbar onAbrirMenu={() => setMenuAberto(true)} />
-        {API_PENDENTE && (
+        {MODO_API && erroSync && (
           <div role="alert" className="bg-danger-soft text-danger px-4 sm:px-7 py-2.5 flex items-center gap-2.5 text-[12.5px] font-medium">
             <AlertTriangle className="h-4 w-4 shrink-0" />
-            VITE_DATA_SOURCE=api foi configurado, mas o adaptador de API ainda não existe. A aplicação está usando dados de demonstração locais.
+            {erroSync} Não feche esta página até o aviso sumir.
           </div>
         )}
-        {MODO_DEMO && !API_PENDENTE && (
+        {MODO_DEMO && (
           <div className="bg-gold-soft text-warning-ink px-4 sm:px-7 py-2 flex items-center gap-2.5 text-[12px] font-medium border-b border-warning-line">
             <FlaskConical className="h-4 w-4 shrink-0" />
             <span><b>Modo demonstração:</b> dados fictícios, salvos apenas neste navegador. Nada é enviado a um servidor.</span>

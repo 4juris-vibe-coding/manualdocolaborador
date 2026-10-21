@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '@/lib/store'
 import type { Contrato, Documento, TipoDocumento } from '@/lib/types'
 import { PageHeader, Card, CardHead, Badge, Button, Avatar, Tabs, EmptyState, Field, Icon, Progress, Callout, Toggle } from '@/components/ui'
@@ -42,6 +42,9 @@ export default function PessoaDetalhe() {
   const [editar, setEditar] = useState(false)
   const [encerrar, setEncerrar] = useState(false)
   const [reativar, setReativar] = useState(false)
+  const [excluir, setExcluir] = useState(false)
+  const navigate = useNavigate()
+  const podeExcluir = s.pode('admin:usuarios') && !!p && p.id !== s.realUser().id
 
   if (!p) return <Card><EmptyState icon="UserX" title="Pessoa não encontrada" desc="O cadastro pode ter sido removido." action={<Link to="/rh/pessoas" className="text-brand font-semibold">Voltar para a lista</Link>} /></Card>
 
@@ -63,6 +66,7 @@ export default function PessoaDetalhe() {
           {p.status === 'encerrado'
             ? <Button variant="soft" icon="RotateCcw" onClick={() => setReativar(true)}>Reativar parceria</Button>
             : <Button variant="danger" icon="UserMinus" onClick={() => setEncerrar(true)}>Encerrar parceria</Button>}
+          {podeExcluir && <Button variant="subtle" icon="Trash2" onClick={() => setExcluir(true)}>Excluir cadastro</Button>}
         </>} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -208,6 +212,9 @@ export default function PessoaDetalhe() {
 
       {editar && <PessoaForm pessoa={p} onClose={() => setEditar(false)} />}
       {encerrar && <EncerrarModal pessoaId={id} onClose={() => setEncerrar(false)} />}
+      <ConfirmModal open={excluir} onClose={() => setExcluir(false)} titulo="Excluir cadastro definitivamente?" confirmar="Excluir"
+        texto={`${p.nome} e tudo o que está ligado a essa pessoa (contratos, documentos, reembolsos, notas, pontos, avaliações…) serão apagados. Esta ação não pode ser desfeita. Para manter o histórico, prefira encerrar a parceria.`}
+        onConfirm={() => { if (feedback(s.excluirPessoa(id), 'Cadastro excluído.')) { setExcluir(false); navigate('/rh/pessoas') } }} />
       <ConfirmModal open={reativar} onClose={() => setReativar(false)} perigo={false} titulo="Reativar parceria?" confirmar="Reativar"
         texto="A pessoa volta a ter acesso à plataforma. Registre também um novo contrato, se for o caso."
         onConfirm={() => { if (feedback(s.reativarParceria(id), 'Parceria reativada.')) setReativar(false) }} />
@@ -238,6 +245,7 @@ function EncerrarModal({ pessoaId, onClose }: { pessoaId: string; onClose: () =>
 function ContratosTab({ pessoaId, contratos }: { pessoaId: string; contratos: Contrato[] }) {
   const s = useStore()
   const [form, setForm] = useState<{ aberto: boolean; k?: Contrato }>({ aberto: false })
+  const [remover, setRemover] = useState<Contrato | null>(null)
   const salvar = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const d = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>
@@ -261,11 +269,16 @@ function ContratosTab({ pessoaId, contratos }: { pessoaId: string; contratos: Co
                 <div><dt className="text-[11px] text-muted font-bold uppercase">Vigência</dt><dd className="font-semibold">{fmtDate(k.inicio)} → {k.fim ? fmtDate(k.fim) : 'indeterminado'}</dd></div>
               </dl>
               {k.observacoes && <p className="text-[12px] text-muted mt-3">{k.observacoes}</p>}
-              <Button size="sm" variant="ghost" icon="Pencil" className="mt-4" onClick={() => setForm({ aberto: true, k })}>Editar</Button>
+              <div className="flex gap-2 mt-4">
+                <Button size="sm" variant="ghost" icon="Pencil" onClick={() => setForm({ aberto: true, k })}>Editar</Button>
+                <Button size="sm" variant="subtle" icon="Trash2" onClick={() => setRemover(k)}>Remover</Button>
+              </div>
             </Card>
           ))}
         </div>
       )}
+      <ConfirmModal open={!!remover} onClose={() => setRemover(null)} titulo="Remover contrato?" confirmar="Remover" texto={remover ? `O contrato ${remover.numero} será removido definitivamente (fica na auditoria).` : ''}
+        onConfirm={() => { if (remover && feedback(s.removerContrato(remover.id), 'Contrato removido.')) setRemover(null) }} />
       <Modal open={form.aberto} onClose={() => setForm({ aberto: false })} wide title={form.k ? 'Editar contrato' : 'Registrar contrato'} subtitle="Metadados do contrato. O documento assinado vai em Documentos."
         footer={<><Button variant="ghost" onClick={() => setForm({ aberto: false })}>Cancelar</Button><Button icon="Check" type="submit" form="ctrForm">Salvar</Button></>}>
         {form.aberto && (

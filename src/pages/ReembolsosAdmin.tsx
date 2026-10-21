@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useStore } from '@/lib/store'
 import { PageHeader, Card, StatCard, Badge, Button, Avatar, Icon, Tabs, EmptyState } from '@/components/ui'
-import { toast } from '@/components/toast'
+import { toast, feedback } from '@/components/toast'
+import { ConfirmModal } from '@/components/Modal'
 import { brl, fmtDate, STATUS_SOLIC, REEMBOLSO_ETAPAS, cn } from '@/lib/utils'
 import type { StatusSolicitacao } from '@/lib/types'
 
@@ -39,6 +40,7 @@ export default function ReembolsosAdmin({ onVerColaborador }: { onVerColaborador
   const [statusF, setStatusF] = useState('todos')
   const [drag, setDrag] = useState<string | null>(null)
   const [over, setOver] = useState<string | null>(null)
+  const [excluir, setExcluir] = useState<string | null>(null)
 
   const colabDe = (id: string) => s.colaboradores.find((c) => c.id === id)
   const nomeDe = (id: string) => colabDe(id)?.nome ?? '—'
@@ -158,7 +160,7 @@ export default function ReembolsosAdmin({ onVerColaborador }: { onVerColaborador
                 <table className="w-full text-[13.5px] min-w-[820px]">
                   <thead>
                     <tr className="text-left text-[11px] font-bold uppercase tracking-wide text-muted bg-surface-2 border-b border-line">
-                      <th className="px-5 py-3">Colaborador</th><th className="px-5 py-3">Despesa</th><th className="px-5 py-3">Valor</th><th className="px-5 py-3">Comprovante</th><th className="px-5 py-3 w-[200px]">Status</th>
+                      <th className="px-5 py-3">Colaborador</th><th className="px-5 py-3">Despesa</th><th className="px-5 py-3">Valor</th><th className="px-5 py-3">Comprovante</th><th className="px-5 py-3 w-[200px]">Status</th><th className="px-5 py-3 w-[60px]"><span className="sr-only">Ações</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -183,6 +185,7 @@ export default function ReembolsosAdmin({ onVerColaborador }: { onVerColaborador
                               : <span className="text-[12px] text-muted-2">—</span>}
                           </td>
                           <td className="px-5 py-3"><StatusSelect value={r.status} onChange={(st) => mudar(r.id, st)} /></td>
+                          <td className="px-5 py-3"><Button size="icon-sm" variant="subtle" icon="Trash2" aria-label={`Excluir reembolso ${r.descricao}`} onClick={() => setExcluir(r.id)} /></td>
                         </tr>
                       )
                     })}
@@ -193,6 +196,8 @@ export default function ReembolsosAdmin({ onVerColaborador }: { onVerColaborador
           </Card>
         </div>
       )}
+      <ConfirmModal open={!!excluir} onClose={() => setExcluir(null)} titulo="Excluir reembolso?" confirmar="Excluir" texto="A solicitação será apagada definitivamente (fica na auditoria)."
+        onConfirm={() => { if (excluir && feedback(s.excluirReembolso(excluir), 'Reembolso excluído.')) setExcluir(null) }} />
     </div>
   )
 }

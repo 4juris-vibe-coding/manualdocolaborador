@@ -12,6 +12,7 @@ export default function Conteudos() {
   const podeGerenciar = s.pode('onboarding:gerenciar')
   const [cat, setCat] = useState('Todas')
   const [concluir, setConcluir] = useState<Treinamento | null>(null)
+  const [remover, setRemover] = useState<Treinamento | null>(null)
   const [form, setForm] = useState<{ aberto: boolean; t?: Treinamento }>({ aberto: false })
   const meus = new Map(s.progressoConteudos.filter((p) => p.colaboradorId === me.id).map((p) => [p.treinamentoId, p.concluidoEm]))
   const cats = ['Todas', ...new Set(s.treinamentos.map((t) => t.categoria))]
@@ -44,7 +45,7 @@ export default function Conteudos() {
                   {feito ? <Badge tone="success" dot>Concluído em {fmtDate(feito)}</Badge>
                     : <Button size="sm" variant="soft" icon="CheckCircle2" onClick={() => setConcluir(t)}>Marcar como concluído</Button>}
                   {t.link && <a href={t.link} target="_blank" rel="noreferrer noopener" className="text-[12.5px] font-semibold text-brand ml-auto">Abrir material</a>}
-                  {podeGerenciar && <Button size="icon-sm" variant="subtle" icon="Pencil" aria-label={`Editar ${t.titulo}`} className="ml-auto" onClick={() => setForm({ aberto: true, t })} />}
+                  {podeGerenciar && <span className="ml-auto flex gap-1"><Button size="icon-sm" variant="subtle" icon="Pencil" aria-label={`Editar ${t.titulo}`} onClick={() => setForm({ aberto: true, t })} /><Button size="icon-sm" variant="subtle" icon="Trash2" aria-label={`Remover ${t.titulo}`} onClick={() => setRemover(t)} /></span>}
                 </div>
               </Card>
             )
@@ -56,6 +57,8 @@ export default function Conteudos() {
       <ConfirmModal open={!!concluir} onClose={() => setConcluir(null)} perigo={false} titulo="Concluiu este conteúdo?" confirmar="Sim, concluí"
         texto={concluir ? `Confirme que você concluiu "${concluir.titulo}".` : ''}
         onConfirm={() => { if (concluir && feedback(s.concluirConteudo(concluir.id), 'Conteúdo concluído! 🎓')) setConcluir(null) }} />
+      <ConfirmModal open={!!remover} onClose={() => setRemover(null)} titulo="Remover conteúdo?" confirmar="Remover" texto={remover ? `"${remover.titulo}" sai da lista e o registro de conclusão das pessoas também.` : ''}
+        onConfirm={() => { if (remover && feedback(s.removerConteudo(remover.id), 'Conteúdo removido.')) setRemover(null) }} />
       {form.aberto && <ConteudoForm t={form.t} onClose={() => setForm({ aberto: false })} />}
     </>
   )

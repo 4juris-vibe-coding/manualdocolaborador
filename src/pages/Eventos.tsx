@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useStore, type EventoInput } from '@/lib/store'
 import type { CategoriaEvento, Evento } from '@/lib/types'
 import { PageHeader, Card, Badge, Button, Icon, Avatar, Field, EmptyState, Callout, Tabs, corTextoSobre } from '@/components/ui'
-import { Modal } from '@/components/Modal'
+import { Modal, ConfirmModal } from '@/components/Modal'
 import { feedback } from '@/components/toast'
 import { fmtDate, fmtDateTime, cn } from '@/lib/utils'
 import { hojeISO, parseDia } from '@/domain/datas'
@@ -215,6 +215,7 @@ function EventoDetalhe({ e, onClose, onEditar }: { e: Evento; onClose: () => voi
   const futuro = e.inicio.slice(0, 10) >= hoje
   const comecou = e.inicio.slice(0, 10) <= hoje
   const [cancelando, setCancelando] = useState(false)
+  const [excluindo, setExcluindo] = useState(false)
   const [motivo, setMotivo] = useState('')
   const [presencaAberta, setPresencaAberta] = useState(false)
   const [presentes, setPresentes] = useState<string[]>(e.presencas)
@@ -223,6 +224,7 @@ function EventoDetalhe({ e, onClose, onEditar }: { e: Evento; onClose: () => voi
     .sort((a, b) => (e.confirmados.includes(b.id) ? 1 : 0) - (e.confirmados.includes(a.id) ? 1 : 0) || a.nome.localeCompare(b.nome))
 
   return (
+    <>
     <Modal open onClose={onClose} wide title={e.titulo} subtitle={`${fmtDateTime(e.inicio)}${e.fim ? ` até ${e.fim.slice(11, 16)}` : ''} · ${e.local}`}
       footer={<>
         {gerencia && e.status === 'agendado' && !cancelando && !presencaAberta && (
@@ -232,6 +234,7 @@ function EventoDetalhe({ e, onClose, onEditar }: { e: Evento; onClose: () => voi
             {comecou && <Button variant="soft" icon="ClipboardCheck" onClick={() => setPresencaAberta(true)}>Registrar presença</Button>}
           </>
         )}
+        {gerencia && !cancelando && !presencaAberta && <Button variant="subtle" icon="Trash2" onClick={() => setExcluindo(true)}>Excluir</Button>}
         {cancelando && <>
           <Button variant="ghost" onClick={() => setCancelando(false)}>Voltar</Button>
           <Button variant="danger" icon="Ban" onClick={() => { if (feedback(s.cancelarEvento(e.id, motivo), 'Evento cancelado.')) onClose() }}>Confirmar cancelamento</Button>
@@ -288,6 +291,10 @@ function EventoDetalhe({ e, onClose, onEditar }: { e: Evento; onClose: () => voi
         </div>
       )}
     </Modal>
+    <ConfirmModal open={excluindo} onClose={() => setExcluindo(false)} titulo="Excluir evento?" confirmar="Excluir"
+      texto={`"${e.titulo}" será apagado para todas as pessoas. Para só avisar o cancelamento, use "Cancelar evento".`}
+      onConfirm={() => { if (feedback(s.excluirEvento(e.id), 'Evento excluído.')) { setExcluindo(false); onClose() } }} />
+    </>
   )
 }
 

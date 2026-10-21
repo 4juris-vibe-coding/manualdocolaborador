@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useStore } from '@/lib/store'
 import type { AcaoPontuavel, ConfigGamificacao, Desafio, LancamentoPontos, RegraPontuacao } from '@/lib/types'
 import { PageHeader, Card, CardHead, Button, Field, Toggle, Tabs, Badge, Icon, Select, SearchBox, Callout, Tabela, TH, TD, EmptyState } from '@/components/ui'
-import { Modal } from '@/components/Modal'
+import { Modal, ConfirmModal } from '@/components/Modal'
 import { feedback, toast } from '@/components/toast'
 import { fmtDate, cn } from '@/lib/utils'
 import { hojeISO, somarDias } from '@/domain/datas'
@@ -61,6 +61,7 @@ function DesafiosAdmin() {
   const s = useStore()
   const hoje = hojeISO()
   const [form, setForm] = useState<{ aberto: boolean; d?: Desafio }>({ aberto: false })
+  const [remover, setRemover] = useState<Desafio | null>(null)
   const salvar = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const d = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>
@@ -81,11 +82,14 @@ function DesafiosAdmin() {
                   <div className="text-[12px] text-muted">{fmtDate(d.inicio)} → {fmtDate(d.fim)} · {d.criterio.meta}× {ACAO_LABEL[d.criterio.acao].toLowerCase()} · bônus {d.pontosBonus}</div></div>
                 <span className="text-[12.5px] text-ink-2">{d.participantes.length} participante(s) · {concl} concluíram</span>
                 <Button size="sm" variant="ghost" icon="Pencil" onClick={() => setForm({ aberto: true, d })}>Editar</Button>
+                <Button size="icon-sm" variant="subtle" icon="Trash2" aria-label={`Remover ${d.titulo}`} onClick={() => setRemover(d)} />
               </li>
             )
           })}
         </ul>
       </Card>
+      <ConfirmModal open={!!remover} onClose={() => setRemover(null)} titulo="Remover desafio?" confirmar="Remover" texto={remover ? `"${remover.titulo}" deixa de existir. Os pontos já concedidos são mantidos.` : ''}
+        onConfirm={() => { if (remover && feedback(s.removerDesafio(remover.id), 'Desafio removido.')) setRemover(null) }} />
       <Modal open={form.aberto} onClose={() => setForm({ aberto: false })} title={form.d ? 'Editar desafio' : 'Novo desafio'} subtitle="Desafios são opcionais e celebram participação positiva."
         footer={<><Button variant="ghost" onClick={() => setForm({ aberto: false })}>Cancelar</Button><Button icon="Check" type="submit" form="desForm">Salvar</Button></>}>
         {form.aberto && (

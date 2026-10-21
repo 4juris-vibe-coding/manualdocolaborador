@@ -147,3 +147,42 @@ describe('encerramento e LGPD', () => {
     expect(st().lancamentos.some((l) => l.colaboradorId === 'c7' && l.acao === 'integracao_concluida')).toBe(true)
   })
 })
+
+describe('exclusões definitivas', () => {
+  it('só a administração exclui pessoas e a exclusão leva os vínculos junto', () => {
+    como('c9')
+    expect(st().excluirPessoa('c2').ok).toBe(false)
+    como('c1')
+    expect(st().excluirPessoa('c2').ok).toBe(true)
+    const s = st()
+    expect(s.colaboradores.some((c) => c.id === 'c2')).toBe(false)
+    expect(s.contratos.some((k) => k.colaboradorId === 'c2')).toBe(false)
+    expect(s.lancamentos.some((l) => l.colaboradorId === 'c2')).toBe(false)
+    expect(s.documentos.some((d) => d.colaboradorId === 'c2')).toBe(false)
+    expect(s.auditoria[0].acao).toBe('pessoa.excluir')
+  })
+
+  it('não permite excluir o próprio cadastro nem o último administrador', () => {
+    como('c1')
+    expect(st().excluirPessoa('c1').ok).toBe(false)
+    st().alterarPapel('c9', 'admin')
+    como('c9')
+    st().alterarPapel('c1', 'rh')
+    expect(st().excluirPessoa('c9').ok).toBe(false)
+  })
+
+  it('exclui contrato, evento, pesquisa, desafio e conteúdo com permissão', () => {
+    como('c1')
+    const s = st()
+    expect(s.removerContrato(s.contratos[0].id).ok).toBe(true)
+    expect(st().excluirEvento(st().eventos[0].id).ok).toBe(true)
+    const pid = st().pesquisas[0].id
+    expect(st().excluirPesquisa(pid).ok).toBe(true)
+    expect(st().respostas.some((r) => r.pesquisaId === pid)).toBe(false)
+    expect(st().removerDesafio(st().desafios[0].id).ok).toBe(true)
+    expect(st().removerConteudo(st().treinamentos[0].id).ok).toBe(true)
+    como('c2')
+    expect(st().excluirPesquisa(st().pesquisas[0]?.id ?? 'x').ok).toBe(false)
+    expect(st().removerContrato('qualquer').ok).toBe(false)
+  })
+})

@@ -1,3 +1,4 @@
+import { sairCompleto } from '@/data/sync'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { useStore } from '@/lib/store'
@@ -26,7 +27,6 @@ export function Topbar({ onAbrirMenu }: { onAbrirMenu: () => void }) {
   const niveis = useStore((s) => s.config.gamificacao.niveis)
   const marcarTodasLidas = useStore((s) => s.marcarTodasLidas)
   const marcarNotifLida = useStore((s) => s.marcarNotifLida)
-  const sair = useStore((s) => s.sair)
   const [openBell, setOpenBell] = useState(false)
   const [paleta, setPaleta] = useState(false)
   const tema = useTema((x) => x.tema)
@@ -150,7 +150,7 @@ export function Topbar({ onAbrirMenu }: { onAbrirMenu: () => void }) {
           </div>
         </Link>
 
-        <button onClick={() => { sair(); navigate('/login') }} title="Sair" aria-label="Sair" className="h-10 w-10 rounded-xl border border-line bg-surface text-muted hover:bg-danger-soft hover:text-danger flex items-center justify-center transition">
+        <button onClick={() => { void sairCompleto().then(() => navigate('/login')) }} title="Sair" aria-label="Sair" className="h-10 w-10 rounded-xl border border-line bg-surface text-muted hover:bg-danger-soft hover:text-danger flex items-center justify-center transition">
           <LogOut className="h-[18px] w-[18px]" />
         </button>
       </div>

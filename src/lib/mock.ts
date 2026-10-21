@@ -579,3 +579,29 @@ export const CULTURA_PADRAO: DB['config']['cultura'] = {
     { nome: 'Protagonismo', descricao: 'Tomamos a iniciativa e assumimos o que é nosso.', icone: 'Rocket', cor: '#ea580c' },
   ],
 }
+
+export const ADMIN_EMAIL = 'social@4jurismarketing.com.br'
+export const ADMIN_ID = 'c1'
+
+/** Estado inicial de PRODUÇÃO: só a estrutura padrão (áreas, funções, regras, modelos…) e um único usuário administrador. */
+export function seedProducao(hoje = hojeISO()): DB {
+  const base = seed(hoje)
+  const vazio = Object.fromEntries(
+    (Object.keys(base) as (keyof DB)[]).filter((k) => k !== 'config' && Array.isArray(base[k])).map((k) => [k, []]),
+  ) as unknown as DB
+  const admin: Colaborador = {
+    id: ADMIN_ID, nome: 'Administração 4JURIS', email: ADMIN_EMAIL, telefone: '', avatarCor: PALETTE[0], papel: 'admin',
+    setorId: 's6', cargoId: 'g12', status: 'ativo', dataEntrada: hoje, cidade: 'Belo Horizonte', uf: 'MG', regime: 'PJ',
+    razaoSocial: base.config.geral.razaoSocialTomador, cnpj: base.config.geral.cnpjTomador,
+    privacidade: { mostrarAniversario: false, mostrarMarcos: true, aparecerEmDestaques: false },
+  }
+  return {
+    ...vazio,
+    colaboradores: [admin],
+    setores: base.setores.map((s) => ({ ...s, gestorId: null, liderancaIds: [] })),
+    unidades: base.unidades, cargos: base.cargos, badges: base.badges, regras: base.regras, checklists: base.checklists,
+    motivosEncerramento: base.motivosEncerramento, tiposRegistro: base.tiposRegistro, gruposCompetencia: base.gruposCompetencia,
+    competencias: base.competencias, treinamentos: base.treinamentos,
+    config: base.config,
+  }
+}

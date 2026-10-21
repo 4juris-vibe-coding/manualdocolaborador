@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import gsap from 'gsap'
 import { ArrowRight, ShieldCheck, Sparkles, Layers, Fingerprint, FlaskConical } from 'lucide-react'
-import { Logo, Avatar } from '@/components/ui'
+import { Logo } from '@/components/ui'
+import { toast } from '@/components/toast'
 import { useStore } from '@/lib/store'
-import { PERSONAS_DEMO } from '@/lib/mock'
-import { CONFIG } from '@/data/config'
-import { cn } from '@/lib/utils'
+import { CONFIG, MODO_API } from '@/data/config'
+import { entrarComSenha, useSync } from '@/data/sync'
 
 /* ------------------------------------------------------------------
    Fundo tecnológico: rede de partículas reativa ao mouse (canvas)
@@ -112,6 +112,8 @@ export default function Login() {
   const pessoas = useStore((s) => s.colaboradores)
   const entrar = useStore((s) => s.entrar)
   const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
+  const sessao = useSync((s) => s.sessao)
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
   const destino = (location.state as { de?: string } | null)?.de ?? '/'
@@ -147,11 +149,22 @@ export default function Login() {
     setTimeout(() => navigate(destino === '/login' ? '/' : destino, { replace: true }), 250)
   }
 
-  const submit = (e: React.FormEvent) => {
+  // Já existe sessão válida (cookie): vai direto ao portal.
+  useEffect(() => { if (MODO_API && sessao === 'ok') navigate(destino === '/login' ? '/' : destino, { replace: true }) }, [sessao, destino, navigate])
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!email.trim()) { setErro('Informe o e-mail.'); return }
+    if (MODO_API) {
+      if (!senha) { setErro('Informe a senha.'); return }
+      setLoading(true)
+      const falha = await entrarComSenha(email.trim(), senha)
+      if (falha) { setLoading(false); setErro(falha); toast(falha, 'danger'); return }
+      navigate(destino === '/login' ? '/' : destino, { replace: true })
+      return
+    }
     const p = pessoas.find((c) => c.email.toLowerCase() === email.trim().toLowerCase())
-    if (!email.trim()) { setErro('Informe o e-mail ou escolha um perfil de demonstração abaixo.'); return }
-    if (!p) { setErro('E-mail não encontrado nos dados de demonstração.'); return }
+    if (!p) { setErro('E-mail não encontrado.'); return }
     if (p.status === 'encerrado') { setErro('Esta parceria foi encerrada — o acesso está desativado.'); return }
     acessar(p.id)
   }
@@ -217,39 +230,23 @@ export default function Login() {
           <h2 className="text-[25px] font-bold text-ink">Acesse sua conta</h2>
           <p className="text-muted text-[14px] mt-2 mb-6">Bem-vindo(a) de volta.</p>
 
-          <div className="mb-6 text-[12.5px] text-warning-ink bg-gold-soft border border-warning-line rounded-xl px-3.5 py-3 leading-relaxed flex gap-2.5">
-            <FlaskConical className="h-4 w-4 shrink-0 mt-0.5" />
-            <span><b>Ambiente de demonstração.</b> Não há senha nem servidor: escolha um perfil para explorar o que cada papel vê. Em produção, o acesso será feito pelo provedor de identidade da empresa.</span>
-          </div>
-
-          <fieldset className="mb-6">
-            <legend className="label mb-2">Entrar como (demonstração)</legend>
-            <div className="grid gap-2">
-              {PERSONAS_DEMO.map((p) => {
-                const c = pessoas.find((x) => x.id === p.id)
-                if (!c) return null
-                return (
-                  <button key={p.id} type="button" disabled={loading} onClick={() => acessar(p.id)}
-                    className={cn('flex items-center gap-3 rounded-xl border border-line px-3 py-2.5 text-left transition hover:border-brand hover:bg-brand-50 focus-visible:ring-2 focus-visible:ring-brand outline-none')}>
-                    <Avatar nome={c.nome} cor={c.avatarCor} size="sm" />
-                    <span className="flex-1 min-w-0">
-                      <span className="block text-[13.5px] font-semibold text-ink">{p.rotulo}</span>
-                      <span className="block text-[12px] text-muted truncate">{p.desc}</span>
-                    </span>
-                    <ArrowRight className="h-4 w-4 text-muted" />
-                  </button>
-                )
-              })}
+          {!MODO_API && (
+            <div className="mb-6 text-[12.5px] text-warning-ink bg-gold-soft border border-warning-line rounded-xl px-3.5 py-3 leading-relaxed flex gap-2.5">
+              <FlaskConical className="h-4 w-4 shrink-0 mt-0.5" />
+              <span><b>Ambiente de demonstração.</b> Não há senha nem servidor: informe o e-mail de um dos dados fictícios.</span>
             </div>
-          </fieldset>
-
-          <div className="flex items-center gap-3 my-5 text-[11.5px] text-muted uppercase tracking-wide font-semibold">
-            <span className="h-px flex-1 bg-line" />ou pelo e-mail cadastrado<span className="h-px flex-1 bg-line" />
-          </div>
+          )}
 
           <label className="label" htmlFor="login-email">E-mail</label>
           <input id="login-email" className="input" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErro('') }}
-            autoComplete="username" placeholder="nome@demo.4juris.com.br" aria-invalid={!!erro} aria-describedby={erro ? 'login-erro' : undefined} />
+            autoComplete="username" placeholder="seu@email.com.br" aria-invalid={!!erro} aria-describedby={erro ? 'login-erro' : undefined} />
+          {MODO_API && (
+            <>
+              <label className="label mt-4" htmlFor="login-senha">Senha</label>
+              <input id="login-senha" className="input" type="password" value={senha} onChange={(e) => { setSenha(e.target.value); setErro('') }}
+                autoComplete="current-password" aria-invalid={!!erro} aria-describedby={erro ? 'login-erro' : undefined} />
+            </>
+          )}
           {erro && <p id="login-erro" role="alert" className="text-[12px] text-danger font-medium mt-1.5">{erro}</p>}
 
           <button type="submit" disabled={loading} className="mt-5 w-full h-12 rounded-xl bg-brand text-white font-semibold text-[14.5px] hover:bg-brand-600 transition flex items-center justify-center gap-2 active:translate-y-px">

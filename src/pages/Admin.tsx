@@ -7,7 +7,7 @@ import { ConfirmModal } from '@/components/Modal'
 import { feedback, toast } from '@/components/toast'
 import { STATUS_COLAB, cn } from '@/lib/utils'
 import { MATRIZ, PAPEL_DESC, PAPEL_LABEL, type Capacidade } from '@/domain/permissions'
-import { MODO_DEMO } from '@/data/config'
+import { MODO_DEMO, MODO_API } from '@/data/config'
 
 const CAP_LABEL: Partial<Record<Capacidade, string>> = {
   'portal:usar': 'Área pessoal', 'lideranca:painel': 'Painel da liderança', 'lideranca:ver_disponibilidade_equipe': 'Ver disponibilidade da equipe',
@@ -104,10 +104,12 @@ export default function Admin() {
         <Card className="p-5 sm:p-6 max-w-2xl">
           <CardHead title="Armazenamento atual" />
           <div className="p-5 space-y-3 text-[13.5px] text-ink-2">
-            <p><b>Fonte de dados:</b> {MODO_DEMO ? 'demonstração (localStorage deste navegador)' : 'API'}</p>
-            <p>Os dados ficam somente neste navegador. Outras pessoas e outros dispositivos não veem estas alterações. Não há backup em servidor.</p>
+            <p><b>Fonte de dados:</b> {MODO_DEMO ? 'demonstração (localStorage deste navegador)' : 'banco de dados (Supabase / PostgreSQL)'}</p>
+            {MODO_DEMO
+              ? <p>Os dados ficam somente neste navegador. Outras pessoas e outros dispositivos não veem estas alterações. Não há backup em servidor.</p>
+              : <p>Tudo o que é feito aqui é gravado no banco de dados, e o acesso exige login com senha. Faça backups pelo painel do Supabase.</p>}
             <p className="text-[12.5px] text-muted">{s.colaboradores.length} pessoas · {s.eventos.length} eventos · {s.lancamentos.length} lançamentos de pontos · {s.auditoria.length} registros de auditoria</p>
-            <Button variant="danger" icon="RotateCcw" onClick={() => setResetar(true)}>Restaurar dados de demonstração</Button>
+            {MODO_DEMO && <Button variant="danger" icon="RotateCcw" onClick={() => setResetar(true)}>Restaurar dados de demonstração</Button>}
           </div>
         </Card>
       )}

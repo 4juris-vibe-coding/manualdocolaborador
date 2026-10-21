@@ -8,7 +8,7 @@ export type FonteDados = 'demo' | 'api'
 const fonte = (import.meta.env.VITE_DATA_SOURCE ?? 'demo') as string
 
 export const CONFIG = {
-  /** 'demo' = dados fictícios no navegador. 'api' ainda NÃO está implementado. */
+  /** 'demo' = dados fictícios no navegador. 'api' = banco (Supabase) via /api, com login por senha. */
   fonteDados: (fonte === 'api' ? 'api' : 'demo') as FonteDados,
   apiUrl: (import.meta.env.VITE_API_URL ?? '') as string,
   nomeEmpresa: (import.meta.env.VITE_NOME_EMPRESA ?? '4JURIS') as string,
@@ -16,6 +16,4 @@ export const CONFIG = {
 }
 
 export const MODO_DEMO = CONFIG.fonteDados === 'demo'
-
-/** Se alguém configurar 'api' antes de existir o adaptador, avisamos com clareza em vez de fingir persistência. */
-export const API_PENDENTE = fonte === 'api'
+export const MODO_API = CONFIG.fonteDados === 'api'

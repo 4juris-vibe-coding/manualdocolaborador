@@ -58,6 +58,7 @@ const Apresentacoes = lazy(() => import('@/pages/Apresentacoes'))
 const ApresentacaoEditor = lazy(() => import('@/pages/ApresentacaoEditor'))
 const Admin = lazy(() => import('@/pages/Admin'))
 const Seguranca = lazy(() => import('@/pages/Seguranca'))
+const NaoEncontrada = lazy(() => import('@/pages/NaoEncontrada'))
 
 /** Página atual com carregamento sob demanda e rede de segurança (o erro de uma página não derruba o app; trocar de rota limpa o erro). */
 function PaginaSegura() {
@@ -151,9 +152,9 @@ export function App() {
             <Route path="/treinamentos" element={<Navigate to="/conteudos" replace />} />
             <Route path="/feedback" element={<Navigate to="/pesquisas" replace />} />
             <Route path="/offboarding" element={<Navigate to="/rh/jornadas" replace />} />
+            <Route path="*" element={<NaoEncontrada />} />
           </Route>
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <ToastHost />
     </BrowserRouter>

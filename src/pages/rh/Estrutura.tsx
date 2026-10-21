@@ -169,14 +169,14 @@ function Listas() {
     <div className="grid md:grid-cols-2 gap-6">
       <Card>
         <CardHead title="Motivos de encerramento" sub="Usados ao encerrar uma parceria" />
-        <ul className="divide-y divide-line">{s.motivosEncerramento.map((m) => <li key={m.id} className="flex items-center justify-between px-5 py-2.5"><span className={cn('text-[13.5px]', !m.ativo && 'text-muted line-through')}>{m.nome}</span><Toggle checked={m.ativo} onChange={(v) => feedback(s.salvarMotivo({ nome: m.nome, ativo: v }, m.id), 'Lista atualizada.')} /></li>)}</ul>
+        <ul className="divide-y divide-line">{s.motivosEncerramento.map((m) => <li key={m.id} className="flex items-center justify-between px-5 py-2.5"><span className={cn('text-[13.5px]', !m.ativo && 'text-muted line-through')}>{m.nome}</span><span className="flex items-center gap-2"><Toggle checked={m.ativo} onChange={(v) => feedback(s.salvarMotivo({ nome: m.nome, ativo: v }, m.id), 'Lista atualizada.')} /><Button size="icon-sm" variant="subtle" icon="Trash2" aria-label={`Remover ${m.nome}`} onClick={() => feedback(s.removerMotivo(m.id), 'Motivo removido.')} /></span></li>)}</ul>
         <form className="flex gap-2 p-4 border-t border-line" onSubmit={(e) => { e.preventDefault(); if (feedback(s.salvarMotivo({ nome: motivo.trim(), ativo: true }), 'Motivo adicionado.')) setMotivo('') }}>
           <input aria-label="Novo motivo" className="input flex-1" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Novo motivo" /><Button type="submit" size="icon" icon="Plus" aria-label="Adicionar motivo" />
         </form>
       </Card>
       <Card>
         <CardHead title="Tipos de registro administrativo" sub="Classificam os registros feitos pelo RH" />
-        <ul className="divide-y divide-line">{s.tiposRegistro.map((t) => <li key={t.id} className="flex items-center justify-between px-5 py-2.5"><span className={cn('text-[13.5px]', !t.ativo && 'text-muted line-through')}>{t.nome}</span><Toggle checked={t.ativo} onChange={(v) => feedback(s.salvarTipoRegistro({ nome: t.nome, ativo: v }, t.id), 'Lista atualizada.')} /></li>)}</ul>
+        <ul className="divide-y divide-line">{s.tiposRegistro.map((t) => <li key={t.id} className="flex items-center justify-between px-5 py-2.5"><span className={cn('text-[13.5px]', !t.ativo && 'text-muted line-through')}>{t.nome}</span><span className="flex items-center gap-2"><Toggle checked={t.ativo} onChange={(v) => feedback(s.salvarTipoRegistro({ nome: t.nome, ativo: v }, t.id), 'Lista atualizada.')} /><Button size="icon-sm" variant="subtle" icon="Trash2" aria-label={`Remover ${t.nome}`} onClick={() => feedback(s.removerTipoRegistro(t.id), 'Tipo removido.')} /></span></li>)}</ul>
         <form className="flex gap-2 p-4 border-t border-line" onSubmit={(e) => { e.preventDefault(); if (feedback(s.salvarTipoRegistro({ nome: tipo.trim(), ativo: true }), 'Tipo adicionado.')) setTipo('') }}>
           <input aria-label="Novo tipo de registro" className="input flex-1" value={tipo} onChange={(e) => setTipo(e.target.value)} placeholder="Novo tipo" /><Button type="submit" size="icon" icon="Plus" aria-label="Adicionar tipo" />
         </form>

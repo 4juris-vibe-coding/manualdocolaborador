@@ -22,7 +22,8 @@ import type {
   ConfigAvaliacaoInicio, PerfilComportamental, Diversidade, Endereco, Escolaridade, Beneficio,
   Apresentacao, SlideInstancia, TemaApresentacao, Sugestao, StatusSugestao, CategoriaSugestao,
 } from './types'
-import { seed } from './mock'
+import { seed, seedProducao } from './mock'
+import { MODO_API } from '@/data/config'
 import { uid } from './utils'
 import { can, type Capacidade } from '@/domain/permissions'
 import { hojeISO, agoraISO } from '@/domain/datas'
@@ -42,7 +43,7 @@ const OK = (extra: Partial<{ id: string; avisos: string[]; info: string }> = {})
 const ERRO = (erro: string): Resultado => ({ ok: false, erro })
 const SEM_PERMISSAO = ERRO('Você não tem permissão para esta ação.')
 
-const DB_KEYS: (keyof DB)[] = [
+export const DB_KEYS: (keyof DB)[] = [
   'colaboradores', 'setores', 'unidades', 'cargos', 'contratos', 'documentos', 'reembolsos', 'notas', 'periodos',
   'comunicados', 'eventos', 'beneficios', 'treinamentos', 'progressoConteudos', 'badges', 'conquistas', 'regras',
   'lancamentos', 'desafios', 'reconhecimentos', 'iniciativas', 'checklists', 'processos', 'motivosEncerramento',
@@ -247,6 +248,17 @@ interface AppState extends DB {
   // ----- notificações
   marcarNotifLida: (id: string) => void
   marcarTodasLidas: () => void
+  // ----- exclusões definitivas (administração / RH)
+  excluirPessoa: (id: string) => Resultado
+  removerContrato: (id: string) => Resultado
+  excluirEvento: (id: string) => Resultado
+  excluirPesquisa: (id: string) => Resultado
+  removerDesafio: (id: string) => Resultado
+  removerConteudo: (id: string) => Resultado
+  removerMotivo: (id: string) => Resultado
+  removerTipoRegistro: (id: string) => Resultado
+  excluirReembolso: (id: string) => Resultado
+  excluirNota: (id: string) => Resultado
   // ----- administração
   alterarPapel: (id: string, papel: Papel) => Resultado
   reset: () => void
@@ -317,7 +329,7 @@ export const useStore = create<AppState>()(
       }
 
       return {
-        ...seed(),
+        ...(MODO_API ? seedProducao() : seed()),
         sessaoId: null,
         sidebarCollapsed: false,
         previewColaborador: false,
@@ -1451,6 +1463,109 @@ export const useStore = create<AppState>()(
           set((s) => ({ notificacoes: s.notificacoes.map((n) => (n.colaboradorId === me ? { ...n, lida: true } : n)) }))
         },
 
+        /* ---------- exclusões definitivas ---------- */
+        excluirPessoa: (id) => tx((d) => {
+          if (!pode('admin:usuarios')) return SEM_PERMISSAO
+          const c = d.colaboradores.find((x) => x.id === id)
+          if (!c) return ERRO('Pessoa não encontrada.')
+          if (id === get().realUser().id) return ERRO('Você não pode excluir o próprio cadastro.')
+          if (c.papel === 'admin' && d.colaboradores.filter((x) => x.papel === 'admin').length <= 1) return ERRO('Não é possível excluir o único administrador.')
+          const pares = new Set(d.participantesCiclo.filter((p) => p.avaliadoId === id || p.avaliadorId === id).map((p) => p.id))
+          d.colaboradores = d.colaboradores.filter((x) => x.id !== id).map((x) => (x.responsavelId === id ? { ...x, responsavelId: undefined } : x))
+          d.setores = d.setores.map((x) => ({ ...x, gestorId: x.gestorId === id ? null : x.gestorId, liderancaIds: x.liderancaIds.filter((l) => l !== id) }))
+          d.contratos = d.contratos.filter((x) => x.colaboradorId !== id)
+          d.documentos = d.documentos.filter((x) => x.colaboradorId !== id)
+          d.reembolsos = d.reembolsos.filter((x) => x.colaboradorId !== id)
+          d.notas = d.notas.filter((x) => x.colaboradorId !== id)
+          d.periodos = d.periodos.filter((x) => x.colaboradorId !== id)
+          d.progressoConteudos = d.progressoConteudos.filter((x) => x.colaboradorId !== id)
+          d.conquistas = d.conquistas.filter((x) => x.colaboradorId !== id)
+          d.lancamentos = d.lancamentos.filter((x) => x.colaboradorId !== id)
+          d.reconhecimentos = d.reconhecimentos.filter((x) => x.deId !== id && x.paraId !== id)
+          d.processos = d.processos.filter((x) => x.colaboradorId !== id)
+          d.registros = d.registros.filter((x) => x.colaboradorId !== id)
+          d.notificacoes = d.notificacoes.filter((x) => x.colaboradorId !== id)
+          d.parabens = d.parabens.filter((x) => x.deId !== id && x.paraId !== id)
+          d.historicoFuncao = d.historicoFuncao.filter((x) => x.colaboradorId !== id)
+          d.dependentes = d.dependentes.filter((x) => x.colaboradorId !== id)
+          d.exigencias = d.exigencias.filter((x) => x.colaboradorId !== id)
+          d.beneficiarios = d.beneficiarios.filter((x) => x.colaboradorId !== id)
+          d.participacoes = d.participacoes.filter((x) => x.colaboradorId !== id)
+          d.participantesCiclo = d.participantesCiclo.filter((x) => !pares.has(x.id))
+          d.respostasAvaliacao = d.respostasAvaliacao.filter((x) => !pares.has(x.participanteId))
+          d.avaliacoesInicio = d.avaliacoesInicio.filter((x) => x.avaliadoId !== id).map((x) => (x.avaliadorId === id ? { ...x, avaliadorId: undefined } : x))
+          d.classificacoesGrupo = d.classificacoesGrupo.filter((x) => x.colaboradorId !== id)
+          d.feedbacks = d.feedbacks.filter((x) => x.colaboradorId !== id)
+          d.desafios = d.desafios.map((x) => ({ ...x, participantes: x.participantes.filter((p) => p !== id) }))
+          d.eventos = d.eventos.map((x) => ({ ...x, confirmados: x.confirmados.filter((p) => p !== id), interessados: x.interessados.filter((p) => p !== id), presencas: x.presencas.filter((p) => p !== id) }))
+          d.comunicados = d.comunicados.map((x) => ({ ...x, lidoPor: x.lidoPor.filter((p) => p !== id) }))
+          audit(d, 'pessoa.excluir', 'pessoa', id, `Cadastro de ${c.nome} excluído definitivamente`)
+        }),
+        removerContrato: (id) => tx((d) => {
+          if (!pode('pessoas:ver_contratos')) return SEM_PERMISSAO
+          const k = d.contratos.find((x) => x.id === id)
+          if (!k) return ERRO('Contrato não encontrado.')
+          d.contratos = d.contratos.filter((x) => x.id !== id)
+          audit(d, 'contrato.remover', 'contrato', id, `Contrato ${k.numero} removido`)
+        }),
+        excluirEvento: (id) => tx((d) => {
+          const ev = d.eventos.find((x) => x.id === id)
+          if (!ev) return ERRO('Evento não encontrado.')
+          if (!podeGerenciarEvento(ev, get().currentUser(), d.setores)) return SEM_PERMISSAO
+          d.eventos = d.eventos.filter((x) => x.id !== id)
+          audit(d, 'evento.excluir', 'evento', id, `Evento "${ev.titulo}" excluído`)
+        }),
+        excluirPesquisa: (id) => tx((d) => {
+          if (!pode('pesquisas:gerenciar')) return SEM_PERMISSAO
+          const p = d.pesquisas.find((x) => x.id === id)
+          if (!p) return ERRO('Pesquisa não encontrada.')
+          d.pesquisas = d.pesquisas.filter((x) => x.id !== id)
+          d.respostas = d.respostas.filter((x) => x.pesquisaId !== id)
+          d.participacoes = d.participacoes.filter((x) => x.pesquisaId !== id)
+          audit(d, 'pesquisa.excluir', 'pesquisa', id, `Pesquisa "${p.titulo}" excluída com as respostas`)
+        }),
+        removerDesafio: (id) => tx((d) => {
+          if (!pode('gamificacao:configurar')) return SEM_PERMISSAO
+          const x = d.desafios.find((y) => y.id === id)
+          if (!x) return ERRO('Desafio não encontrado.')
+          d.desafios = d.desafios.filter((y) => y.id !== id)
+          audit(d, 'desafio.remover', 'desafio', id, `Desafio "${x.titulo}" removido`)
+        }),
+        removerConteudo: (id) => tx((d) => {
+          if (!pode('desenvolvimento:gerenciar')) return SEM_PERMISSAO
+          const x = d.treinamentos.find((y) => y.id === id)
+          if (!x) return ERRO('Conteúdo não encontrado.')
+          d.treinamentos = d.treinamentos.filter((y) => y.id !== id)
+          d.progressoConteudos = d.progressoConteudos.filter((y) => y.treinamentoId !== id)
+          audit(d, 'conteudo.remover', 'conteudo', id, `Conteúdo "${x.titulo}" removido`)
+        }),
+        removerMotivo: (id) => tx((d) => {
+          if (!pode('estrutura:gerenciar')) return SEM_PERMISSAO
+          if (d.colaboradores.some((c) => c.encerramento?.motivoId === id)) return ERRO('Motivo já usado em encerramentos — desative em vez de remover.')
+          d.motivosEncerramento = d.motivosEncerramento.filter((x) => x.id !== id)
+          audit(d, 'motivo.remover', 'motivo', id, 'Motivo de encerramento removido')
+        }),
+        removerTipoRegistro: (id) => tx((d) => {
+          if (!pode('estrutura:gerenciar')) return SEM_PERMISSAO
+          if (d.registros.some((r) => r.tipoId === id)) return ERRO('Tipo já usado em registros — desative em vez de remover.')
+          d.tiposRegistro = d.tiposRegistro.filter((x) => x.id !== id)
+          audit(d, 'tipo_registro.remover', 'tipo_registro', id, 'Tipo de registro removido')
+        }),
+        excluirReembolso: (id) => tx((d) => {
+          if (!pode('financeiro:gerenciar')) return SEM_PERMISSAO
+          const r = d.reembolsos.find((x) => x.id === id)
+          if (!r) return ERRO('Reembolso não encontrado.')
+          d.reembolsos = d.reembolsos.filter((x) => x.id !== id)
+          audit(d, 'reembolso.excluir', 'reembolso', id, `Reembolso "${r.descricao}" excluído`)
+        }),
+        excluirNota: (id) => tx((d) => {
+          if (!pode('financeiro:gerenciar')) return SEM_PERMISSAO
+          const n = d.notas.find((x) => x.id === id)
+          if (!n) return ERRO('Nota fiscal não encontrada.')
+          d.notas = d.notas.filter((x) => x.id !== id)
+          audit(d, 'nota.excluir', 'nota', id, `Nota fiscal da competência ${n.competencia} excluída`)
+        }),
+
         /* ---------- administração ---------- */
         alterarPapel: (id, papel) => tx((d) => {
           if (!pode('admin:usuarios')) return SEM_PERMISSAO
@@ -1460,13 +1575,15 @@ export const useStore = create<AppState>()(
           d.colaboradores = d.colaboradores.map((c) => (c.id === id ? { ...c, papel } : c))
           audit(d, 'acesso.papel', 'pessoa', id, `Papel de ${alvo?.nome} alterado para ${papel}`)
         }),
-        reset: () => set({ ...seed(), sessaoId: get().sessaoId, sidebarCollapsed: get().sidebarCollapsed, previewColaborador: false }),
+        reset: () => set({ ...(MODO_API ? seedProducao() : seed()), sessaoId: get().sessaoId, sidebarCollapsed: get().sidebarCollapsed, previewColaborador: false }),
       }
     },
     {
-      name: '4juris_pessoas_demo_v5',
+      name: MODO_API ? '4juris_pessoas_ui_v1' : '4juris_pessoas_demo_v5',
       version: 5,
       partialize: (s) => {
+        // No modo API os dados e a sessão ficam no servidor; no navegador só a preferência de layout.
+        if (MODO_API) return { sidebarCollapsed: s.sidebarCollapsed } as unknown as AppState
         const out: Record<string, unknown> = { sessaoId: s.sessaoId, sidebarCollapsed: s.sidebarCollapsed }
         for (const k of DB_KEYS) out[k] = s[k]
         return out as unknown as AppState
