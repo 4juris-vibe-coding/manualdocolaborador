@@ -59,6 +59,7 @@ const nomeDe = (m: Map<string, { nome: string }>, id: string | null | undefined)
 function escopo(u: Usuario, alias: string, p: number): { sql: string; params: unknown[] } {
   if (u.caps.has('vagas:gerenciar') || u.papel === 'diretoria') return { sql: 'true', params: [] }
   const e = escopoVagas(u, alias, p)
+  if (!e.params.length) return e // vê todas (ex.: analista de RH); o trecho abaixo supõe os parâmetros do escopo por área
   return {
     sql: `(${e.sql} or exists (select 1 from rec_vaga_aprovacoes ap where ap.vaga_id = ${alias}.id and (
       (ap.aprovador_tipo = 'pessoa' and ap.aprovador_ref = $${p}) or (ap.aprovador_tipo = 'papel' and ap.aprovador_ref = $${p + 2}) or
@@ -175,7 +176,8 @@ function serializar(row: Record<string, any>, u: Usuario, org: Org) {
     setorNome: org.setor.get(row.setor_id) ?? null, unidadeNome: org.unidade.get(row.unidade_id) ?? null, cargoNome: org.cargo.get(row.cargo_id)?.nome ?? null,
     gestorSolicitanteNome: nomeDe(org.pessoa, row.gestor_solicitante_id), gestorResponsavelNome: nomeDe(org.pessoa, row.gestor_responsavel_id),
     gestorImediatoNome: nomeDe(org.pessoa, row.gestor_imediato_id), recrutadorNome: nomeDe(org.pessoa, row.recrutador_id), criadoPorNome: nomeDe(org.pessoa, row.criado_por),
-    situacaoPrazo: situacaoPrazo({ status: row.status, prazoPreenchimento: row.prazo_preenchimento, qtdPosicoes: row.qtd_posicoes, posicoesPreenchidas: row.posicoes_preenchidas }, hoje),
+    // dataStr: o driver pg devolve colunas `date` como Date, e situacaoPrazo compara texto AAAA-MM-DD.
+    situacaoPrazo: situacaoPrazo({ status: row.status, prazoPreenchimento: dataStr(row.prazo_preenchimento), qtdPosicoes: row.qtd_posicoes, posicoesPreenchidas: row.posicoes_preenchidas }, hoje),
     ...(row.n_cand !== undefined ? { candidaturas: { total: row.n_cand, ativas: row.n_ativas, contratadas: row.n_contr } } : {}),
   }
 }

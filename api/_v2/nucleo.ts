@@ -311,12 +311,13 @@ export const camel = <T extends Record<string, unknown>>(linha: T): Record<strin
   Object.fromEntries(Object.entries(linha).map(([k, v]) => [paraCamelChave(k), v]))
 
 /**
- * Escopo de vagas por registro. RH e recrutadores (`vagas:gerenciar`) veem todas; gestores veem
+ * Escopo de vagas por registro. RH e recrutadores (`vagas:gerenciar`) e analista de RH veem todas; gestores veem
  * as que solicitaram/lideram/criaram ou da(s) própria(s) área(s). `alias` = alias de rec_vagas na consulta;
  * `proximoParam` = número do próximo $n livre. Devolve o fragmento SQL e os parâmetros a anexar.
  */
 export function escopoVagas(u: Usuario, alias = 'v', proximoParam = 1): { sql: string; params: unknown[] } {
-  if (u.caps.has('vagas:gerenciar')) return { sql: 'true', params: [] }
+  // RH não se limita por área: quem gerencia vagas e o(a) analista de RH (leitura) veem todas.
+  if (u.caps.has('vagas:gerenciar') || u.funcoes.includes('analista_rh')) return { sql: 'true', params: [] }
   const p = proximoParam
   const a = alias
   return {

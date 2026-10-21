@@ -483,3 +483,37 @@ describe('vagas · regressões do formulário', () => {
     expect(r.json.campos).toHaveProperty('perguntasTriagem')
   })
 })
+
+describe('vagas · analista de RH', () => {
+  it('vê vagas e candidaturas de todas as áreas, sem poder criar nem editar', async () => {
+    await m.pg.query("insert into acl_funcoes (colaborador_id, funcao) values ('col1','analista_rh') on conflict do nothing")
+    try {
+      const d = await criar(m.c.rh1, { titulo: 'Vaga de outra área', setorId: 's2' }) // col1 é da área s1
+      const lista = await GET(m, 'vagas', m.c.col1, { por: '100' })
+      expect(lista.status).toBe(200)
+      expect(lista.json.itens.some((v: any) => v.id === d.vaga.id)).toBe(true)
+      expect((await GET(m, `vagas/${d.vaga.id}`, m.c.col1)).status).toBe(200)
+      expect((await GET(m, 'ats/candidaturas', m.c.col1)).status).toBe(200)
+      expect((await POST(m, 'vagas', m.c.col1, corpoVaga())).status).toBe(403)
+      expect((await PUT(m, `vagas/${d.vaga.id}`, m.c.col1, { versao: d.vaga.versao, titulo: 'x' })).status).toBe(403)
+      // sem a função, colaborador comum não vê a vaga
+      expect((await GET(m, `vagas/${d.vaga.id}`, m.c.col2)).status).toBe(403)
+    } finally {
+      await m.pg.query("delete from acl_funcoes where colaborador_id = 'col1' and funcao = 'analista_rh'")
+    }
+  })
+})
+
+describe('vagas · prazo de preenchimento', () => {
+  it('lista vaga aprovada com prazo futuro sem 500 (o driver devolve `date` como Date)', async () => {
+    const futuro = new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10)
+    const proximo = new Date(Date.now() + 3 * 86400_000).toISOString().slice(0, 10)
+    const a = await criarAprovada({ titulo: 'Prazo longe', prazoPreenchimento: futuro })
+    const b = await criarAprovada({ titulo: 'Prazo perto', prazoPreenchimento: proximo })
+    const r = await GET(m, 'vagas', m.c.rh1, { por: '200' })
+    expect(r.status).toBe(200)
+    const ids = new Map(r.json.itens.map((v: any) => [v.id, v.situacaoPrazo]))
+    expect(ids.get(a)).toBe('ok')
+    expect(ids.get(b)).toBe('proxima')
+  })
+})
