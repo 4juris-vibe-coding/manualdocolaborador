@@ -43,10 +43,10 @@ export function Topbar({ onAbrirMenu }: { onAbrirMenu: () => void }) {
   const pontos = useStore((s) => s.pontosDe(user.id))
   const nivel = nivelDe(pontos, niveis)
 
-  const current = itemDaRota(location.pathname)
-  const grupo = grupoDaRota(location.pathname)
+  const current = itemDaRota(location.pathname, user.papel)
+  const grupo = grupoDaRota(location.pathname, user.papel)
   const title = current?.label ?? '4JURIS Pessoas'
-  const detalhe = current && location.pathname !== current.to
+  const detalhe = current && !current.oculto && location.pathname !== current.to
 
   return (
     <header className="h-[64px] sm:h-[68px] shrink-0 bg-surface-3/85 backdrop-blur border-b border-line sticky top-0 z-40 flex items-center gap-3 sm:gap-4 px-4 sm:px-7">

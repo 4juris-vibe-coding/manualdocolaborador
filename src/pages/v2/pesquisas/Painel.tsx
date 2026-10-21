@@ -4,7 +4,8 @@ import { Badge, Button, Callout, Card, CardHead, EmptyState, PageHeader, Progres
 import { Aguardar, SoComBanco } from '@/components/v2/estados'
 import { LinhaTempo } from '@/components/v2/charts2'
 import { StatusBadge } from '@/components/v2/StatusBadge'
-import { useApi } from '@/data/v2/api'
+import { useEffect } from 'react'
+import { api, useApi } from '@/data/v2/api'
 import { STATUS_PESQUISA } from '@/domain/v2/pesquisaTipos'
 import { dataBR, numero, pct } from '@/lib/fmt'
 
@@ -21,6 +22,8 @@ interface Painel {
 export default function PainelPesquisas() {
   const nav = useNavigate()
   const r = useApi<Painel>('pesquisas/painel')
+  // Lembretes automáticos (dias antes do término) são processados aqui; o servidor limita a um por pessoa a cada 23 h.
+  useEffect(() => { api.post('pesquisas/automacoes/lembretes').then(() => r.recarregar()).catch(() => undefined) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <>
       <PageHeader title="Central de pesquisas" subtitle="Participação, prazos e resultados das pesquisas organizacionais."

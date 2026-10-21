@@ -2,7 +2,8 @@
 import { create } from 'zustand'
 import { api } from './api'
 import { MODO_API } from '../config'
-import { definirExtrasDaSessao, type Capacidade, type FuncaoAdicional } from '@/domain/permissions'
+import { can, definirExtrasDaSessao, type Capacidade, type FuncaoAdicional } from '@/domain/permissions'
+import { useStore } from '@/lib/store'
 
 interface Acesso {
   carregado: boolean
@@ -18,7 +19,11 @@ export async function carregarAcesso(): Promise<void> {
     const eu = await api.get<{ funcoes: FuncaoAdicional[]; capacidades: Capacidade[]; setoresLiderados: string[] }>('eu')
     definirExtrasDaSessao(eu.capacidades)
     useAcesso.setState({ carregado: true, funcoes: eu.funcoes, capacidades: eu.capacidades, setoresLiderados: eu.setoresLiderados })
-  } catch { /* sem acesso v2: menus novos ficam ocultos */ }
+  } catch (e) {
+    // Sem acesso v2: valem só as capacidades do papel. Marca como carregado para a guarda de rota não ficar em "Carregando…" para sempre.
+    console.error('[acesso] falha ao carregar /api/v2/eu', e)
+    useAcesso.setState({ carregado: true })
+  }
 }
 
 export function limparAcesso() {
@@ -28,5 +33,6 @@ export function limparAcesso() {
 
 /** Hook: a pessoa tem a capacidade (papel + funções)? Re-renderiza quando o acesso carrega. */
 export function useTem(cap: Capacidade): boolean {
-  return useAcesso((s) => s.capacidades.includes(cap))
+  const papel = useStore((s) => s.currentUser().papel)
+  return useAcesso((s) => s.capacidades.includes(cap)) || can(papel, cap)
 }

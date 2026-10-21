@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { NAV, grupoDaRota } from '@/lib/nav'
+import { NAV, grupoDaRota, permitido, ultimosVisiveis } from '@/lib/nav'
 import { useStore } from '@/lib/store'
 import { Icon, Logo } from '@/components/ui'
 import { cn, podeVerReembolsosView } from '@/lib/utils'
@@ -27,12 +27,13 @@ export function Sidebar({ aberto, onFechar }: { aberto: boolean; onFechar: () =>
   const [fechados, setFechados] = useState<string[]>(lerFechados)
 
   // O grupo da página atual fica sempre aberto.
-  const atual = grupoDaRota(pathname)?.title
+  const atual = grupoDaRota(pathname, user.papel)?.title
   useEffect(() => { if (atual && fechados.includes(atual)) setFechados((f) => f.filter((x) => x !== atual)) }, [atual])
   useEffect(() => { try { localStorage.setItem(CHAVE, JSON.stringify(fechados)) } catch { /* sem armazenamento */ } }, [fechados])
   const alternar = (t: string) => setFechados((f) => (f.includes(t) ? f.filter((x) => x !== t) : [...f, t]))
 
   let ultimaArea = 'pessoal'
+  const ultimoVisivel = ultimosVisiveis(user.papel)
 
   return (
     <>
@@ -62,7 +63,7 @@ export function Sidebar({ aberto, onFechar }: { aberto: boolean; onFechar: () =>
         <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4 pt-1 [scrollbar-color:rgba(255,255,255,.12)_transparent]">
           {NAV.map((group) => {
             const items = group.items
-              .filter((i) => !i.cap || can(user.papel, i.cap))
+              .filter((i) => permitido(user.papel, i) && ultimoVisivel.get(i.to) === i)
               .filter((i) => i.to !== '/reembolsos' || verReemb)
             if (!items.length) return null
             const novaArea = group.area !== 'pessoal' && group.area !== ultimaArea

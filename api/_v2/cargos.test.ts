@@ -47,6 +47,14 @@ describe('ficha oficial, aprovação e versões', () => {
     expect(r.json.ficha.codigo).toBe('ADV-PL')
     expect((await PUT(m, 'cargos/g2/ficha', m.c.rh1, ficha())).status).toBe(409) // código repetido
     expect((await PUT(m, 'cargos/g2/ficha', m.c.rh1, { descricaoOficial: 'x' })).status).toBe(200) // código gerado
+    // Código em branco (como a tela envia) também gera automaticamente na ficha nova, e mantém o atual na existente.
+    await m.pg.query(`insert into app_cargos (ord, id, dados) values (99, 'g3', '{"id":"g3","nome":"Estagiário(a)","setorId":"s1"}'::jsonb)`)
+    const g3 = await PUT(m, 'cargos/g3/ficha', m.c.rh1, { codigo: '', descricaoOficial: 'x' })
+    expect(g3.status).toBe(200)
+    expect(g3.json.ficha.codigo).toMatch(/\S/)
+    const g3b = await PUT(m, 'cargos/g3/ficha', m.c.rh1, { codigo: '', objetivo: 'y' })
+    expect(g3b.json.ficha.codigo).toBe(g3.json.ficha.codigo)
+    await m.pg.query("delete from cg_fichas where cargo_id = 'g3'"); await m.pg.query("delete from app_cargos where id = 'g3'") // não interfere nas contagens abaixo
     expect((await PUT(m, 'cargos/nao/ficha', m.c.rh1, ficha())).status).toBe(404)
     // submeter sem campos obrigatórios falha
     expect((await POST(m, 'cargos/g2/ficha/submeter', m.c.rh1)).status).toBe(400)

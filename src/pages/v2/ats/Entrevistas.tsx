@@ -14,15 +14,17 @@ export default function Entrevistas() {
   useTitulo('Entrevistas · 4JURIS Pessoas')
   const [aba, setAba] = useState('proximas')
   const gerenciar = useTem('ats:gerenciar')
+  const verAts = useTem('ats:ver')
   const r = useApi<{ itens: any[] }>(`ats/entrevistas${qs({ pendentes: aba === 'pendentes' ? 1 : undefined, status: aba === 'proximas' ? 'agendada' : aba === 'realizadas' ? 'realizada' : undefined })}`)
   const [reg, setReg] = useState<any | null>(null)
   const [reag, setReag] = useState<any | null>(null)
-  const lista = (r.dados?.itens ?? []).filter((e) => aba !== 'proximas' || !e.parecerPendente)
+  // "Canceladas e ausências" busca tudo (o filtro de status do servidor aceita um valor só) e separa aqui.
+  const lista = (r.dados?.itens ?? []).filter((e) => (aba === 'outras' ? ['cancelada', 'nao_compareceu'].includes(e.status) : aba !== 'proximas' || !e.parecerPendente))
 
   return (
     <SoComBanco>
       <PageHeader title="Entrevistas" subtitle="Agenda das entrevistas e pareceres que ainda precisam ser registrados." />
-      <Tabs active={aba} onChange={setAba} tabs={[{ key: 'proximas', label: 'Próximas' }, { key: 'pendentes', label: 'Aguardando resultado' }, { key: 'realizadas', label: 'Realizadas' }]} />
+      <Tabs active={aba} onChange={setAba} tabs={[{ key: 'proximas', label: 'Próximas' }, { key: 'pendentes', label: 'Aguardando resultado' }, { key: 'realizadas', label: 'Realizadas' }, { key: 'outras', label: 'Canceladas e ausências' }]} />
       <Aguardar r={r} vazio={() => lista.length === 0 ? (
         <Card><EmptyState icon="CalendarClock" title={aba === 'pendentes' ? 'Nenhum parecer pendente' : 'Nenhuma entrevista aqui'} desc="As entrevistas são agendadas no perfil de cada candidato." /></Card>
       ) : null}>
@@ -32,7 +34,7 @@ export default function Entrevistas() {
               <Card key={e.id} className="p-4 sm:p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <Link className="font-bold text-ink hover:text-brand" to={`/recrutamento/candidatos/${e.candidaturaId}`}>{e.candidatoNome}</Link>
+                    {verAts ? <Link className="font-bold text-ink hover:text-brand" to={`/recrutamento/candidatos/${e.candidaturaId}`}>{e.candidatoNome}</Link> : <span className="font-bold text-ink">{e.candidatoNome}</span>}
                     <div className="text-[12.5px] text-muted">{e.vagaCodigo} · {e.vagaTitulo}</div>
                     <div className="text-[13.5px] text-ink mt-1.5 font-semibold">{dataHoraBR(e.inicio)} · {e.modalidade}{e.localOuLink ? ` · ${e.localOuLink}` : ''}</div>
                     <div className="text-[12.5px] text-muted">Com {e.participantes.map((p: any) => p.nome).join(', ')}</div>

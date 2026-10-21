@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '@/lib/store'
-import { flatNav } from '@/lib/nav'
+import { flatNav, permitido } from '@/lib/nav'
 import { Icon, Avatar } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import { can } from '@/domain/permissions'
@@ -29,7 +29,7 @@ export function CommandPalette({ aberto, onFechar }: { aberto: boolean; onFechar
 
   const itens = useMemo<Item[]>(() => {
     const ir = (to: string) => () => { navigate(to); onFechar() }
-    const paginas: Item[] = flatNav().filter((i) => !i.cap || can(user.papel, i.cap)).map((i) => ({ id: 'p' + i.to, grupo: 'Páginas', titulo: i.label, sub: i.desc, icon: i.icon, acao: ir(i.to) }))
+    const paginas: Item[] = flatNav().filter((i) => !i.oculto && permitido(user.papel, i)).filter((i, n, arr) => arr.findIndex((x) => x.to === i.to) === n).map((i) => ({ id: 'p' + i.to, grupo: 'Páginas', titulo: i.label, sub: i.desc, icon: i.icon, acao: ir(i.to) }))
     const verPessoas = can(user.papel, 'pessoas:gerenciar')
     const pessoas: Item[] = s.colaboradores.filter((c) => c.status !== 'encerrado' || verPessoas).map((c) => ({
       id: 'c' + c.id, grupo: 'Pessoas', titulo: c.nomeSocial || c.nome, sub: `${s.cargoNome(c.cargoId)} · ${s.setorNome(c.setorId)}`, pessoa: { nome: c.nome, cor: c.avatarCor },

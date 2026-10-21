@@ -450,7 +450,8 @@ export const rotas: Rota[] = [
 
   /* ===== entrevistas ===== */
   {
-    metodo: 'GET', padrao: 'ats/entrevistas', cap: VER,
+    // Sem `cap`: entrevistador(a) designado(a) pode não ter acesso ao ATS; o escopo (escopoCand) limita às entrevistas de que participa.
+    metodo: 'GET', padrao: 'ats/entrevistas',
     h: async ({ db, usuario, req, agora }) => {
       await processarAlertas(db, agora)
       const ec = escopoCand(usuario, 1)
@@ -497,7 +498,8 @@ export const rotas: Rota[] = [
     },
   },
   {
-    metodo: 'PATCH', padrao: 'ats/entrevistas/:id', cap: VER,
+    // Sem `cap`: participante registra o resultado; reagendar/cancelar continuam exigindo ats:gerenciar (abaixo).
+    metodo: 'PATCH', padrao: 'ats/entrevistas/:id',
     h: async ({ db, usuario, params, req }) => {
       if (!uuid(params.id)) throw naoEncontrado()
       const b = req.corpo ?? {}
@@ -510,7 +512,10 @@ export const rotas: Rota[] = [
       if (acao === 'registrar' ? !(gerenciar || participa) : !gerenciar) throw proibido()
       if (e.status === 'cancelada' && acao !== 'registrar') throw conflito('Entrevista cancelada.')
       if (acao === 'reagendar') {
-        const novo = dataHora(b.inicio, 'inicio')!, fim = dataHora(b.fim, 'fim', false)
+        const novo = dataHora(b.inicio, 'inicio')!
+        // Sem fim informado, mantém a duração original (a tela de reagendamento só pede o novo início).
+        const duracao = e.fim && e.inicio ? new Date(e.fim).getTime() - new Date(e.inicio).getTime() : null
+        const fim = dataHora(b.fim, 'fim', false) ?? (duracao && duracao > 0 ? new Date(new Date(novo).getTime() + duracao).toISOString() : null)
         if (fim && fim <= novo) throw invalido('O fim deve ser depois do início.', { fim: 'Depois do início' })
         const motivo = texto(b.motivo, 'motivo', { max: 300 })
         const hist = [...(e.reagendamentos as unknown[]), { de: e.inicio, para: novo, motivo, por: usuario.colaboradorId, em: new Date().toISOString() }]

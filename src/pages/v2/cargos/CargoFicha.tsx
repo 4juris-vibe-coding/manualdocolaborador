@@ -22,7 +22,7 @@ interface Resp {
   ficha: Ficha | null
   solicitacaoPendente: { propostaPor: string; propostaEm: string; descricao?: string } | null
   ultimaRejeicao: { justificativa?: string; decididoEm: string } | null
-  permissoes: { editar: boolean; decidir: boolean; inativar: boolean; verFaixas: boolean }
+  permissoes: { editar: boolean; decidir: boolean; inativar: boolean; verFaixas: boolean; cancelarSubmissao: boolean; propostaPorMim: boolean }
 }
 
 const VAZIA: Ficha = {
@@ -127,8 +127,8 @@ function AbaFicha({ d, cargoId, recarregar }: { d: Resp; cargoId: string; recarr
           Ficha em aprovação desde {dataBR(d.solicitacaoPendente.propostaEm)}.{d.solicitacaoPendente.descricao ? ` Nota: ${d.solicitacaoPendente.descricao}` : ''}
           <div className="mt-3 flex gap-2 flex-wrap">
             {d.permissoes.decidir && <><Button size="sm" icon="Check" onClick={() => setDecisao('aprovar')}>Aprovar</Button><Button size="sm" variant="danger" icon="X" onClick={() => setDecisao('rejeitar')}>Rejeitar</Button></>}
-            {d.permissoes.editar && <Button size="sm" variant="ghost" onClick={() => acao('cancelar-submissao', 'Submissão cancelada.')}>Cancelar submissão</Button>}
-            {!d.permissoes.decidir && <span className="text-[12.5px]">Quem propôs a mudança não pode aprová-la; aguarde outro aprovador.</span>}
+            {d.permissoes.cancelarSubmissao && <Button size="sm" variant="ghost" onClick={() => acao('cancelar-submissao', 'Submissão cancelada.')}>Cancelar submissão</Button>}
+            {!d.permissoes.decidir && <span className="text-[12.5px]">{d.permissoes.propostaPorMim ? 'Quem propôs a mudança não pode aprová-la; aguarde outro aprovador.' : 'Aguardando a decisão de um aprovador de cargos.'}</span>}
           </div>
         </Callout>
       )}
@@ -142,27 +142,27 @@ function AbaFicha({ d, cargoId, recarregar }: { d: Resp; cargoId: string; recarr
             <Field label="Código" htmlFor="f-cod" erro={erros.codigo} hint="Único. Em branco, gera automaticamente."><input id="f-cod" className="input" disabled={!editavel} value={f.codigo ?? ''} onChange={(e) => set({ codigo: e.target.value })} /></Field>
             <Field label="Área" htmlFor="f-area"><input id="f-area" className="input" disabled={!editavel} value={f.area ?? ''} onChange={(e) => set({ area: e.target.value })} /></Field>
             <Field label="Família" htmlFor="f-fam" erro={erros.familiaId}>
-              <Select id="f-fam" label="Família" className="w-full" value={f.familiaId ?? ''} onChange={(v) => set({ familiaId: v || null, subfamiliaId: null })}>
+              <Select id="f-fam" disabled={!editavel} label="Família" className="w-full" value={f.familiaId ?? ''} onChange={(v) => set({ familiaId: v || null, subfamiliaId: null })}>
                 <option value="">—</option>{tax.dados?.familias.filter((x) => !x.paiId).map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}
               </Select>
             </Field>
             <Field label="Subfamília" htmlFor="f-sub" erro={erros.subfamiliaId}>
-              <Select id="f-sub" label="Subfamília" className="w-full" value={f.subfamiliaId ?? ''} onChange={(v) => set({ subfamiliaId: v || null })}>
+              <Select id="f-sub" disabled={!editavel} label="Subfamília" className="w-full" value={f.subfamiliaId ?? ''} onChange={(v) => set({ subfamiliaId: v || null })}>
                 <option value="">—</option>{subfamilias.map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}
               </Select>
             </Field>
             <Field label="Trilha de carreira" htmlFor="f-tri">
-              <Select id="f-tri" label="Trilha" className="w-full" value={f.trilhaId ?? ''} onChange={(v) => set({ trilhaId: v || null, nivelId: null })}>
+              <Select id="f-tri" disabled={!editavel} label="Trilha" className="w-full" value={f.trilhaId ?? ''} onChange={(v) => set({ trilhaId: v || null, nivelId: null })}>
                 <option value="">—</option>{tax.dados?.trilhas.map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}
               </Select>
             </Field>
             <Field label="Nível" htmlFor="f-niv" erro={erros.nivelId}>
-              <Select id="f-niv" label="Nível" className="w-full" value={f.nivelId ?? ''} onChange={(v) => set({ nivelId: v || null })}>
+              <Select id="f-niv" disabled={!editavel} label="Nível" className="w-full" value={f.nivelId ?? ''} onChange={(v) => set({ nivelId: v || null })}>
                 <option value="">—</option>{niveis.map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}
               </Select>
             </Field>
             <Field label="Cargo de referência" htmlFor="f-ref" erro={erros.cargoReferenciaId} hint="Cargo-base para comparação ou evolução.">
-              <Select id="f-ref" label="Cargo de referência" className="w-full" value={f.cargoReferenciaId ?? ''} onChange={(v) => set({ cargoReferenciaId: v || null })}>
+              <Select id="f-ref" disabled={!editavel} label="Cargo de referência" className="w-full" value={f.cargoReferenciaId ?? ''} onChange={(v) => set({ cargoReferenciaId: v || null })}>
                 <option value="">—</option>{cat.dados?.itens.filter((x) => x.cargoId !== cargoId).map((x) => <option key={x.cargoId} value={x.cargoId}>{x.nome}</option>)}
               </Select>
             </Field>

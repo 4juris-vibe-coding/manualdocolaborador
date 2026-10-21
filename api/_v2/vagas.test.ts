@@ -461,3 +461,25 @@ describe('vagas · lista, painel e alertas', () => {
     expect((await chamar(m, 'GET', 'recrutamento/opcoes', { cookie: m.c.col1 })).status).toBe(403)
   })
 })
+
+describe('vagas · regressões do formulário', () => {
+  it('canal removido da configuração não trava o salvamento da vaga: é descartado', async () => {
+    const d = await criar(m.c.rh1, { canais: ['portal', 'indeed'] })
+    const cfg = (await GET(m, 'recrutamento/config', m.c.admin1)).json
+    const canaisAntes = cfg.canais ?? cfg.dados?.canais
+    expect(Array.isArray(canaisAntes)).toBe(true)
+    try {
+      expect((await PUT(m, 'recrutamento/config/canais', m.c.admin1, { dados: canaisAntes.filter((c: any) => c.chave !== 'indeed') })).status).toBe(200)
+      const r = await PUT(m, `vagas/${d.vaga.id}`, m.c.rh1, { versao: d.vaga.versao, titulo: 'Editada', canais: ['portal', 'indeed'] })
+      expect(r.status).toBe(200)
+      expect(r.json.vaga.canais).toEqual(['portal'])
+    } finally {
+      await PUT(m, 'recrutamento/config/canais', m.c.admin1, { dados: canaisAntes })
+    }
+  })
+  it('pergunta de triagem sem texto responde 400 apontando o campo perguntasTriagem', async () => {
+    const r = await POST(m, 'vagas', m.c.rh1, corpoVaga({ perguntasTriagem: [{ texto: '  ', tipo: 'texto' }] }))
+    expect(r.status).toBe(400)
+    expect(r.json.campos).toHaveProperty('perguntasTriagem')
+  })
+})

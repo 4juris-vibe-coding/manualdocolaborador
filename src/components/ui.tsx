@@ -318,9 +318,9 @@ export function Callout({ tone = 'brand', icon = 'Info', children, className }: 
 }
 
 /* ---------- Select nativo com rótulo acessível ---------- */
-export function Select({ value, onChange, children, className, label, id }: { value: string; onChange: (v: string) => void; children: ReactNode; className?: string; label: string; id?: string }) {
+export function Select({ value, onChange, children, className, label, id, disabled }: { value: string; onChange: (v: string) => void; children: ReactNode; className?: string; label: string; id?: string; disabled?: boolean }) {
   return (
-    <select aria-label={label} id={id} className={cn('input w-full sm:w-auto sm:min-w-[150px]', className)} value={value} onChange={(e) => onChange(e.target.value)}>
+    <select aria-label={label} id={id} disabled={disabled} className={cn('input w-full sm:w-auto sm:min-w-[150px]', className)} value={value} onChange={(e) => onChange(e.target.value)}>
       {children}
     </select>
   )

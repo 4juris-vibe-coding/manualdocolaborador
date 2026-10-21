@@ -138,7 +138,7 @@ export default function Resultados() {
   const [individuais, setIndividuais] = useState(false)
   const filtros = qs({ setorId, unidadeId })
   const r = useApi<Dados>(`pesquisas/${id}/resultados${filtros}`)
-  const ind = useApi<{ finalidade: string; quemAcessa: string; itens: { respostaId: string; nome: string; enviadaEm: string; itens: Record<string, unknown> }[] }>(individuais ? `pesquisas/${id}/respostas-individuais` : null)
+  const ind = useApi<{ finalidade: string; quemAcessa: string; enunciados?: Record<string, string>; itens: { respostaId: string; nome: string; enviadaEm: string; itens: Record<string, unknown> }[] }>(individuais ? `pesquisas/${id}/respostas-individuais` : null)
 
   return (
     <>
@@ -236,7 +236,7 @@ export default function Resultados() {
               {d.itens.length === 0 ? <p className="text-[13px] text-muted">Nenhuma resposta ainda.</p> : (
                 <ul className="space-y-3">{d.itens.map((x) => (
                   <li key={x.respostaId} className="rounded-xl border border-line p-3.5"><div className="font-semibold text-ink text-[13.5px]">{x.nome} <span className="text-muted font-normal">· {dataBR(x.enviadaEm)}</span></div>
-                    <dl className="mt-2 space-y-1 text-[12.5px]">{Object.entries(x.itens).map(([k, v]) => <div key={k} className="flex gap-2"><dt className="text-muted shrink-0">{k}:</dt><dd className="text-ink-2 break-words">{Array.isArray(v) ? v.join(', ') : String(v)}</dd></div>)}</dl></li>
+                    <dl className="mt-2 space-y-1 text-[12.5px]">{Object.entries(x.itens).map(([k, v]) => <div key={k} className="flex gap-2"><dt className="text-muted max-w-[55%]">{d.enunciados?.[k] ?? k}:</dt><dd className="text-ink-2 break-words">{Array.isArray(v) ? v.join(', ') : String(v)}</dd></div>)}</dl></li>
                 ))}</ul>)}
             </div>
           )}

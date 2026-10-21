@@ -6,6 +6,7 @@ import { CampoPergunta } from './CampoPergunta'
 import { perguntasVisiveis, validarRespostas, type PerguntaPesquisa, type Respostas } from '@/domain/v2/pesquisaTipos'
 
 export interface DadosResposta {
+  pesquisaId?: string
   titulo: string
   intro?: string | null
   objetivo?: string | null

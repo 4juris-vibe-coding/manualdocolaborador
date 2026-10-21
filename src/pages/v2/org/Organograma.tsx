@@ -13,12 +13,13 @@ import { AnaliseEstrutura } from '@/components/v2/org/AnaliseEstrutura'
 import { QualidadeCadastros } from '@/components/v2/org/QualidadeCadastros'
 import { EditorHierarquia } from '@/components/v2/org/EditorHierarquia'
 import { SEM_FILTRO, useBusca, useOrganograma, type FiltrosOrg } from '@/components/v2/org/useOrganograma'
-import type { ResultadoBusca } from '@/components/v2/org/tipos'
+import type { ResultadoBusca, VisaoOrg } from '@/components/v2/org/tipos'
 import { plural } from '@/lib/fmt'
 
 type Visao = 'toda' | 'departamento' | 'equipe'
 type ModoExibicao = 'mapa' | 'lista'
 
+const semGestor = (d: VisaoOrg) => d.raizes.filter((id) => !d.itens.find((i) => i.id === id)?.gestorForaDaVisao).length
 const telaGrande = () => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 1024px)').matches
 
 function MapaTab() {
@@ -130,9 +131,10 @@ function MapaTab() {
               </div>
             </Card>
 
-            {d.podeEditar && d.raizes.length > 1 && (
+            {/* Com filtro, quem tem gestor fora do recorte também vira raiz: só conta quem de fato não tem gestor. */}
+            {d.podeEditar && semGestor(d) > 1 && (
               <Callout tone="warning" icon="Network">
-                <b>{d.raizes.length} pessoas estão no topo, sem gestor definido.</b> Para ver o organograma completo (CEO no topo e linhas até cada equipe), defina a quem cada pessoa responde.{' '}
+                <b>{semGestor(d)} pessoas estão no topo, sem gestor definido.</b> Para ver o organograma completo (CEO no topo e linhas até cada equipe), defina a quem cada pessoa responde.{' '}
                 <Link className="underline font-semibold" to="/organograma?aba=hierarquia">Montar hierarquia</Link>
               </Callout>
             )}

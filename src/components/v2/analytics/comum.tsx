@@ -93,11 +93,14 @@ const PRESETS: { chave: string; rotulo: string; de: () => string }[] = [
 export interface OpcoesFiltro { setores: { id: string; nome: string }[]; unidades: { id: string; nome: string }[]; pessoas: { id: string; nome: string }[] }
 
 export function BarraFiltros({ valor, onChange, opcoes }: { valor: FiltrosUI; onChange: (v: FiltrosUI) => void; opcoes: OpcoesFiltro }) {
+  // "Personalizado" escolhido explicitamente fica aberto mesmo quando as datas coincidem com um preset.
+  const [custom, setCustom] = useState(false)
   const preset = useMemo(() => {
+    if (custom) return 'custom'
     if (!valor.de && !valor.ate) return '6m'
     const achou = PRESETS.find((p) => p.de() === valor.de && (!valor.ate || valor.ate === hojeISO()))
     return achou?.chave ?? 'custom'
-  }, [valor.de, valor.ate])
+  }, [valor.de, valor.ate, custom])
   const set = (k: keyof FiltrosUI, v: string) => onChange({ ...valor, [k]: v || undefined })
   const ativos = FILTROS_CHAVES.filter((k) => valor[k] && k !== 'de' && k !== 'ate').length
   return (
@@ -105,6 +108,7 @@ export function BarraFiltros({ valor, onChange, opcoes }: { valor: FiltrosUI; on
       <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => e.preventDefault()} aria-label="Filtros do painel">
         <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-muted">Período
           <Select label="Período" value={preset} onChange={(v) => {
+            setCustom(v === 'custom')
             if (v === 'custom') return onChange({ ...valor, de: valor.de ?? deMesesAtras(6), ate: valor.ate ?? hojeISO() })
             const p = PRESETS.find((x) => x.chave === v)!
             onChange({ ...valor, de: v === '6m' ? undefined : p.de(), ate: undefined })

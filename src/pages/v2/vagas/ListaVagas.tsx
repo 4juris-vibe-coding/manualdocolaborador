@@ -4,9 +4,9 @@ import { Badge, Button, Card, EmptyState, PageHeader, TD, TH, Tabela, Tabs } fro
 import { Aguardar, SoComBanco } from '@/components/v2/estados'
 import { Paginacao } from '@/components/v2/Paginacao'
 import {
-  BadgePrazo, BadgePrioridade, BadgeStatus, BarraFiltros, ItemMenu, Menu, ROTULO_ACAO, acoesDaLinha, queryDe, useAcaoVaga, useFiltrosUrl, useOpcoes, useSouGestao, type VagaLinha,
+  AprovacoesPendentes, BadgePrazo, BadgePrioridade, BadgeStatus, BarraFiltros, ItemMenu, Menu, ROTULO_ACAO, acoesDaLinha, queryDe, useAcaoVaga, useFiltrosUrl, useOpcoes, useSouGestao, type VagaLinha,
 } from '@/components/v2/vagas/comum'
-import { api, useApi } from '@/data/v2/api'
+import { api, executar, useApi } from '@/data/v2/api'
 import { useTem } from '@/data/v2/acesso'
 import { useStore } from '@/lib/store'
 import { MAPA_STATUS_VAGA, STATUS_VAGA, ROTULO_MODALIDADE } from '@/domain/v2/vagas'
@@ -41,7 +41,7 @@ export default function ListaVagas() {
           <>
             <ItemMenu icon="Eye" to={`/recrutamento/vagas/${v.id}`} onClick={() => nav(`/recrutamento/vagas/${v.id}`)}>Visualizar</ItemMenu>
             {editar && <ItemMenu icon="Pencil" onClick={() => nav(`/recrutamento/vagas/${v.id}/editar`)}>Editar</ItemMenu>}
-            {(gestao || solicita) && <ItemMenu icon="Copy" onClick={async () => { fechar(); const d = await api.post(`vagas/${v.id}/duplicar`).catch(() => null); if (d) nav(`/recrutamento/vagas/${d.vaga.id}/editar`) }}>Duplicar</ItemMenu>}
+            {(gestao || solicita) && <ItemMenu icon="Copy" onClick={async () => { fechar(); const d = await executar(() => api.post(`vagas/${v.id}/duplicar`), 'Vaga duplicada como rascunho.'); if (d) nav(`/recrutamento/vagas/${d.vaga.id}/editar`) }}>Duplicar</ItemMenu>}
             {v.status === 'em_aprovacao' && <ItemMenu icon="ClipboardCheck" onClick={() => nav(`/recrutamento/vagas/${v.id}?aba=aprovacoes`)}>Aprovações e decisão</ItemMenu>}
             {acoes.map((a) => <ItemMenu key={a} icon={ROTULO_ACAO[a].icon} perigo={ROTULO_ACAO[a].perigo} onClick={() => { fechar(); pedir(v, a) }}>{ROTULO_ACAO[a].rotulo}</ItemMenu>)}
             <ItemMenu icon="Users" onClick={() => nav(`/recrutamento/candidatos?vaga=${v.id}`)}>Candidaturas</ItemMenu>
@@ -54,12 +54,14 @@ export default function ListaVagas() {
 
   return (
     <>
-      <PageHeader title={gestao ? 'Vagas' : 'Vagas da minha área'} subtitle={gestao ? 'Todas as vagas do ciclo de recrutamento.' : 'Solicite vagas e acompanhe a aprovação e os candidatos.'}
+      <PageHeader title={gestao ? 'Vagas' : solicita ? 'Vagas da minha área' : 'Vagas e aprovações'}
+        subtitle={gestao ? 'Todas as vagas do ciclo de recrutamento.' : solicita ? 'Solicite vagas e acompanhe a aprovação e os candidatos.' : 'Vagas que você acompanha ou precisa aprovar.'}
         actions={<>
           {gestao && <a href={api.url(`vagas/exportar${queryDe(filtrosExport)}`)} download className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl text-[13.5px] font-semibold border border-line bg-surface text-ink hover:bg-surface-2 hover:border-line-strong outline-none focus-visible:ring-2 focus-visible:ring-brand">Exportar CSV</a>}
           {solicita && <Link to="/recrutamento/vagas/nova"><Button icon="Plus">{gestao ? 'Nova vaga' : 'Solicitar vaga'}</Button></Link>}
         </>} />
       <SoComBanco>
+        <AprovacoesPendentes />
         <BarraFiltros {...f} opcoes={opcoes.dados} />
         <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
           <Tabs tabs={[{ key: 'lista', label: 'Lista' }, { key: 'kanban', label: 'Kanban por situação' }]} active={visao} onChange={(k) => mudar('visao', k === 'kanban' ? 'kanban' : '')} />

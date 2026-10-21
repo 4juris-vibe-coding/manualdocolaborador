@@ -174,6 +174,22 @@ describe('ATS · entrevistas e avaliações', () => {
     expect((await PATCH(m, `ats/entrevistas/${canc.json.id}`, m.c.rh1, { acao: 'cancelar', motivo: 'Candidato indisponível' })).status).toBe(200)
   })
 
+  it('entrevistador(a) sem acesso ao ATS vê e registra só as entrevistas de que participa', async () => {
+    const v = await criarVaga(m)
+    const id = await candidatar(v)
+    const ini = new Date(Date.now() + 2 * 86400_000).toISOString()
+    const e = await POST(m, `ats/candidaturas/${id}/entrevistas`, m.c.rh1, { inicio: ini, participantes: ['col2'] })
+    expect(e.status).toBe(201)
+    const lista = await GET(m, 'ats/entrevistas', m.c.col2)
+    expect(lista.status).toBe(200)
+    expect(lista.json.itens.map((x: any) => x.id)).toEqual([e.json.id])
+    expect((await GET(m, 'ats/entrevistas', m.c.col1)).json.itens).toHaveLength(0)
+    expect((await PATCH(m, `ats/entrevistas/${e.json.id}`, m.c.col1, { acao: 'registrar', status: 'realizada', resultado: 'aprovado' })).status).toBe(404)
+    expect((await PATCH(m, `ats/entrevistas/${e.json.id}`, m.c.col2, { acao: 'cancelar', motivo: 'x' })).status).toBe(403)
+    expect((await PATCH(m, `ats/entrevistas/${e.json.id}`, m.c.col2, { acao: 'registrar', status: 'realizada', resultado: 'aprovado', parecer: 'Bom' })).status).toBe(200)
+    expect((await GET(m, `ats/candidaturas/${id}`, m.c.col1)).status).toBe(403) // perfil do candidato segue restrito ao ATS
+  })
+
   it('alertas: entrevista passada vira "parecer pendente" e notifica sem duplicar', async () => {
     const v = await criarVaga(m)
     const id = await candidatar(v)

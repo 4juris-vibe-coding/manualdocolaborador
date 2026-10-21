@@ -3,8 +3,7 @@ import { Outlet, useLocation, Navigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { useStore } from '@/lib/store'
-import { itemDaRota } from '@/lib/nav'
-import { can } from '@/domain/permissions'
+import { podeAbrir } from '@/lib/nav'
 import { MODO_DEMO, MODO_API } from '@/data/config'
 import { useSync, sairCompleto } from '@/data/sync'
 import { useAcesso } from '@/data/v2/acesso'
@@ -35,8 +34,7 @@ export function AppLayout() {
   if (!sessaoId || sessaoInvalida) return <Navigate to="/login" replace state={{ de: pathname }} />
 
   // Guarda de rota: sem a capacidade exigida, volta ao início.
-  const item = itemDaRota(pathname)
-  const semCapacidade = !!item?.cap && !can(papel, item.cap)
+  const semCapacidade = !podeAbrir(papel, pathname)
   // Capacidades vindas do servidor (funções adicionais) chegam logo após o login: não expulse antes disso.
   const aguardandoAcesso = semCapacidade && MODO_API && !acessoCarregado
   const bloqueado = semCapacidade && !aguardandoAcesso

@@ -5,15 +5,21 @@
    - RH e Administração: ferramentas administrativas.
    O acesso de cada item vem da matriz em src/domain/permissions.ts.
    ============================================================ */
-import type { Capacidade } from '@/domain/permissions'
+import { canAny, type Capacidade } from '@/domain/permissions'
+import type { Papel } from '@/lib/types'
 
 export interface NavItem {
+  /** Caminho; em EXTRAS pode ter parâmetros (`/pesquisas-rh/:id/resultados`). */
   to: string
   label: string
   icon: string // nome do ícone lucide
   desc: string
-  cap?: Capacidade // se ausente, todos veem
+  cap?: Capacidade | Capacidade[] // basta uma; se ausente, todos veem
+  /** Só guarda de rota: não aparece em menu nem na busca. */
+  oculto?: boolean
 }
+
+export const permitido = (papel: Papel, i: NavItem) => !i.cap || canAny(papel, Array.isArray(i.cap) ? i.cap : [i.cap])
 export interface NavGroup {
   title: string
   area: 'pessoal' | 'lideranca' | 'rh' | 'admin'
@@ -68,7 +74,8 @@ export const NAV: NavGroup[] = [
     items: [
       { to: '/lideranca', label: 'Painel da liderança', icon: 'UserCog', desc: 'Equipe, disponibilidade, objetivos e integração.', cap: 'lideranca:painel' },
       { to: '/rh/feedbacks', label: 'Feedbacks', icon: 'MessageSquareText', desc: 'Feedbacks de alinhamento sobre as entregas.', cap: 'feedbacks:registrar' },
-      { to: '/recrutamento/vagas', label: 'Vagas da minha área', icon: 'BadgePlus', desc: 'Solicite vagas e acompanhe aprovações e candidatos.', cap: 'vagas:solicitar' },
+      // Também para quem só aprova (diretoria, aprovação financeira, analista de RH): o servidor limita ao que cabe a cada um.
+      { to: '/recrutamento/vagas', label: 'Vagas e aprovações', icon: 'BadgePlus', desc: 'Solicite vagas, acompanhe e decida aprovações.', cap: ['vagas:solicitar', 'vagas:ver'] },
     ],
   },
   {
@@ -95,7 +102,7 @@ export const NAV: NavGroup[] = [
     title: 'Central de pesquisas', area: 'rh',
     items: [
       { to: '/pesquisas-rh', label: 'Painel de pesquisas', icon: 'LayoutDashboard', desc: 'Participação, prazos e resultados.', cap: 'pesq:gerenciar' },
-      { to: '/pesquisas-rh/lista', label: 'Pesquisas', icon: 'ClipboardList', desc: 'Criar, distribuir e acompanhar pesquisas.', cap: 'pesq:gerenciar' },
+      { to: '/pesquisas-rh/lista', label: 'Pesquisas', icon: 'ClipboardList', desc: 'Criar, distribuir e acompanhar pesquisas.', cap: ['pesq:gerenciar', 'pesq:resultados'] },
       { to: '/pesquisas-rh/modelos', label: 'Biblioteca de modelos', icon: 'LibraryBig', desc: 'eNPS, clima, liderança, onboarding e mais.', cap: 'pesq:gerenciar' },
     ],
   },
@@ -105,7 +112,7 @@ export const NAV: NavGroup[] = [
       { to: '/cargos', label: 'Catálogo de cargos', icon: 'Layers3', desc: 'Fichas oficiais, famílias, trilhas e níveis.', cap: 'cargos:ver' },
       { to: '/cargos/matriz', label: 'Matriz de competências', icon: 'Grid3x3', desc: 'Competências esperadas por cargo e nível.', cap: 'cargos:ver' },
       { to: '/cargos/faixas', label: 'Faixas salariais', icon: 'Coins', desc: 'Faixas por cargo, com vigência e histórico.', cap: 'cargos:ver_faixas' },
-      { to: '/cargos/governanca', label: 'Governança de cargos', icon: 'ShieldCheck', desc: 'Aprovações, versões e duplicidades.', cap: 'cargos:gerenciar' },
+      { to: '/cargos/governanca', label: 'Governança de cargos', icon: 'ShieldCheck', desc: 'Aprovações, versões e duplicidades.', cap: ['cargos:gerenciar', 'cargos:aprovar'] },
     ],
   },
   {
@@ -164,10 +171,14 @@ export const NAV: NavGroup[] = [
 /** Rotas fora do menu. */
 export const EXTRAS: NavItem[] = [
   { to: '/notificacoes', label: 'Notificações', icon: 'Bell', desc: 'Tudo o que aconteceu recentemente.' },
+  // Entrevistador(a) designado(a) sem acesso ao ATS chega aqui pela notificação; o servidor mostra só as entrevistas de que participa.
+  { to: '/recrutamento/entrevistas', label: 'Entrevistas', icon: 'CalendarClock', desc: '', oculto: true },
+  // Resultados de pesquisa: quem só lê resultados (diretoria, analista de RH) não passa pela guarda do painel.
+  { to: '/pesquisas-rh/:id/resultados', label: 'Resultados da pesquisa', icon: 'ClipboardList', desc: '', cap: ['pesq:gerenciar', 'pesq:resultados'], oculto: true },
 ]
 
-export function grupoDaRota(pathname: string): NavGroup | undefined {
-  const it = itemDaRota(pathname)
+export function grupoDaRota(pathname: string, papel?: Papel): NavGroup | undefined {
+  const it = itemDaRota(pathname, papel)
   return it ? NAV.find((g) => g.items.includes(it)) : undefined
 }
 
@@ -175,9 +186,40 @@ export function flatNav(): NavItem[] {
   return [...NAV.flatMap((g) => g.items), ...EXTRAS]
 }
 
-/** Item de navegação mais específico para um caminho (ex.: /rh/pessoas/123 → /rh/pessoas). */
-export function itemDaRota(pathname: string): NavItem | undefined {
-  return flatNav()
-    .filter((i) => i.to === pathname || (i.to !== '/' && pathname.startsWith(i.to + '/')))
-    .sort((a, b) => b.to.length - a.to.length)[0]
+/** Quantos segmentos de `to` casam com o início do caminho (`:x` casa qualquer um); -1 se não casar. */
+function especificidade(to: string, pathname: string): number {
+  if (to === '/') return pathname === '/' ? 0 : -1
+  const a = to.split('/').filter(Boolean), b = pathname.split('/').filter(Boolean)
+  if (a.length > b.length) return -1
+  return a.every((s, i) => s.startsWith(':') || s === b[i]) ? a.length : -1
+}
+
+/** Itens igualmente mais específicos para um caminho (ex.: /rh/pessoas/123 → /rh/pessoas). Pode haver mais de um com o mesmo `to`. */
+function itensDaRota(pathname: string): NavItem[] {
+  let melhor = -1
+  let itens: NavItem[] = []
+  for (const i of flatNav()) {
+    const e = especificidade(i.to, pathname)
+    if (e > melhor) { melhor = e; itens = [i] } else if (e === melhor && e >= 0) itens.push(i)
+  }
+  return melhor < 0 ? [] : itens
+}
+
+/** Com `papel`, prefere o último item que a pessoa vê (o mesmo que o menu mostra quando a rota se repete). */
+export function itemDaRota(pathname: string, papel?: Papel): NavItem | undefined {
+  const itens = itensDaRota(pathname)
+  return (papel && [...itens].reverse().find((i) => permitido(papel, i))) || itens[0]
+}
+
+/** Para cada caminho repetido no menu, o último item visível ao papel (os anteriores ficam ocultos). */
+export function ultimosVisiveis(papel: Papel): Map<string, NavItem> {
+  const m = new Map<string, NavItem>()
+  for (const i of NAV.flatMap((g) => g.items)) if (permitido(papel, i)) m.set(i.to, i)
+  return m
+}
+
+/** Guarda de rota: libera se qualquer item equivalente permitir (ex.: /recrutamento/vagas existe para liderança e para o RH). */
+export function podeAbrir(papel: Papel, pathname: string): boolean {
+  const itens = itensDaRota(pathname)
+  return !itens.length || itens.some((i) => permitido(papel, i))
 }

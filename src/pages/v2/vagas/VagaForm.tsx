@@ -47,7 +47,8 @@ function payload(f: Form, verRem: boolean): Form {
   p.titulo = f.titulo
   for (const k of LISTAS) p[k] = f[k]
   p.qtdPosicoes = Number(f.qtdPosicoes) || 1
-  p.perguntasTriagem = f.perguntasTriagem
+  // Pergunta recém-adicionada, ainda sem texto, fica só na tela até ser preenchida (senão o salvamento automático falha).
+  p.perguntasTriagem = (f.perguntasTriagem ?? []).filter((q: Form) => String(q.texto ?? '').trim())
   if (verRem) { for (const k of NUMEROS) p[k] = f[k] === '' || f[k] === null ? null : Number(f[k]); p.divulgarSalario = !!f.divulgarSalario } else { for (const k of ['moeda', 'tipoRemuneracao', 'variavel']) delete p[k] }
   for (const k of ['tipo', 'motivo', 'prioridade', 'modalidade']) if (!p[k]) delete p[k]
   return p
@@ -111,7 +112,7 @@ export default function VagaForm() {
   const salvar = useCallback(async (silencioso = false): Promise<string | null> => {
     if (!editavel) return null
     if (!String(form.titulo ?? '').trim()) { if (!silencioso) { setErros({ titulo: 'Informe o título da vaga' }); setPasso(0); toast('Informe o título para salvar.', 'danger') } return null }
-    if (emVoo.current) { refazer.current = true; return null }
+    if (emVoo.current) { refazer.current = true; if (!silencioso) toast('Salvando alterações… tente de novo em instantes.'); return null }
     emVoo.current = true; setEstado('salvando')
     try {
       const d = id ? await api.put(`vagas/${id}`, { ...payload(form, verRem), versao }) : await api.post('vagas', payload(form, verRem))
@@ -151,8 +152,9 @@ export default function VagaForm() {
 
   const solicitar = async () => {
     setEnviando(true)
-    const alvo = await salvar(true)
-    if (!alvo) { setEnviando(false); toast('Não foi possível salvar antes de enviar. Tente de novo.', 'danger'); return }
+    // Não silencioso: se o salvamento falhar, a pessoa vê o motivo do servidor e o passo com erro.
+    const alvo = await salvar(false)
+    if (!alvo) { setEnviando(false); return }
     try {
       await api.post(`vagas/${alvo}/acoes/solicitar`)
       toast('Solicitação enviada para aprovação.')

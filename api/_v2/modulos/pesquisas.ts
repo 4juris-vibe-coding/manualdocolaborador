@@ -150,7 +150,8 @@ async function avisarConvidados(ctx: Ctx, pesquisa: Record<string, any>, tokens:
 
 function dadosPublicos(p: Record<string, any>, perguntas: PerguntaPesquisa[], via: 'convite' | 'link') {
   return {
-    titulo: p.titulo, intro: p.intro, objetivo: p.objetivo, mensagemFinal: p.mensagem_final, modo: p.modo, via,
+    // pesquisaId: chave estável do rascunho local (o token muda a cada lembrete ou abertura pelo portal).
+    pesquisaId: p.id, titulo: p.titulo, intro: p.intro, objetivo: p.objetivo, mensagemFinal: p.mensagem_final, modo: p.modo, via,
     confidencialidade: textoConfidencialidade(p.modo, via, p.min_grupo, p.finalidade, p.quem_acessa),
     tempoMin: tempoEstimadoMin(perguntas), prazo: p.fim, perguntas, barraProgresso: p.config?.barraProgresso !== false,
     salvaProgresso: p.modo === 'identificada' && via === 'convite',
@@ -660,7 +661,10 @@ export const rotas: Rota[] = [
       const gente = new Map((await pessoas(db)).map((g) => [g.id, g]))
       const r = await db.query("select id, versao, to_char(enviada_em,'YYYY-MM-DD') as enviada_em, colaborador_id, itens from pq_respostas where pesquisa_id = $1 order by enviada_em", [params.id])
       await auditar(db, usuario.colaboradorId, 'pesquisa', params.id, 'consulta_individual', { registros: r.rowCount })
-      return ok({ finalidade: p.finalidade, quemAcessa: p.quem_acessa, itens: r.rows.map((x) => ({ respostaId: x.id, versao: x.versao, enviadaEm: x.enviada_em, nome: gente.get(x.colaborador_id)?.nome ?? '—', itens: x.itens })) })
+      // Enunciado de cada pergunta (todas as versões), para a tela não mostrar ids internos.
+      const enunciados: Record<string, string> = {}
+      for (const v of (await db.query('select perguntas from pq_versoes where pesquisa_id = $1 order by versao', [params.id])).rows) for (const q of v.perguntas as PerguntaPesquisa[]) enunciados[q.id] = q.texto
+      return ok({ finalidade: p.finalidade, quemAcessa: p.quem_acessa, enunciados, itens: r.rows.map((x) => ({ respostaId: x.id, versao: x.versao, enviadaEm: x.enviada_em, nome: gente.get(x.colaborador_id)?.nome ?? '—', itens: x.itens })) })
     },
   },
   {

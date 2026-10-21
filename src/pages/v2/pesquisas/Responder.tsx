@@ -39,7 +39,7 @@ export default function Responder() {
   }, [token])
 
   const progresso = useCallback((respostas: Respostas) => { void api.put(`responder/${encodeURIComponent(token)}/progresso`, { respostas }).catch(() => undefined) }, [token])
-  const chaveLocal = useMemo(() => (r.dados?.modo === 'anonima' ? `pq-prog-${token.slice(0, 12)}` : undefined), [r.dados?.modo, token])
+  const chaveLocal = useMemo(() => (r.dados?.modo === 'anonima' ? `pq-prog-${r.dados.pesquisaId ?? token.slice(0, 12)}` : undefined), [r.dados?.modo, r.dados?.pesquisaId, token])
 
   if (r.carregando && !r.dados) return <div className="min-h-screen flex items-center justify-center text-muted text-[14px]" aria-busy="true">Carregando…</div>
   if (r.erro && !r.dados) {

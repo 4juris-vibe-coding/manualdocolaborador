@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Badge, BarList, Button, Callout, Card, CardHead, ColunasMensais, EmptyState, IndicadorCard, PageHeader, Progress, StatCard, Tabs } from '@/components/ui'
 import { Aguardar, SoComBanco } from '@/components/v2/estados'
 import { Funil } from '@/components/v2/charts2'
-import { BarraFiltros, queryDe, useFiltrosUrl, useOpcoes } from '@/components/v2/vagas/comum'
+import { AprovacoesPendentes, BarraFiltros, queryDe, useFiltrosUrl, useOpcoes } from '@/components/v2/vagas/comum'
 import { api, useApi } from '@/data/v2/api'
 import { useTem } from '@/data/v2/acesso'
 import { dataBR, numero, pct } from '@/lib/fmt'
@@ -32,7 +32,6 @@ export default function PainelVagas() {
   const filtrosPainel = useMemo(() => { const { q, ...resto } = f.valores; return resto }, [f.valores])
   const painel = useApi<Painel>(`recrutamento/painel${queryDe(filtrosPainel)}`)
   const alertas = useApi<{ itens: { tipo: string; severidade: string; vagaId: string; codigo: string; titulo: string; mensagem: string; link: string }[] }>('recrutamento/alertas')
-  const pendentes = useApi<{ itens: { passoId: string; vagaId: string; codigo: string; titulo: string; rotulo: string; prazo: string | null; atrasado: boolean }[] }>('recrutamento/aprovacoes-pendentes')
 
   // Processa alertas e publicações agendadas (idempotente) ao abrir o painel.
   useEffect(() => { if (gestao) api.post('recrutamento/alertas/processar').then(() => alertas.recarregar()).catch(() => undefined) }, [gestao]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -51,16 +50,7 @@ export default function PainelVagas() {
       <SoComBanco>
         <BarraFiltros {...f} opcoes={opcoes.dados} comBusca={false} />
 
-        {(pendentes.dados?.itens.length ?? 0) > 0 && (
-          <Callout tone="warning" icon="Hourglass" className="mb-5">
-            <b>{pendentes.dados!.itens.length} aprovação(ões) aguardando você:</b>
-            <ul className="mt-1.5 space-y-1">
-              {pendentes.dados!.itens.map((p) => (
-                <li key={p.passoId}><Link className="underline font-semibold" to={`/recrutamento/vagas/${p.vagaId}?aba=aprovacoes`}>{p.codigo} · {p.titulo}</Link> — {p.rotulo}{p.prazo ? ` (prazo ${dataBR(p.prazo)})` : ''}{p.atrasado && <Badge tone="danger" className="ml-2">Atrasada</Badge>}</li>
-              ))}
-            </ul>
-          </Callout>
-        )}
+        <AprovacoesPendentes />
 
         <Aguardar r={painel} linhas={4}>
           {(p) => (

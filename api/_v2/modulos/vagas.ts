@@ -103,10 +103,12 @@ function normalizarPerguntas(v: unknown): unknown[] {
   return lista<Record<string, unknown>>(v, 20).map((p, i) => {
     const tipo = enumerado(p.tipo, `perguntasTriagem[${i}].tipo`, ['texto', 'sim_nao', 'opcoes'] as const, 'texto')
     const opcoes = tipo === 'opcoes' ? listaTexto(p.opcoes, 12, 120) : undefined
+    if (!String(p.texto ?? '').trim()) throw invalido('Informe o texto de todas as perguntas de triagem.', { perguntasTriagem: 'Pergunta sem texto' })
+    if (String(p.texto).trim().length > 300) throw invalido('Pergunta de triagem muito longa (máx. 300).', { perguntasTriagem: 'Máx. 300 caracteres' })
     if (tipo === 'opcoes' && (!opcoes || opcoes.length < 2)) throw invalido('Perguntas de múltipla escolha precisam de ao menos duas opções.', { perguntasTriagem: 'Informe as opções' })
     return {
       id: typeof p.id === 'string' && /^[\w-]{3,40}$/.test(p.id) ? p.id : `q${randomBytes(4).toString('hex')}`,
-      texto: texto(p.texto, 'pergunta de triagem', { max: 300 }), tipo, obrigatoria: !!p.obrigatoria, eliminatoria: !!p.eliminatoria, ...(opcoes ? { opcoes } : {}),
+      texto: String(p.texto).trim(), tipo, obrigatoria: !!p.obrigatoria, eliminatoria: !!p.eliminatoria, ...(opcoes ? { opcoes } : {}),
     }
   })
 }
@@ -138,10 +140,8 @@ function lerCampos(corpo: Record<string, unknown>, u: Usuario, cfg: Awaited<Retu
       case 'perguntas': r = normalizarPerguntas(v); break
     }
     if (r === undefined) continue
-    if (e.campo === 'canais') {
-      const validos = cfg.canais.map((c) => c.chave)
-      if ((r as string[]).some((c) => !validos.includes(c))) throw invalido('Canal de divulgação inválido.', { canais: 'Canal inválido' })
-    }
+    // Canal removido da configuração depois de marcado na vaga: descarta em vez de travar todo salvamento da vaga.
+    if (e.campo === 'canais') r = (r as string[]).filter((c) => cfg.canais.some((x) => x.chave === c))
     if (e.campo === 'tipo' && !cfg.tipos.some((t) => t.chave === r)) throw invalido('Tipo de oportunidade inválido.', { tipo: 'Tipo inválido' })
     valores[e.col] = COLUNAS_JSON.has(e.col) ? JSON.stringify(r) : r
     campos.push(e.campo)

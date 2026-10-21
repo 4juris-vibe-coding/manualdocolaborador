@@ -1,13 +1,14 @@
 /* Peças compartilhadas das telas de vagas: tipos, filtros na URL, badges, menu de ações. */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { Badge, Button, Icon, Select } from '@/components/ui'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Badge, Button, Callout, Icon, Select } from '@/components/ui'
 import { Modal } from '@/components/Modal'
 import { StatusBadge, type MapaStatus } from '@/components/v2/StatusBadge'
 import { api, executar, useApi, type Remoto } from '@/data/v2/api'
 import { useTem } from '@/data/v2/acesso'
 import { MAPA_STATUS_VAGA, ROTULO_PRIORIDADE, proximoStatus, quemEdita, type AcaoVaga, type StatusVaga } from '@/domain/v2/vagas'
 import { cn } from '@/lib/utils'
+import { dataBR } from '@/lib/fmt'
 
 export const MAPA = MAPA_STATUS_VAGA as unknown as MapaStatus
 export const BadgeStatus = ({ valor }: { valor: string }) => <StatusBadge mapa={MAPA} valor={valor} />
@@ -31,6 +32,23 @@ export interface Opcoes {
   eu: { colaboradorId: string; setorPadrao: string | null; nome: string }
 }
 export const useOpcoes = (): Remoto<Opcoes> => useApi<Opcoes>('recrutamento/opcoes')
+
+/** Passos de aprovação que cabem à pessoa (RH, gestor, diretoria, aprovação financeira…). Some quando não há nenhum. */
+export function AprovacoesPendentes() {
+  const r = useApi<{ itens: { passoId: string; vagaId: string; codigo: string; titulo: string; rotulo: string; prazo: string | null; atrasado: boolean }[] }>('recrutamento/aprovacoes-pendentes')
+  const itens = r.dados?.itens ?? []
+  if (!itens.length) return null
+  return (
+    <Callout tone="warning" icon="Hourglass" className="mb-5">
+      <b>{itens.length} aprovação(ões) aguardando você:</b>
+      <ul className="mt-1.5 space-y-1">
+        {itens.map((p) => (
+          <li key={p.passoId}><Link className="underline font-semibold" to={`/recrutamento/vagas/${p.vagaId}?aba=aprovacoes`}>{p.codigo} · {p.titulo}</Link> — {p.rotulo}{p.prazo ? ` (prazo ${dataBR(p.prazo)})` : ''}{p.atrasado && <Badge tone="danger" className="ml-2">Atrasada</Badge>}</li>
+        ))}
+      </ul>
+    </Callout>
+  )
+}
 
 /* ---------- filtros guardados na URL (permitem drilldown por link) ---------- */
 export const CHAVES_FILTRO = ['q', 'status', 'setor', 'unidade', 'recrutador', 'gestor', 'modalidade', 'prioridade', 'tipo', 'de', 'ate', 'prazo', 'criticas', 'arquivadas'] as const

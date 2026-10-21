@@ -91,7 +91,8 @@ async function validarFamilia(ex: Executor, id: string | null, campo: string) {
 async function lerCamposFicha(ex: Executor, corpo: Record<string, unknown>, cargoIdSelf: string): Promise<Record<string, unknown>> {
   const out: Record<string, unknown> = {}
   const tem_ = (k: string) => Object.prototype.hasOwnProperty.call(corpo, k)
-  if (tem_('codigo')) out.codigo = texto(corpo.codigo, 'codigo', { max: 40 }).toUpperCase()
+  // Código em branco = "gerar automaticamente" (ficha nova) ou manter o atual.
+  if (tem_('codigo') && corpo.codigo !== '' && corpo.codigo !== null) out.codigo = texto(corpo.codigo, 'codigo', { max: 40 }).toUpperCase()
   if (tem_('area')) out.area = texto(corpo.area, 'area', { obrigatorio: false, max: 120 }) || null
   for (const k of TEXTOS_LONGOS) if (tem_(k)) out[k] = texto(corpo[k], k, { obrigatorio: false, max: 6000 }) || null
   for (const k of ['competenciasTecnicas', 'competenciasComportamentais', 'conhecimentos', 'certificacoes', 'kpis'] as const) if (tem_(k)) out[k] = listaTexto(corpo[k], 60, 200)
@@ -665,6 +666,9 @@ export const rotas: Rota[] = [
           editar: tem(c.usuario, 'cargos:gerenciar') && ficha?.status !== 'em_aprovacao',
           decidir: !!sol && podeDecidir(c.usuario, (ficha?.aprovadores as string[]) ?? []) && podeAprovar(sol.proposta_por, c.usuario.colaboradorId, c.usuario.papel),
           inativar: tem(c.usuario, 'cargos:aprovar'), verFaixas,
+          // Mesma regra do POST cancelar-submissao: quem submeteu ou a administração.
+          cancelarSubmissao: !!sol && tem(c.usuario, 'cargos:gerenciar') && (sol.proposta_por === c.usuario.colaboradorId || c.usuario.papel === 'admin'),
+          propostaPorMim: !!sol && sol.proposta_por === c.usuario.colaboradorId,
         },
       })
     },

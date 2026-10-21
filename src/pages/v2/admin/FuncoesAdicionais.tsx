@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PageHeader, Card, CardHead, Callout, SearchBox, Tabela, TH, TD, Avatar, Badge } from '@/components/ui'
 import { api, executar, useApi } from '@/data/v2/api'
 import { Aguardar, SoComBanco } from '@/components/v2/estados'
@@ -22,17 +22,22 @@ export default function FuncoesAdicionais() {
   const [salvando, setSalvando] = useState<string | null>(null)
   const colaboradores = useStore((s) => s.colaboradores)
 
+  // Funções já confirmadas pelo servidor e ainda não recarregadas: o PUT troca a lista inteira, então um segundo
+  // clique antes do recarregamento não pode partir da lista antiga (desfaria o primeiro).
+  const [confirmadas, setConfirmadas] = useState<Record<string, string[]>>({})
+  useEffect(() => { setConfirmadas({}) }, [r.dados])
+
   const filtradas = useMemo(() => {
     const t = busca.trim().toLowerCase()
-    return (r.dados?.atribuicoes ?? []).filter((a) => !t || a.nome.toLowerCase().includes(t))
-  }, [r.dados, busca])
+    return (r.dados?.atribuicoes ?? []).filter((a) => !t || a.nome.toLowerCase().includes(t)).map((a) => ({ ...a, funcoes: confirmadas[a.colaboradorId] ?? a.funcoes }))
+  }, [r.dados, busca, confirmadas])
 
   async function alternar(a: Atribuicao, chave: string) {
     const novas = a.funcoes.includes(chave) ? a.funcoes.filter((f) => f !== chave) : [...a.funcoes, chave]
     setSalvando(a.colaboradorId)
     const ok = await executar(() => api.put(`acl/funcoes/${a.colaboradorId}`, { funcoes: novas }), 'Funções atualizadas.')
     setSalvando(null)
-    if (ok) r.recarregar()
+    if (ok) { setConfirmadas((c) => ({ ...c, [a.colaboradorId]: novas })); r.recarregar() }
   }
 
   return (
