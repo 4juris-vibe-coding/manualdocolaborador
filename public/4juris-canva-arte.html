@@ -306,7 +306,8 @@ let doc = null, cur = 0, sel = null, editando = null, RO = false, scale = 1, zoo
 let assets = {};
 let hist = [], hi = -1;
 const EMB = new URLSearchParams(location.search).has('embed') && parent !== window;
-const enviar = m => parent.postMessage({ src: '4j-deck', ...m }, location.origin);
+let orfao = false;   // sem resposta do sistema: o documento em branco é só visual e NUNCA é gravado por cima do design
+const enviar = m => { if (orfao && m.type !== 'ready') return; parent.postMessage({ src: '4j-deck', ...m }, location.origin); };
 const pg = () => doc.pages[cur];
 const el = id => pg().els.find(e => e.id === id);
 const asset = e => assets[e.src] || e.src || '';
@@ -902,10 +903,11 @@ if (EMB) {
   addEventListener('message', ev => {
     const m = ev.data;
     if (ev.origin !== location.origin || ev.source !== parent || !m || m.src !== '4j-deck' || m.type !== 'load') return;
+    if (orfao) { orfao = false; doc = null; }   // resposta tardia do sistema: troca o documento em branco pelo design de verdade
     RO = !!m.readonly; iniciar(m.deck, m.titulo, m.tamanho);
   });
   enviar({ type: 'ready' });
-  setTimeout(() => iniciar(null), 3000);
+  setTimeout(() => { if (!doc) { orfao = true; iniciar(null); } }, 8000);
 } else {
   let ls = null; try { ls = JSON.parse(localStorage.getItem('4jcanva:v1')); } catch (e) { }
   const q = new URLSearchParams(location.search), p = PRESETS.find(x => x.id === q.get('tamanho'));

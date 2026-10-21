@@ -544,7 +544,8 @@ const KEY = '4jurisday:deck:v1';
 const EMB = new URLSearchParams(location.search).has('embed') && parent !== window;
 let RO = false;
 let deck = null, cur = 0, hist = [], hi = -1, aba = 's';
-const enviar = m => parent.postMessage({ src: '4j-deck', ...m }, location.origin);
+let orfao = false;   // sem resposta do sistema: o modelo padrão é só visual e NUNCA é gravado por cima do design
+const enviar = m => { if (orfao && m.type !== 'ready') return; parent.postMessage({ src: '4j-deck', ...m }, location.origin); };
 
 function deckPadrao() {
   const n = id => novoSlide(id);
@@ -1066,10 +1067,11 @@ if (EMB) {
   addEventListener('message', e => {
     const m = e.data;
     if (e.origin !== location.origin || e.source !== parent || !m || m.src !== '4j-deck' || m.type !== 'load') return;
+    if (orfao) { orfao = false; deck = null; }   // resposta tardia do sistema: troca o modelo padrão pelo design de verdade
     RO = !!m.readonly; iniciar(m.deck, m.titulo, m.template);
   });
   enviar({ type: 'ready' });
-  setTimeout(() => iniciar(null), 3000);        // aberto fora do sistema: segue com o modelo padrão
+  setTimeout(() => { if (!deck) { orfao = true; iniciar(null); } }, 8000);   // aberto fora do sistema: segue com o modelo padrão, sem gravar
 } else iniciar(carregar());
 </script>
 </body>

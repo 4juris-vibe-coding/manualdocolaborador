@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useParams } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ToastHost } from '@/components/toast'
+import { ErroPagina } from '@/components/ErroPagina'
 import Login from '@/pages/Login'
 
 // Páginas carregadas sob demanda (reduz o tamanho do carregamento inicial).
@@ -58,6 +59,12 @@ const ApresentacaoEditor = lazy(() => import('@/pages/ApresentacaoEditor'))
 const Admin = lazy(() => import('@/pages/Admin'))
 const Seguranca = lazy(() => import('@/pages/Seguranca'))
 
+/** Página atual com carregamento sob demanda e rede de segurança (o erro de uma página não derruba o app; trocar de rota limpa o erro). */
+function PaginaSegura() {
+  const { pathname } = useLocation()
+  return <ErroPagina key={pathname}><Suspense fallback={<Carregando />}><Outlet /></Suspense></ErroPagina>
+}
+
 /** Links antigos (/apresentacoes/:id) apontam para o 4juris Canva. */
 function RedirecionarCanva() {
   const { id = '' } = useParams()
@@ -82,7 +89,7 @@ export function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route element={<AppLayout />}>
-          <Route element={<Suspense fallback={<Carregando />}><Outlet /></Suspense>}>
+          <Route element={<PaginaSegura />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/experiencia" element={<Experiencia />} />
             <Route path="/perfil" element={<Perfil />} />

@@ -116,7 +116,7 @@ function Miniatura({ a, modelo }: { a: Apresentacao; modelo: ReturnType<typeof m
       </div>
     )
   }
-  return <div className={caixa} style={{ aspectRatio: '16 / 10' }}><SlideEscalado slide={a.slides[0]} modelo={modelo} tema={a.tema} borda={false} /></div>
+  return <div className={caixa} style={{ aspectRatio: '16 / 10' }}>{a.slides[0] ? <SlideEscalado slide={a.slides[0]} modelo={modelo} tema={a.tema} borda={false} /> : <CapaLivre titulo={a.titulo} />}</div>
 }
 
 /** Nova arte: título + tamanho (formatos prontos ou personalizado). */
