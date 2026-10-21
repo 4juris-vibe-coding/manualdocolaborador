@@ -62,7 +62,8 @@ export default function Carreiras() {
                     {r.dados?.itens.map((v: any) => (
                       <li key={v.slug}>
                         <Link to={`/carreiras/${v.slug}`} className="card p-5 flex flex-wrap items-center justify-between gap-4 hover:border-brand transition outline-none focus-visible:ring-2 focus-visible:ring-brand">
-                          <div className="min-w-0">
+                          {v.imagemUrl && <img src={v.imagemUrl} alt="" loading="lazy" className="h-20 w-32 rounded-xl object-cover shrink-0 bg-winter hidden sm:block" />}
+                          <div className="min-w-0 flex-1">
                             <h2 className="text-[17px] font-bold text-ink">{v.titulo}</h2>
                             {v.resumo && <p className="text-[13.5px] text-muted mt-1 line-clamp-2">{v.resumo}</p>}
                             <div className="flex flex-wrap items-center gap-2 mt-3 text-[12.5px] text-ink-2">

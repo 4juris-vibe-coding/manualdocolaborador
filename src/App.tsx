@@ -69,6 +69,7 @@ const VagaDetalhe = lazy(() => import('@/pages/v2/vagas/VagaDetalhe'))
 const ConfigRecrutamento = lazy(() => import('@/pages/v2/vagas/ConfigRecrutamento'))
 const Pipeline = lazy(() => import('@/pages/v2/ats/Pipeline'))
 const CandidatoPerfil = lazy(() => import('@/pages/v2/ats/CandidatoPerfil'))
+const Curriculos = lazy(() => import('@/pages/v2/ats/Curriculos'))
 const Talentos = lazy(() => import('@/pages/v2/ats/Talentos'))
 const EntrevistasAts = lazy(() => import('@/pages/v2/ats/Entrevistas'))
 const ComunicacaoAts = lazy(() => import('@/pages/v2/ats/Comunicacao'))
@@ -201,6 +202,7 @@ export function App() {
             <Route path="/recrutamento/candidatos" element={<Pipeline />} />
             <Route path="/recrutamento/candidatos/:candidaturaId" element={<CandidatoPerfil />} />
             <Route path="/recrutamento/entrevistas" element={<EntrevistasAts />} />
+            <Route path="/recrutamento/curriculos" element={<Curriculos />} />
             <Route path="/recrutamento/talentos" element={<Talentos />} />
             <Route path="/recrutamento/comunicacao" element={<ComunicacaoAts />} />
             <Route path="/recrutamento/config" element={<ConfigRecrutamento />} />

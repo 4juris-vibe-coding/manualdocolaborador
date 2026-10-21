@@ -171,6 +171,7 @@ function serializar(row: Record<string, any>, u: Usuario, org: Org) {
   const hoje = hojeISO()
   return {
     ...o,
+    temImagem: !!row.imagem_arquivo_id,
     setorNome: org.setor.get(row.setor_id) ?? null, unidadeNome: org.unidade.get(row.unidade_id) ?? null, cargoNome: org.cargo.get(row.cargo_id)?.nome ?? null,
     gestorSolicitanteNome: nomeDe(org.pessoa, row.gestor_solicitante_id), gestorResponsavelNome: nomeDe(org.pessoa, row.gestor_responsavel_id),
     gestorImediatoNome: nomeDe(org.pessoa, row.gestor_imediato_id), recrutadorNome: nomeDe(org.pessoa, row.recrutador_id), criadoPorNome: nomeDe(org.pessoa, row.criado_por),
@@ -951,6 +952,54 @@ export const rotas: Rota[] = [
         await avisar(t, [...dests], 'vaga_comentario', 'Novo comentário na vaga', v.id, `vaga:${v.id}:com:${cid}`, rotuloVaga(v))
       })
       return ok(await montarDetalhe(db, u, c.params.id), 201)
+    },
+  },
+
+  /* ===== imagem de capa ===== */
+  {
+    metodo: 'PUT', padrao: 'vagas/:id/imagem', cap: ['vagas:solicitar', 'vagas:gerenciar'],
+    h: async (c) => {
+      const { db, usuario: u, req } = c
+      const up = validarUpload(req.corpo?.arquivo, ['png', 'jpg'])
+      await db.tx(async (t) => {
+        const v = await carregar(t, u, c.params.id)
+        const gestao = u.caps.has('vagas:gerenciar')
+        const q = quemEdita(v.status)
+        if (!(q === 'solicitante' ? gestao || ehSolicitante(v, u) : q === 'gestao' ? gestao : false)) throw proibido('Não é possível alterar a imagem neste estado.')
+        const aid = await guardarArquivo(t, up, 'vaga_imagem', v.id, u.colaboradorId)
+        if (v.imagem_arquivo_id) await t.query('delete from arq_arquivos where id = $1', [v.imagem_arquivo_id])
+        await t.query('update rec_vagas set imagem_arquivo_id = $2, atualizado_em = now() where id = $1', [v.id, aid])
+        await evento(t, v.id, u.colaboradorId, 'imagem_alterada')
+        await auditar(t, u.colaboradorId, 'vaga', v.id, 'imagem', { arquivo: aid })
+      })
+      return ok({ ok: true })
+    },
+  },
+  {
+    metodo: 'DELETE', padrao: 'vagas/:id/imagem', cap: ['vagas:solicitar', 'vagas:gerenciar'],
+    h: async ({ db, usuario: u, params }) => {
+      await db.tx(async (t) => {
+        const v = await carregar(t, u, params.id)
+        const gestao = u.caps.has('vagas:gerenciar')
+        const q = quemEdita(v.status)
+        if (!(q === 'solicitante' ? gestao || ehSolicitante(v, u) : q === 'gestao' ? gestao : false)) throw proibido()
+        if (!v.imagem_arquivo_id) throw naoEncontrado('Esta vaga não tem imagem.')
+        await t.query('update rec_vagas set imagem_arquivo_id = null, atualizado_em = now() where id = $1', [v.id])
+        await t.query('delete from arq_arquivos where id = $1', [v.imagem_arquivo_id])
+        await evento(t, v.id, u.colaboradorId, 'imagem_removida')
+        await auditar(t, u.colaboradorId, 'vaga', v.id, 'imagem_removida', {})
+      })
+      return ok({ ok: true })
+    },
+  },
+  {
+    metodo: 'GET', padrao: 'vagas/:id/imagem', cap: [...CAP_LER],
+    h: async ({ db, usuario: u, params }) => {
+      const v = await carregar(db, u, params.id)
+      if (!v.imagem_arquivo_id) throw naoEncontrado('Esta vaga não tem imagem.')
+      const r = await baixarArquivo(db, v.imagem_arquivo_id)
+      if (!r?.binario) throw naoEncontrado('Imagem não encontrada.')
+      return { ...r, binario: { ...r.binario, inline: true }, cabecalhos: { 'Cache-Control': 'private, max-age=60' } }
     },
   },
 

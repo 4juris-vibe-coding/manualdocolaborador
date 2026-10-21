@@ -6,7 +6,7 @@
   "description": "4JURIS Pessoas — plataforma de gestão de pessoas e colaboradores PJ",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/gerar-schema-v2.mjs && vite build",
     "preview": "vite preview --port 4177",
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.api.json",
     "test": "vitest run",

@@ -17,6 +17,8 @@ const raiz = (p: string) => fileURLToPath(new URL(`../../../${p}`, import.meta.u
 export function dbPglite(pg: PGlite): Db {
   const exec: Executor = {
     async query(sql, params) {
+      // Sem parâmetros pode ser um script com vários comandos (como no pg): usa exec.
+      if (params === undefined) { const rs = await pg.exec(sql); const u = rs[rs.length - 1]; return { rows: (u?.rows ?? []) as any[], rowCount: u?.rows?.length || (u?.affectedRows ?? 0) } }
       const r = await pg.query(sql, params as unknown[])
       return { rows: r.rows as any[], rowCount: r.rows.length || (r.affectedRows ?? 0) }
     },

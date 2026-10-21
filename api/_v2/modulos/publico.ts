@@ -6,7 +6,7 @@
    dados de outros candidatos ou notas internas.
    ============================================================ */
 import { auditar, conflito, enumerado, hojeISO, idsComPapel, invalido, listaTexto, naoEncontrado, notificar, novoToken, hashToken, ok, paginacao, setores, texto, email as validarEmail, type Rota } from '../nucleo.js'
-import { guardarArquivo, validarUpload } from '../arquivos.js'
+import { baixarArquivo, guardarArquivo, validarUpload } from '../arquivos.js'
 import { concluirContratacao as _nao, criarCandidatura, modeloPreenchido, obterPrivacidade, registrarConsentimento, registrarEEnviar, variaveisCandidatura } from '../atsLib.js'
 import { urlPortal } from '../../_lib.js'
 import { ORIGENS_PUBLICAS, statusPublico, somarMeses, vagaAceitaCandidaturas } from '../../../src/domain/v2/ats.js'
@@ -14,7 +14,7 @@ import { ORIGENS_PUBLICAS, statusPublico, somarMeses, vagaAceitaCandidaturas } f
 void _nao
 
 const DIA = (c: string) => `to_char(${c}, 'YYYY-MM-DD')`
-const CAMPOS_PUBLICOS = `v.id, v.slug, v.titulo, v.resumo, v.tipo, v.modalidade, v.cidade, v.estado, v.pais, v.senioridade, v.setor_id, v.publicada_em,
+const CAMPOS_PUBLICOS = `v.id, v.slug, v.titulo, v.resumo, v.tipo, v.modalidade, v.cidade, v.estado, v.pais, v.senioridade, v.setor_id, v.publicada_em, (v.imagem_arquivo_id is not null) as tem_imagem,
   ${DIA('v.encerra_candidaturas_em')} as encerra_candidaturas_em, ${DIA('v.publicar_em')} as publicar_em`
 const FILTRO_PUBLICADA = `v.status = 'publicada' and not v.arquivada and (v.publicar_em is null or v.publicar_em <= $1::date) and (v.encerra_candidaturas_em is null or v.encerra_candidaturas_em >= $1::date)`
 
@@ -92,6 +92,19 @@ export const rotas: Rota[] = [
         documentosNecessarios: v.documentos_necessarios,
         privacidade: { versao: priv.versao, texto: priv.texto, contato: priv.contato, retencaoMeses: priv.retencaoMeses },
       })
+    },
+  },
+
+  {
+    // Imagem de capa: só de vaga publicada e dentro do prazo; nunca expõe nada além da imagem.
+    metodo: 'GET', padrao: 'publico/vagas/:slug/imagem', publica: true, limite: 300,
+    h: async ({ db, params, agora }) => {
+      const hoje = agora.toISOString().slice(0, 10)
+      const r = await db.query(`select v.imagem_arquivo_id from rec_vagas v where v.slug = $2 and v.imagem_arquivo_id is not null and ${FILTRO_PUBLICADA}`, [hoje, params.slug])
+      if (!r.rows[0]) throw naoEncontrado('Imagem não encontrada.')
+      const a = await baixarArquivo(db, r.rows[0].imagem_arquivo_id)
+      if (!a?.binario) throw naoEncontrado('Imagem não encontrada.')
+      return { ...a, binario: { ...a.binario, inline: true }, cabecalhos: { 'Cache-Control': 'public, max-age=300' } }
     },
   },
 
@@ -218,6 +231,7 @@ function itemPublico(v: any, mapa: Map<string, string>) {
     slug: v.slug, titulo: v.titulo, resumo: v.resumo, area: mapa.get(v.setor_id) ?? null, tipo: v.tipo, tipoRotulo: TIPOS[v.tipo] ?? v.tipo,
     modalidade: v.modalidade, cidade: v.cidade, estado: v.estado, pais: v.pais, senioridade: v.senioridade,
     publicadaEm: v.publicada_em, encerraEm: v.encerra_candidaturas_em,
+    imagemUrl: v.tem_imagem ? `/api/v2/publico/vagas/${encodeURIComponent(v.slug)}/imagem` : null,
   }
 }
 

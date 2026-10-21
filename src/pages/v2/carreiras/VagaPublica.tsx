@@ -41,6 +41,7 @@ export default function VagaPublica() {
           ) : r.erro ? <ErroBloco mensagem="Não conseguimos carregar esta vaga agora." onTentar={r.recarregar} /> : v && (
             <article>
               <header className="mb-6">
+                {v.imagemUrl && <img src={v.imagemUrl} alt="" className="w-full max-h-72 rounded-2xl object-cover mb-5 bg-winter" />}
                 <div className="flex flex-wrap gap-2 mb-3">
                   {v.area && <Badge tone="brand">{v.area}</Badge>}<Badge tone="neutral">{v.tipoRotulo}</Badge><Badge tone="neutral">{ROTULO_MODALIDADE[v.modalidade] ?? v.modalidade}</Badge>
                   {v.senioridade && <Badge tone="neutral">{v.senioridade}</Badge>}

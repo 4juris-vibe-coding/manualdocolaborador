@@ -1,6 +1,6 @@
 /* Organograma inteligente: gerado dos cadastros reais (gestor imediato, área, função, unidade). */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Button, Callout, Card, EmptyState, PageHeader, Select, Tabs } from '@/components/ui'
 import { Aguardar, SoComBanco } from '@/components/v2/estados'
 import { Drawer } from '@/components/v2/Drawer'
@@ -11,6 +11,7 @@ import { MapaOrg, type MapaHandle } from '@/components/v2/org/MapaOrg'
 import { PainelPessoa } from '@/components/v2/org/PainelPessoa'
 import { AnaliseEstrutura } from '@/components/v2/org/AnaliseEstrutura'
 import { QualidadeCadastros } from '@/components/v2/org/QualidadeCadastros'
+import { EditorHierarquia } from '@/components/v2/org/EditorHierarquia'
 import { SEM_FILTRO, useBusca, useOrganograma, type FiltrosOrg } from '@/components/v2/org/useOrganograma'
 import type { ResultadoBusca } from '@/components/v2/org/tipos'
 import { plural } from '@/lib/fmt'
@@ -129,6 +130,13 @@ function MapaTab() {
               </div>
             </Card>
 
+            {d.podeEditar && d.raizes.length > 1 && (
+              <Callout tone="warning" icon="Network">
+                <b>{d.raizes.length} pessoas estão no topo, sem gestor definido.</b> Para ver o organograma completo (CEO no topo e linhas até cada equipe), defina a quem cada pessoa responde.{' '}
+                <Link className="underline font-semibold" to="/organograma?aba=hierarquia">Montar hierarquia</Link>
+              </Callout>
+            )}
+
             {lista.length === 0 ? (
               <Card><EmptyState icon="SearchX" title="Nada para mostrar neste recorte"
                 desc={visao !== 'toda' && !filtros.setor && !filtros.gestor ? 'Escolha um departamento ou uma equipe.' : 'Nenhuma pessoa ativa corresponde aos filtros.'}
@@ -168,8 +176,8 @@ export default function Organograma() {
   const podeVerAnalytics = useTem('analytics:ver')
   const podeAnalisar = podeEditar || podeVerAnalytics
   const [params, setParams] = useSearchParams()
-  const aba = podeAnalisar ? params.get('aba') ?? 'mapa' : 'mapa'
-  const abas = [{ key: 'mapa', label: 'Mapa' }, ...(podeAnalisar ? [{ key: 'analise', label: 'Análise' }, { key: 'qualidade', label: 'Qualidade dos cadastros' }] : [])]
+  const aba = podeAnalisar || podeEditar ? params.get('aba') ?? 'mapa' : 'mapa'
+  const abas = [{ key: 'mapa', label: 'Mapa' }, ...(podeEditar ? [{ key: 'hierarquia', label: 'Montar hierarquia' }] : []), ...(podeAnalisar ? [{ key: 'analise', label: 'Análise' }, { key: 'qualidade', label: 'Qualidade dos cadastros' }] : [])]
   const irPara = (k: string) => setParams((p) => { k === 'mapa' ? p.delete('aba') : p.set('aba', k); return p })
 
   return (
@@ -177,6 +185,7 @@ export default function Organograma() {
       <PageHeader title="Organograma" subtitle="Gerado a partir dos cadastros reais: gestor imediato, área, função e unidade." />
       {abas.length > 1 && <Tabs tabs={abas} active={aba} onChange={irPara} />}
       {aba === 'mapa' && <MapaTab />}
+      {aba === 'hierarquia' && podeEditar && <SoComBanco><EditorHierarquia onSalvo={() => irPara('mapa')} /></SoComBanco>}
       {aba === 'analise' && <SoComBanco><AnaliseEstrutura /></SoComBanco>}
       {aba === 'qualidade' && <SoComBanco><QualidadeCadastros podeEditar={podeEditar} onCorrigir={(id) => setParams({ pessoa: id })} /></SoComBanco>}
     </>

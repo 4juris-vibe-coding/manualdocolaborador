@@ -6,6 +6,7 @@ import { Aguardar, SoComBanco } from '@/components/v2/estados'
 import { Stepper } from '@/components/v2/Stepper'
 import { BadgeStatus, useOpcoes, type Opcoes } from '@/components/v2/vagas/comum'
 import { EditorEtapas } from '@/components/v2/vagas/EditorEtapas'
+import { ImagemVaga } from '@/components/v2/vagas/ImagemVaga'
 import { ErroApi, api, executar, lerBase64, useApi } from '@/data/v2/api'
 import { useTem } from '@/data/v2/acesso'
 import { toast } from '@/components/toast'
@@ -273,6 +274,7 @@ export default function VagaForm() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5">
         {txt('publicarEm', 'Publicação agendada para', { type: 'date', hint: 'Só publica se a vaga já estiver aprovada e completa.' })}
         {txt('encerraCandidaturasEm', 'Encerramento das candidaturas', { type: 'date', required: true })}
+        <div className="md:col-span-2">{id ? <ImagemVaga vagaId={id} editavel={editavel} temInicial={!!(detalhe.dados as any)?.vaga?.temImagem} /> : <Callout tone="neutral" icon="Info">Depois que o rascunho for salvo (ao preencher o título), você poderá enviar uma imagem de capa.</Callout>}</div>
         <div className="md:col-span-2">{txt('textoPublico', 'Texto público da vaga', { area: true, rows: 6, max: 8000, hint: 'É o que a pessoa candidata lê no portal. Não inclua dados internos nem sigilosos.' })}</div>
         <div className="md:col-span-2">{txt('mensagemConfirmacao', 'Mensagem de confirmação da candidatura', { area: true, rows: 2, max: 1000 })}</div>
         <div className="md:col-span-2">{txt('criteriosEncerramento', 'Critérios de encerramento e preenchimento', { area: true, rows: 2, max: 1000 })}</div>

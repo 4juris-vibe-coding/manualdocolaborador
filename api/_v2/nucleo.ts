@@ -68,7 +68,7 @@ export interface Res {
   corpo?: unknown
   cabecalhos?: Record<string, string>
   /** Resposta binária (download de arquivo). */
-  binario?: { mime: string; nome: string; dados: Buffer }
+  binario?: { mime: string; nome: string; dados: Buffer; inline?: boolean }
 }
 export const ok = (corpo: unknown = { ok: true }, status = 200): Res => ({ status, corpo })
 

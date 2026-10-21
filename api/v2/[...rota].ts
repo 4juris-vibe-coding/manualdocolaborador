@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { db as pool, lerSessao } from '../_lib.js'
 import { dbDoPool, despachar, type Req } from '../_v2/nucleo.js'
 import { ROTAS } from '../_v2/rotas.js'
+import { garantirSchemaV2 } from '../_v2/migrar.js'
 
 async function lerCorpo(req: IncomingMessage & { body?: unknown }): Promise<unknown> {
   if (req.body !== undefined && req.body !== null && typeof req.body === 'object') return req.body
@@ -36,14 +37,21 @@ export default async function handler(req: IncomingMessage & { body?: unknown },
     seguro: (req.headers['x-forwarded-proto'] ?? 'http') === 'https',
     cabecalhos,
   }
-  const out = await despachar({ db: dbDoPool(pool()), rotas: ROTAS, lerSessao }, r)
+  const db = dbDoPool(pool())
+  try { await garantirSchemaV2(db) }
+  catch (e) {
+    console.error('[api/v2] migração do schema falhou:', e instanceof Error ? e.message : e)
+    res.statusCode = 503; res.setHeader('Content-Type', 'application/json; charset=utf-8')
+    return void res.end('{"erro":"Banco de dados indisponível ou em atualização. Tente novamente em instantes."}')
+  }
+  const out = await despachar({ db, rotas: ROTAS, lerSessao }, r)
   res.statusCode = out.status
   res.setHeader('Cache-Control', 'no-store')
   res.setHeader('X-Content-Type-Options', 'nosniff')
   for (const [k, v] of Object.entries(out.cabecalhos ?? {})) res.setHeader(k, v)
   if (out.binario) {
     res.setHeader('Content-Type', out.binario.mime)
-    res.setHeader('Content-Disposition', `attachment; filename="${out.binario.nome.replace(/"/g, '')}"`)
+    res.setHeader('Content-Disposition', `${out.binario.inline ? 'inline' : 'attachment'}; filename="${out.binario.nome.replace(/"/g, '')}"`)
     return void res.end(out.binario.dados)
   }
   res.setHeader('Content-Type', 'application/json; charset=utf-8')

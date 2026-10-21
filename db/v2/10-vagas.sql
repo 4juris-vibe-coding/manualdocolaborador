@@ -144,6 +144,9 @@ create table if not exists rec_vaga_comentarios (
   criado_em timestamptz not null default now()
 );
 
+-- Imagem de capa da vaga (arq_arquivos); exibida no portal público quando a vaga está publicada
+alter table rec_vagas add column if not exists imagem_arquivo_id uuid;
+
 alter table rec_config enable row level security;
 alter table rec_vagas enable row level security;
 alter table rec_vaga_etapas enable row level security;

@@ -84,6 +84,7 @@ export const NAV: NavGroup[] = [
       { to: '/recrutamento', label: 'Painel de vagas', icon: 'LayoutDashboard', desc: 'Visão executiva e operacional do recrutamento.', cap: 'vagas:gerenciar' },
       { to: '/recrutamento/vagas', label: 'Vagas', icon: 'BriefcaseBusiness', desc: 'Criação, aprovação, publicação e encerramento de vagas.', cap: 'vagas:gerenciar' },
       { to: '/recrutamento/candidatos', label: 'Candidatos (ATS)', icon: 'KanbanSquare', desc: 'Pipeline seletivo, perfis e avaliações.', cap: 'ats:ver' },
+      { to: '/recrutamento/curriculos', label: 'Currículos', icon: 'FileText', desc: 'Currículos recebidos, com download seguro.', cap: 'ats:ver' },
       { to: '/recrutamento/entrevistas', label: 'Entrevistas', icon: 'CalendarClock', desc: 'Agenda de entrevistas e pareceres pendentes.', cap: 'ats:ver' },
       { to: '/recrutamento/talentos', label: 'Banco de talentos', icon: 'Contact', desc: 'Pessoas para processos futuros, com autorização.', cap: 'ats:gerenciar' },
       { to: '/recrutamento/comunicacao', label: 'Comunicação', icon: 'MailCheck', desc: 'Mensagens a candidatos e modelos.', cap: 'ats:gerenciar' },
