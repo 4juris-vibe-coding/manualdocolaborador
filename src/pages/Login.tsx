@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import gsap from 'gsap'
-import { ArrowRight, ArrowLeft, ShieldCheck, Sparkles, Layers, Fingerprint, FlaskConical, Mail, Lock, Eye, EyeOff, MailCheck } from 'lucide-react'
+import { ArrowRight, ArrowLeft, ShieldCheck, Sparkles, Layers, Fingerprint, Mail, Lock, Eye, EyeOff, MailCheck } from 'lucide-react'
 import { Logo } from '@/components/ui'
 import { toast } from '@/components/toast'
 import { useStore } from '@/lib/store'
@@ -169,8 +169,8 @@ export default function Login() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email.trim()) { setErro('Informe o e-mail.'); return }
+    if (!senha) { setErro('Informe a senha.'); return }
     if (MODO_API) {
-      if (!senha) { setErro('Informe a senha.'); return }
       setLoading(true)
       const falha = await entrarComSenha(email.trim(), senha)
       if (falha) { setLoading(false); setErro(falha); toast(falha, 'danger'); return }
@@ -275,20 +275,13 @@ export default function Login() {
               <h2 className="text-[25px] font-bold text-ink">Acesse sua conta</h2>
               <p className="text-muted text-[14px] mt-2 mb-6">Bem-vindo(a) de volta.</p>
 
-              {!MODO_API && (
-                <div className="mb-6 text-[12.5px] text-warning-ink bg-gold-soft border border-warning-line rounded-xl px-3.5 py-3 leading-relaxed flex gap-2.5">
-                  <FlaskConical className="h-4 w-4 shrink-0 mt-0.5" />
-                  <span><b>Ambiente de demonstração.</b> Não há senha nem servidor: informe o e-mail de um dos dados fictícios.</span>
-                </div>
-              )}
-
               <label className="label" htmlFor="login-email">E-mail</label>
               <div className="relative">
                 <Mail className="h-4 w-4 text-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input id="login-email" className="input pl-10" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErro('') }}
                   autoComplete="username" placeholder="seu@email.com.br" aria-invalid={!!erro} aria-describedby={erro ? 'login-erro' : undefined} />
               </div>
-              {MODO_API && (
+              {(
                 <>
                   <div className="flex items-center justify-between mt-4">
                     <label className="label !mb-0" htmlFor="login-senha">Senha</label>
