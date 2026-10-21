@@ -6,7 +6,7 @@
 <title>4juris Canva · Editor de artes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@200;300;400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@200;300;400;600;700;800&family=Montserrat:wght@400;700&family=Playfair+Display:wght@400;700&family=Bebas+Neue&family=Dancing+Script:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 <!--
   ============================================================
   4juris Canva · Editor de artes (arquivo único, composição livre)
@@ -172,10 +172,40 @@ body.ro #app{grid-template-columns:208px 1fr}
 #pg .gd.v{width:calc(1px*var(--k));top:0;bottom:0}
 #pg .gd.h{height:calc(1px*var(--k));left:0;right:0}
 
+#ftb{position:fixed;z-index:60;display:none;align-items:center;gap:4px;background:#0a1318;border:1px solid var(--ui-line2);border-radius:12px;padding:5px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#ftb.on{display:flex}
+#ftb button{background:none;border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:600;min-width:28px}
+#ftb button:hover{background:var(--blue)}
+#ftb select,#ftb input[type=number]{height:30px;border-radius:8px;background:rgb(20 28 34);border:1px solid rgb(51 65 76);padding:0 6px;font-size:12px;outline:none}
+#ftb select{max-width:132px;cursor:pointer}
+#ftb input[type=number]{width:54px;text-align:center}
+#ftb select:focus,#ftb input:focus{border-color:rgb(62 96 232)}
+#ftb .sz{display:flex;align-items:center;gap:2px}
+#ftb .cor{position:relative;width:30px;height:30px;border-radius:8px;border:1px solid rgb(51 65 76);overflow:hidden;cursor:pointer;display:block}
+#ftb .cor span{position:absolute;inset:6px;border-radius:50%;background:var(--c,#fff);box-shadow:0 0 0 1px rgba(255,255,255,.35)}
+#ftb .cor input{position:absolute;inset:-6px;width:44px;height:44px;opacity:0;cursor:pointer}
+#ftb .sep{width:1px;height:20px;background:var(--ui-line2);margin:0 2px}
+
+/* checkbox no padrão da marca */
+.chk input[type=checkbox]{appearance:none;-webkit-appearance:none;width:18px;height:18px;flex:none;margin:0;border-radius:6px;border:1.5px solid rgb(88 104 118);background-color:rgb(20 28 34);background-position:center;background-repeat:no-repeat;background-size:12px;cursor:pointer;transition:background-color .15s,border-color .15s,box-shadow .15s}
+.chk input[type=checkbox]:hover{border-color:var(--ui-acc)}
+.chk input[type=checkbox]:checked{background-color:var(--blue);border-color:var(--blue);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7'/%3E%3C/svg%3E")}
+.chk input[type=checkbox]:focus-visible{outline:2px solid var(--ui-acc);outline-offset:2px}
+.chk input[type=checkbox]:disabled{opacity:.4;cursor:default}
+.chk:hover span,.chk:hover{color:#fff}
+/* dropdown próprio (substitui a lista nativa do navegador) */
+.ddpop{position:fixed;z-index:90;background:#0e1a21;border:1px solid var(--ui-line2);border-radius:12px;padding:5px;box-shadow:0 18px 50px rgba(0,0,0,.55);overflow-y:auto;animation:ddin .12s ease-out}
+@keyframes ddin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.ddpop button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ui-fg)}
+.ddpop button .ck{width:14px;flex:none;color:var(--ui-acc);font-weight:800;visibility:hidden}
+.ddpop button[aria-selected=true]{background:rgba(76,111,223,.16)}
+.ddpop button[aria-selected=true] .ck{visibility:visible}
+.ddpop button:hover,.ddpop button.foco{background:rgba(76,111,223,.3)}
+select.sel[aria-expanded=true],#ftb select[aria-expanded=true]{border-color:rgb(62 96 232);box-shadow:0 0 0 1px rgb(62 96 232)}
 #print{display:none}
 @media print{
   html,body{background:#fff;height:auto}
-  #app,#show,#ovl,#toast{display:none!important}
+  #app,#show,#ovl,#toast,#ftb{display:none!important}
   #print{display:block}
   #print .pp{position:relative;overflow:hidden;page-break-after:always;break-after:page}
   #print .pp:last-child{page-break-after:auto;break-after:auto}
@@ -242,6 +272,7 @@ body.ro #app{grid-template-columns:208px 1fr}
 <div id="show"><div class="box" id="sbox"></div><div class="ctl"><button id="sp">◀</button><span id="sn"></span><button id="sx">▶</button><button id="sq">Sair (Esc)</button></div></div>
 <div id="print"></div>
 <div id="toast"></div>
+<div id="ftb" role="toolbar" aria-label="Formatar o texto selecionado"><select id="ftFont" aria-label="Fonte"></select><span class="sz"><button data-c="menos" aria-label="Diminuir tamanho">−</button><input id="ftSize" type="number" min="6" max="800" aria-label="Tamanho da letra"><button data-c="mais" aria-label="Aumentar tamanho">+</button></span><label class="cor" title="Cor do texto"><span></span><input type="color" id="ftCor" aria-label="Cor do texto"></label><span class="sep"></span><button data-c="bold" title="Destaca na cor da marca (Ctrl+B)">Destaque</button><button data-c="italic" title="Itálico"><i>I</i></button><button data-c="clear" title="Remove a formatação do trecho">Limpar</button></div>
 <input type="file" id="file" accept="image/*" hidden>
 <input type="file" id="jfile" accept=".json,application/json" hidden>
 
@@ -259,7 +290,25 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const rnd = v => Math.round(v * 10) / 10;
 const strip = h => { const d = document.createElement('div'); d.innerHTML = h || ''; return (d.textContent || '').trim(); };
 
-function limpar(html) {                         // texto rico mínimo: <b> (destaque), <i>, <br>
+/* texto rico: <b> (destaque na cor da marca), <i>, <br> e <span> só com cor, fonte e tamanho (lista segura) */
+const FONTES = [
+  { k: 'sora', n: 'Sora', css: "'Sora',system-ui,sans-serif" },
+  { k: 'montserrat', n: 'Montserrat', css: "'Montserrat',sans-serif" },
+  { k: 'playfair', n: 'Playfair Display', css: "'Playfair Display',serif" },
+  { k: 'bebas', n: 'Bebas Neue', css: "'Bebas Neue',sans-serif" },
+  { k: 'dancing', n: 'Dancing Script', css: "'Dancing Script',cursive" },
+  { k: 'mono', n: 'Roboto Mono', css: "'Roboto Mono',monospace" },
+];
+const fonteDe = ff => (ff ? FONTES.find(f => ff.toLowerCase().includes(f.n.toLowerCase())) : null);
+const fonteCss = k => (FONTES.find(f => f.k === k) || FONTES[0]).css;
+function estiloSeguro(st) {
+  const o = [], c = (st.color || '').trim();
+  if (/^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%\/]+\))$/i.test(c)) o.push('color:' + c);
+  const f = fonteDe(st.fontFamily); if (f) o.push('font-family:' + f.css);
+  const m = /^([\d.]+)px$/.exec((st.fontSize || '').trim()); if (m) o.push('font-size:' + clamp(Math.round(+m[1]), 6, 800) + 'px');
+  return o.join(';');
+}
+function limpar(html) {
   const t = document.createElement('template'); t.innerHTML = html; let out = '';
   (function walk(n) {
     n.childNodes.forEach(c => {
@@ -267,8 +316,15 @@ function limpar(html) {                         // texto rico mínimo: <b> (dest
       if (c.nodeType !== 1) return;
       const tg = c.tagName.toLowerCase(), fw = c.style && c.style.fontWeight;
       if (tg === 'br') out += '<br>';
-      else if (tg === 'b' || tg === 'strong' || (tg === 'span' && (fw === 'bold' || +fw >= 600))) { out += '<b>'; walk(c); out += '</b>'; }
-      else if (tg === 'i' || tg === 'em' || (tg === 'span' && c.style.fontStyle === 'italic')) { out += '<i>'; walk(c); out += '</i>'; }
+      else if (tg === 'b' || tg === 'strong') { out += '<b>'; walk(c); out += '</b>'; }
+      else if (tg === 'i' || tg === 'em') { out += '<i>'; walk(c); out += '</i>'; }
+      else if (tg === 'span' || tg === 'font') {
+        const st = tg === 'span' ? estiloSeguro(c.style) : '';
+        const b = tg === 'span' && (fw === 'bold' || +fw >= 600), i = tg === 'span' && c.style.fontStyle === 'italic';
+        if (b) out += '<b>'; if (i) out += '<i>'; if (st) out += `<span style="${esc(st)}">`;
+        walk(c);
+        if (st) out += '</span>'; if (i) out += '</i>'; if (b) out += '</b>';
+      }
       else if (tg === 'div' || tg === 'p') { if (out && !out.endsWith('<br>')) out += '<br>'; walk(c); }
       else walk(c);
     });
@@ -297,7 +353,7 @@ const PRESETS = [
 /* ================================================================
    MODELO DE DADOS + FÁBRICAS
    ================================================================ */
-const T = (html, o = {}) => ({ id: uid(), t: 'text', x: 0, y: 0, w: 400, html, size: 48, wt: 400, color: '#FFFFFF', align: 'left', lh: 1.15, ls: 0, up: false, it: false, op: 1, rot: 0, hl: C.bl, lock: false, ...o });
+const T = (html, o = {}) => ({ id: uid(), t: 'text', x: 0, y: 0, w: 400, html, size: 48, wt: 400, color: '#FFFFFF', align: 'left', lh: 1.15, ls: 0, up: false, it: false, op: 1, rot: 0, hl: C.bl, lock: false, font: 'sora', ...o });
 const I = (o = {}) => ({ id: uid(), t: 'img', x: 0, y: 0, w: 400, h: 400, src: '', fit: 'cover', shape: 'rect', radius: 0, px: 50, py: 50, zoom: 1, op: 1, rot: 0, lock: false, ...o });
 const S = (kind, o = {}) => ({ id: uid(), t: 'shape', kind, x: 0, y: 0, w: 200, h: 200, fill: C.blue, op: 1, radius: 0, rot: 0, lock: false, ...o });
 
@@ -329,7 +385,7 @@ function normalizar(d) {
 function elHTML(e, edit) {
   const base = `left:${e.x}px;top:${e.y}px;width:${e.w}px;transform:rotate(${e.rot || 0}deg);opacity:${e.op}`;
   if (e.t === 'text') {
-    const st = `${base};font-size:${e.size}px;font-weight:${e.wt};color:${e.color};text-align:${e.align};line-height:${e.lh};letter-spacing:${e.ls}em;${e.up ? 'text-transform:uppercase;' : ''}${e.it ? 'font-style:italic;' : ''}--hl:${e.hl || e.color}`;
+    const st = `${base};font-size:${e.size}px;font-family:${fonteCss(e.font)};font-weight:${e.wt};color:${e.color};text-align:${e.align};line-height:${e.lh};letter-spacing:${e.ls}em;${e.up ? 'text-transform:uppercase;' : ''}${e.it ? 'font-style:italic;' : ''}--hl:${e.hl || e.color}`;
     const ce = edit && editando === e.id ? ' contenteditable="true" spellcheck="false"' : '';
     return `<div class="el t${e.lock ? ' lk' : ''}" ${edit ? `id="e_${e.id}" ` : ''}data-id="${e.id}" style="${st}"${ce}>${e.html}</div>`;
   }
@@ -534,6 +590,7 @@ function renderInsp() {
   if (e.t === 'text') {
     h += `<div class="sec"><h4>Texto</h4>
       ${rng('size', 'Tamanho', Math.round(e.size), 8, 400, 1, ' px')}
+      <div class="field"><label>Fonte</label><select class="sel" data-font aria-label="Fonte do texto">${FONTES.map(f => `<option value="${f.k}" style="font-family:${f.css}"${f.k === (e.font || 'sora') ? ' selected' : ''}>${f.n}</option>`).join('')}</select></div>
       <div class="field"><label>Peso</label>${seg('wt', e.wt, [[300, 'Leve'], [400, 'Normal'], [600, 'Semi'], [800, 'Forte']])}</div>
       <div class="field"><label>Alinhamento</label>${seg('align', e.align, [['left', 'Esq.'], ['center', 'Centro'], ['right', 'Dir.']])}</div>
       <div class="field"><label>Cor</label>${sws('color', e.color)}</div>
@@ -672,26 +729,29 @@ async function aplicarImagem(a, file, pos) {
 /* ================================================================
    EXPORTAÇÃO: PNG (SVG + foreignObject, fonte embutida), PDF, JSON
    ================================================================ */
-let fontCSS = null;
-async function fontesEmbutidas() {
-  if (fontCSS !== null) return fontCSS;
+let fontBase = null; const fontData = {};
+async function fontesEmbutidas(html) {          // embute só as fontes usadas, só os subconjuntos latin (arquivo menor)
   try {
-    const link = document.querySelector('link[href*="fonts.googleapis.com/css2"]');
-    let css = await (await fetch(link.href)).text();
-    for (const u of new Set([...css.matchAll(/url\((https:[^)]+)\)/g)].map(m => m[1]))) {
-      const blob = await (await fetch(u)).blob();
-      const d = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
-      css = css.split(u).join(d);
+    if (fontBase === null) { const link = document.querySelector('link[href*="fonts.googleapis.com/css2"]'); fontBase = await (await fetch(link.href)).text(); }
+    const usadas = new Set(['Sora', ...FONTES.filter(f => html.includes(f.n)).map(f => f.n)]);
+    let out = '';
+    for (const m of fontBase.matchAll(/\/\*\s*([\w-]+)\s*\*\/\s*(@font-face\s*\{[^}]*\})/g)) {
+      const fam = /font-family:\s*'([^']+)'/.exec(m[2]); if (!fam || !usadas.has(fam[1]) || !/^latin(-ext)?$/.test(m[1])) continue;
+      let b = m[2];
+      for (const u of new Set([...b.matchAll(/url\((https:[^)]+)\)/g)].map(x => x[1]))) {
+        if (!fontData[u]) { const blob = await (await fetch(u)).blob(); fontData[u] = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); }); }
+        b = b.split(u).join(fontData[u]);
+      }
+      out += b + '\n';
     }
-    fontCSS = css;
-  } catch (e) { fontCSS = ''; }
-  return fontCSS;
+    return out;
+  } catch (e) { return ''; }
 }
 async function paginaPNG(i, k = 1, tipo = 'png') {
   const estilo = document.querySelector('style').textContent, css = estilo.slice(estilo.indexOf('/*PG-START*/'), estilo.indexOf('/*PG-END*/'));
   const wrap = document.createElement('div'); wrap.innerHTML = pageHTML(doc.pages[i]);
   const xml = new XMLSerializer().serializeToString(wrap.firstElementChild), W = doc.w, H = doc.h;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.round(W * k)}" height="${Math.round(H * k)}" viewBox="0 0 ${W} ${H}"><foreignObject width="${W}" height="${H}"><div xmlns="http://www.w3.org/1999/xhtml" style="position:relative;width:${W}px;height:${H}px"><style><![CDATA[${await fontesEmbutidas()}\n${css}]]></style>${xml}</div></foreignObject></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.round(W * k)}" height="${Math.round(H * k)}" viewBox="0 0 ${W} ${H}"><foreignObject width="${W}" height="${H}"><div xmlns="http://www.w3.org/1999/xhtml" style="position:relative;width:${W}px;height:${H}px"><style><![CDATA[${await fontesEmbutidas(xml)}\n${css}]]></style>${xml}</div></foreignObject></svg>`;
   const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); await img.decode();
   const cv = document.createElement('canvas'); cv.width = Math.round(W * k); cv.height = Math.round(H * k); const cx = cv.getContext('2d');
   if (tipo === 'jpeg') { cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); }
@@ -796,6 +856,7 @@ function mostrarGuias(gx, gy) {
 }
 function finalizarEdicao() {
   const id = editando; if (!id) return; const n = $('#e_' + id), e = el(id); editando = null;
+  $('#ftb').classList.remove('on'); rangeSel = null;
   if (n && e) { e.html = limpar(n.innerHTML); if (!strip(e.html)) { pg().els = pg().els.filter(x => x.id !== id); sel = null; } }
   commit();
 }
@@ -803,7 +864,7 @@ function finalizarEdicao() {
 $('#pg').addEventListener('input', ev => { const n = ev.target.closest('.el.t'); if (!n) return; const e = el(n.dataset.id); e.html = limpar(n.innerHTML); updThumb(); snapDeb(); });
 $('#pg').addEventListener('keydown', ev => { if (ev.target.closest('[contenteditable]')) { if (ev.key === 'Enter') { ev.preventDefault(); document.execCommand('insertLineBreak'); } if (ev.key === 'Escape') finalizarEdicao(); } });
 $('#pg').addEventListener('paste', ev => { if (!ev.target.closest('[contenteditable]')) return; ev.preventDefault(); document.execCommand('insertText', false, ev.clipboardData.getData('text/plain')); });
-$('#pg').addEventListener('focusout', ev => { if (editando && ev.target.closest && ev.target.closest('.el.t')) setTimeout(() => { if (editando && !document.activeElement.closest('#pg .el.t')) finalizarEdicao(); }, 0); });
+$('#pg').addEventListener('focusout', ev => { if (editando && ev.target.closest && ev.target.closest('.el.t')) setTimeout(() => { if (editando && !document.activeElement.closest('#pg .el.t') && !document.activeElement.closest('#ftb')) finalizarEdicao(); }, 0); });
 /* soltar imagem no canvas */
 wrap.addEventListener('dragover', ev => { if (!RO) ev.preventDefault(); });
 wrap.addEventListener('drop', ev => { if (RO) return; ev.preventDefault(); const f = ev.dataTransfer.files[0]; if (f) { const n = ev.target.closest('.el.i'); aplicarImagem(n ? { id: n.dataset.id } : null, f, pt(ev)); } });
@@ -837,6 +898,7 @@ $('#ibody').addEventListener('input', ev => {
 $('#ibody').addEventListener('change', ev => {
   const t = ev.target, e = sel && el(sel); if (!e) return;
   if (t.dataset.chk) { e[t.dataset.chk] = t.checked; commit(); }
+  else if (t.dataset.font !== undefined) { e.font = t.value; commit(); }
 });
 $('#thumbs').addEventListener('click', ev => { const th = ev.target.closest('.th'); if (!th) return; const i = +th.dataset.i, a = ev.target.closest('[data-a]')?.dataset.a; if (a === 'dup') { cur = i; return novaPagina(true); } if (a === 'del') return delPagina(i); ir(i); });
 let dp = -1;
@@ -884,6 +946,99 @@ document.addEventListener('fullscreenchange', () => { if (show.on && !document.f
 addEventListener('resize', () => { if (!doc) return; if (show.on) renderShow(); else { ajustarEscala(); drawSel(); } });
 addEventListener('beforeunload', () => { if (!doc || RO) return; clearTimeout(tDeb); snap(); });
 $('#stage').addEventListener('wheel', ev => { if (!ev.ctrlKey || !doc) return; ev.preventDefault(); zoom = clamp((zoom || 1) * (ev.deltaY < 0 ? 1.1 : 1 / 1.1), .2, 4); ajustarEscala(); drawSel(); }, { passive: false });
+
+/* barra flutuante: formata só o trecho selecionado (fonte, tamanho, cor, destaque, itálico) */
+const EDIT_SEL = '#pg [contenteditable=true]';
+let rangeSel = null;
+$('#ftFont').innerHTML = FONTES.map(f => `<option value="${f.k}" style="font-family:${f.css}">${f.n}</option>`).join('');
+const editDe = n => n && (n.nodeType === 1 ? n : n.parentElement) && (n.nodeType === 1 ? n : n.parentElement).closest(EDIT_SEL);
+function lerEstilo() {
+  const n = rangeSel && (rangeSel.startContainer.nodeType === 1 ? rangeSel.startContainer : rangeSel.startContainer.parentElement); if (!n) return;
+  const cs = getComputedStyle(n), f = fonteDe(cs.fontFamily), c = (cs.color.match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map(v => (+v).toString(16).padStart(2, '0')).join('');
+  $('#ftFont').value = f ? f.k : 'sora'; $('#ftSize').value = Math.round(parseFloat(cs.fontSize)); $('#ftCor').value = '#' + c; $('#ftb .cor').style.setProperty('--c', '#' + c);
+}
+function posicionarFtb() {
+  const tb = $('#ftb'), r = rangeSel.getBoundingClientRect(); tb.classList.add('on');
+  tb.style.left = clamp(r.left + r.width / 2 - tb.offsetWidth / 2, 8, Math.max(8, innerWidth - tb.offsetWidth - 8)) + 'px'; tb.style.top = Math.max(8, r.top - tb.offsetHeight - 10) + 'px';
+}
+document.addEventListener('selectionchange', () => {
+  const tb = $('#ftb'), sel = getSelection(), naBarra = document.activeElement && document.activeElement.closest && document.activeElement.closest('#ftb');
+  if (!sel.rangeCount || sel.isCollapsed || !editDe(sel.anchorNode)) { if (!naBarra) tb.classList.remove('on'); return; }
+  rangeSel = sel.getRangeAt(0).cloneRange(); lerEstilo(); posicionarFtb();
+});
+function comSelecao(fn) {            // devolve a seleção ao texto (a barra tem campos que roubam o foco), aplica e avisa o editor
+  if (!rangeSel) return; const el = editDe(rangeSel.startContainer); if (!el) return;
+  const antes = rangeSel; el.focus(); const s = getSelection(); s.removeAllRanges(); s.addRange(antes);
+  fn(el);
+  if (!s.rangeCount || s.isCollapsed) { try { s.removeAllRanges(); s.addRange(antes); } catch (e) { } }
+  if (s.rangeCount) rangeSel = s.getRangeAt(0).cloneRange();
+  el.dispatchEvent(new Event('input', { bubbles: true })); lerEstilo(); posicionarFtb();
+}
+function aplicarCss(cmd, v) { document.execCommand('styleWithCSS', false, true); document.execCommand(cmd, false, v); document.execCommand('styleWithCSS', false, false); }
+function aplicarTamanho(px, el) {
+  px = clamp(Math.round(+px) || 0, 6, 800); aplicarCss('fontSize', '7');   // o navegador só sabe 1–7: troca o 7 pelo tamanho em px
+  el.querySelectorAll('font[size="7"], [style*="xxx-large"]').forEach(x => {
+    if (x.tagName === 'FONT') { const sp = document.createElement('span'); sp.style.fontSize = px + 'px'; while (x.firstChild) sp.appendChild(x.firstChild); x.replaceWith(sp); } else x.style.fontSize = px + 'px';
+  });
+}
+$('#ftb').addEventListener('mousedown', e => { if (!e.target.closest('select,input')) e.preventDefault(); });
+$('#ftb').addEventListener('click', e => {
+  const c = e.target.closest('button')?.dataset.c; if (!c) return;
+  comSelecao(el => {
+    if (c === 'bold') document.execCommand('bold'); else if (c === 'italic') document.execCommand('italic');
+    else if (c === 'clear') document.execCommand('removeFormat');
+    else { const atual = parseFloat($('#ftSize').value) || 40, passo = atual < 30 ? 1 : atual < 80 ? 2 : 5; aplicarTamanho(atual + (c === 'mais' ? passo : -passo), el); }
+  });
+});
+$('#ftFont').addEventListener('change', e => comSelecao(() => aplicarCss('fontName', fonteCss(e.target.value))));
+$('#ftSize').addEventListener('change', e => comSelecao(el => aplicarTamanho(e.target.value, el)));
+$('#ftCor').addEventListener('change', e => comSelecao(() => aplicarCss('foreColor', e.target.value)));
+$('#ftSize').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.target.dispatchEvent(new Event('change')); } });
+
+/* dropdown próprio: troca a lista nativa dos <select class="sel"> e da barra de formatação por uma lista no padrão da marca */
+let ddAberto = null;
+function fecharDD() { if (!ddAberto) return; ddAberto.sel.removeAttribute('aria-expanded'); ddAberto.pop.remove(); ddAberto = null; }
+function abrirDD(s) {
+  fecharDD();
+  const r = s.getBoundingClientRect(), pop = document.createElement('div');
+  pop.className = 'ddpop'; pop.setAttribute('role', 'listbox'); pop.setAttribute('aria-label', s.getAttribute('aria-label') || 'Opções');
+  pop.innerHTML = [...s.options].map((o, i) => `<button type="button" role="option" data-i="${i}" aria-selected="${o.selected}" style="${esc(o.getAttribute('style') || '')}"><span class="ck">✓</span><span>${esc(o.textContent)}</span></button>`).join('');
+  document.body.appendChild(pop);
+  const h = Math.min(pop.scrollHeight, 320), abaixo = innerHeight - r.bottom - 12 >= Math.min(h, 200);
+  pop.style.minWidth = Math.max(r.width, 190) + 'px'; pop.style.maxHeight = (abaixo ? Math.min(320, innerHeight - r.bottom - 12) : Math.min(320, r.top - 12)) + 'px';
+  pop.style.left = clamp(r.left, 8, Math.max(8, innerWidth - pop.offsetWidth - 8)) + 'px';
+  pop.style.top = abaixo ? r.bottom + 6 + 'px' : Math.max(8, r.top - pop.offsetHeight - 6) + 'px';
+  s.setAttribute('aria-expanded', 'true');
+  ddAberto = { sel: s, pop, i: s.selectedIndex };
+  const alvo = pop.querySelector('[aria-selected=true]'); if (alvo) { alvo.classList.add('foco'); alvo.scrollIntoView({ block: 'nearest' }); }
+  pop.addEventListener('mousedown', e => e.preventDefault());                      // não rouba o foco (nem a seleção do texto)
+  pop.addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (b) escolherDD(+b.dataset.i); });
+}
+function escolherDD(i) {
+  if (!ddAberto) return; const s = ddAberto.sel; fecharDD();
+  if (s.selectedIndex !== i) { s.selectedIndex = i; s.dispatchEvent(new Event('change', { bubbles: true })); }
+}
+const ehDD = n => n && n.closest && n.closest('select.sel, #ftb select');
+document.addEventListener('mousedown', e => {
+  const s = ehDD(e.target);
+  if (s) { e.preventDefault(); ddAberto && ddAberto.sel === s ? fecharDD() : abrirDD(s); return; }
+  if (ddAberto && !e.target.closest('.ddpop')) fecharDD();
+}, true);
+document.addEventListener('keydown', e => {
+  if (ddAberto) {
+    const bs = [...ddAberto.pop.querySelectorAll('button')], mover = d => { ddAberto.i = clamp((ddAberto.i < 0 ? 0 : ddAberto.i) + d, 0, bs.length - 1); bs.forEach((b, k) => b.classList.toggle('foco', k === ddAberto.i)); bs[ddAberto.i].scrollIntoView({ block: 'nearest' }); };
+    if (e.key === 'ArrowDown') { e.preventDefault(); e.stopPropagation(); mover(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); mover(-1); }
+    else if (e.key === 'Home') { e.preventDefault(); e.stopPropagation(); mover(-999); } else if (e.key === 'End') { e.preventDefault(); e.stopPropagation(); mover(999); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); escolherDD(ddAberto.i); }
+    else if (e.key === 'Escape' || e.key === 'Tab') { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); } fecharDD(); }
+    return;
+  }
+  const s = ehDD(e.target);
+  if (s && (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); e.stopPropagation(); abrirDD(s); }
+}, true);
+addEventListener('resize', fecharDD); addEventListener('blur', fecharDD);
+document.addEventListener('scroll', e => { if (ddAberto && !e.target.closest?.('.ddpop')) fecharDD(); }, true);
 
 /* ================================================================
    INÍCIO
