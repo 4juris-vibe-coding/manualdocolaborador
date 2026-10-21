@@ -33,7 +33,8 @@ import { validarRespostas, pesquisaAbertaPara } from '@/domain/pesquisas'
 import { cnpjValido, cpfValido, emailValido, soDigitos } from '@/domain/validacao'
 import { areasLideradas, podeAlinharPeriodo, podeGerenciarEvento } from '@/domain/visibilidade'
 import { chaveAutor, chaveApoio } from '@/domain/anonimato'
-import { criarApresentacao as montarApresentacao, modeloPorId, novoSlide as montarSlide, MODELO_EDITOR_LIVRE } from '@/domain/apresentacoes'
+import { criarApresentacao as montarApresentacao, modeloPorId, novoSlide as montarSlide, ehEditorLivre } from '@/domain/apresentacoes'
+import { ehArte, TAMANHO_MIN, TAMANHO_MAX, tamanhoDe } from '@/domain/canva'
 import { gerarAvaliacoesInicio, gerarParticipantes, competenciasDe, notaPonderada, responsaveisDe } from '@/domain/avaliacoes'
 
 export type Resultado = { ok: true; id?: string; avisos?: string[]; info?: string } | { ok: false; erro: string }
@@ -153,7 +154,7 @@ interface AppState extends DB {
   salvarCultura: (c: CulturaOrganizacional) => Resultado
   // apresentações
   criarApresentacao: (modeloId: string, titulo: string) => Resultado
-  salvarApresentacao: (id: string, patch: Partial<Pick<Apresentacao, 'titulo' | 'tema' | 'compartilhada' | 'deck'>> & { slides?: SlideInstancia[] }) => Resultado
+  salvarApresentacao: (id: string, patch: Partial<Pick<Apresentacao, 'titulo' | 'tema' | 'compartilhada' | 'deck'>> & { slides?: SlideInstancia[]; capa?: string }) => Resultado
   duplicarApresentacao: (id: string) => Resultado
   removerApresentacao: (id: string) => Resultado
   // caixa de sugestões (anônima)
@@ -1353,8 +1354,12 @@ export const useStore = create<AppState>()(
         criarApresentacao: (modeloId, titulo) => tx((d) => {
           const t = titulo.trim()
           if (t.length < 3) return ERRO('Dê um título à apresentação (mín. 3 caracteres).')
-          const a = montarApresentacao(modeloPorId(modeloId === MODELO_EDITOR_LIVRE ? 'institucional' : modeloId), t.slice(0, 80), get().realUser().id, hojeISO(), () => uid('sl'))
-          if (modeloId === MODELO_EDITOR_LIVRE) { a.modeloId = MODELO_EDITOR_LIVRE; a.deck = null }
+          const a = montarApresentacao(modeloPorId(ehEditorLivre(modeloId) || ehArte(modeloId) ? 'institucional' : modeloId), t.slice(0, 80), get().realUser().id, hojeISO(), () => uid('sl'))
+          if (ehArte(modeloId)) {
+            const { w, h } = tamanhoDe(modeloId)
+            if (w < TAMANHO_MIN || h < TAMANHO_MIN || w > TAMANHO_MAX || h > TAMANHO_MAX) return ERRO(`Tamanho inválido: use de ${TAMANHO_MIN} a ${TAMANHO_MAX} px.`)
+          }
+          if (ehEditorLivre(modeloId) || ehArte(modeloId)) { a.modeloId = modeloId; a.deck = null }
           d.apresentacoes = [a, ...d.apresentacoes]
           return OK({ id: a.id })
         }),
@@ -1365,7 +1370,8 @@ export const useStore = create<AppState>()(
           if (patch.titulo !== undefined && patch.titulo.trim().length < 3) return ERRO('Título muito curto.')
           if (patch.slides && !patch.slides.length) return ERRO('A apresentação precisa ter ao menos um slide.')
           if (patch.slides && patch.slides.length > 40) return ERRO('Limite de 40 slides por apresentação.')
-          if (patch.deck && JSON.stringify(patch.deck).length > 3_000_000) return ERRO('A apresentação ficou grande demais (fotos). Reduza o número de imagens.')
+          if (patch.deck && JSON.stringify(patch.deck).length > 3_000_000) return ERRO('O design ficou grande demais (fotos). Reduza o número de imagens.')
+          if (patch.capa && (!patch.capa.startsWith('data:image/') || patch.capa.length > 250_000)) return ERRO('Miniatura inválida.')
           d.apresentacoes = d.apresentacoes.map((x) => (x.id === id ? { ...x, ...patch, titulo: patch.titulo?.trim() ?? x.titulo, atualizadaEm: hojeISO() } : x))
         }),
         duplicarApresentacao: (id) => tx((d) => {

@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4juris Canva · Editor de artes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@200;300;400;600;700;800&display=swap" rel="stylesheet">
+<!--
+  ============================================================
+  4juris Canva · Editor de artes (arquivo único, composição livre)
+  ------------------------------------------------------------
+  • Documento = { id, kind:'arte', titulo, w, h, assets:{id:dataURL}, pages:[{id,bg,els:[...]}] }
+  • Elemento  = text | img | shape (x, y, w, h, rot, ...). Imagens guardam só o id do asset.
+  • Modelos (TEMPLATES) são funções (W,H) => { bg, els }: adaptam-se a qualquer tamanho.
+  • Modo embutido (?embed=1) fala com o sistema por postMessage (mesmo protocolo do editor de apresentações):
+      parent -> editor: {src:'4j-deck', type:'load', deck|null, titulo, tamanho:{w,h}, readonly}
+      editor -> parent: {src:'4j-deck', type:'ready'} · {type:'save', deck} · {type:'thumb', thumb}
+  ============================================================
+-->
+<style>
+:root{
+  --midnight:#122029; --blue:#0032D2; --blue-l:#4C6FDF; --winter:#E9ECEC; --plat:#C0C4C7;
+  --ui-bg:#0b1318; --ui-panel:#122029; --ui-line:rgba(255,255,255,.09); --ui-line2:rgba(255,255,255,.16);
+  --ui-fg:#E9ECEC; --ui-mut:#8d9ba6; --ui-acc:#4C6FDF;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ui-bg);color:var(--ui-fg);font-family:'Sora',system-ui,sans-serif;font-size:13px;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+::selection{background:var(--blue);color:#fff}
+*{scrollbar-width:thin;scrollbar-color:#2a3b46 transparent}
+
+#app{display:grid;grid-template-columns:208px 1fr 300px;grid-template-rows:56px 52px 1fr;height:100vh}
+#top{grid-column:1/-1;overflow-x:auto;display:flex;align-items:center;gap:8px;padding:0 14px;background:var(--ui-panel);border-bottom:1px solid var(--ui-line)}
+#top .logo{width:30px;height:30px;border-radius:8px;background:var(--blue);display:grid;place-items:center;flex:none}
+#top .logo svg{width:16px;height:16px}
+#titulo{background:transparent;border:1px solid transparent;border-radius:8px;padding:7px 10px;font-weight:700;font-size:14px;width:min(300px,26vw)}
+#titulo:hover{border-color:var(--ui-line2)} #titulo:focus{outline:none;border-color:var(--ui-acc);background:rgba(255,255,255,.04)}
+.sp{flex:1}
+#status{color:var(--ui-mut);font-size:12px;white-space:nowrap}
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--ui-line2);background:rgba(255,255,255,.04);border-radius:9px;padding:8px 12px;font-weight:600;font-size:12.5px;transition:.15s;white-space:nowrap}
+.btn:hover{background:rgba(255,255,255,.09)}
+.btn:disabled{opacity:.35;cursor:default}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.pri:hover{background:#0a41ee}
+.btn.sm{padding:5px 9px;font-size:12px;border-radius:8px}
+.btn.ico{padding:8px}
+.btn svg{width:15px;height:15px;flex:none}
+.btn.danger:hover{background:rgba(220,60,50,.25);border-color:rgba(220,60,50,.6)}
+.menu{position:relative}
+.menu .pop{display:none;position:absolute;right:0;top:calc(100% + 6px);min-width:220px;background:#0e1a21;border:1px solid var(--ui-line2);border-radius:12px;padding:6px;z-index:40;box-shadow:0 18px 50px rgba(0,0,0,.5)}
+.menu.on .pop{display:block}
+.pop button{display:flex;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:9px 11px;font-size:12.5px;gap:8px;align-items:center}
+.pop button:hover{background:rgba(76,111,223,.2)}
+.pop small{display:block;color:var(--ui-mut);font-size:11px}
+
+#bar{grid-column:2/-1;display:flex;align-items:center;gap:6px;padding:0 14px;background:#0e1a21;border-bottom:1px solid var(--ui-line);overflow-x:auto}
+#bar .grp{display:flex;gap:4px;align-items:center;padding-right:10px;margin-right:6px;border-right:1px solid var(--ui-line)}
+#bar .grp:last-child{border:0}
+#bar .btn{padding:7px 10px}
+body.ro #bar,body.ro #insp,body.ro #addpg,body.ro .th .acts,body.ro #undo,body.ro #redo,body.ro #mtpl,body.ro #msize,body.ro #dlj{display:none}
+body.ro #app{grid-template-columns:208px 1fr}
+
+#side{grid-row:2/4;background:var(--ui-panel);border-right:1px solid var(--ui-line);display:flex;flex-direction:column;min-height:0}
+#side .hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ui-mut)}
+#thumbs{flex:1;overflow:auto;padding:4px 12px 14px;display:flex;flex-direction:column;gap:12px}
+.th{position:relative;cursor:pointer;border-radius:10px;padding:6px;border:1px solid transparent}
+.th:hover{background:rgba(255,255,255,.04)}
+.th.on{border-color:var(--ui-acc);background:rgba(76,111,223,.12)}
+.th .n{position:absolute;left:10px;top:10px;z-index:2;font-size:10.5px;font-weight:700;background:rgba(10,18,23,.8);border-radius:5px;padding:1px 6px}
+.th .tw{position:relative;overflow:hidden;border-radius:6px;box-shadow:0 0 0 1px var(--ui-line2);pointer-events:none;margin:0 auto}
+.th .acts{position:absolute;right:10px;bottom:10px;display:none;gap:4px;z-index:2}
+.th:hover .acts{display:flex}
+.th .acts button{width:24px;height:24px;border-radius:6px;border:0;background:rgba(10,18,23,.9);display:grid;place-items:center;padding:0}
+.th .acts button:hover{background:var(--blue)}
+.th .acts svg{width:13px;height:13px}
+.th.over{box-shadow:0 -3px 0 var(--ui-acc)}
+#addpg{margin:0 12px 12px;justify-content:center}
+
+#main{grid-row:3;grid-column:2;position:relative;min-width:0;min-height:0;background:radial-gradient(900px 500px at 50% 0,#13222b,var(--ui-bg));display:flex;flex-direction:column}
+#stage{flex:1;min-height:0;display:grid;place-items:center;overflow:hidden;padding:26px}
+#wrap{position:relative;flex:none;box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 0 1px var(--ui-line2);touch-action:none}
+#pg{position:absolute;left:0;top:0;transform-origin:0 0;overflow:visible}
+#clip{position:absolute;inset:0}
+#foot{display:flex;justify-content:space-between;align-items:center;padding:0 22px 12px;color:var(--ui-mut);font-size:12px;gap:16px}
+#foot kbd{background:rgba(255,255,255,.08);border:1px solid var(--ui-line2);border-radius:5px;padding:1px 6px;font:inherit;font-size:11px}
+#zoomv{min-width:46px;text-align:center}
+
+#insp{grid-row:3;grid-column:3;background:var(--ui-panel);border-left:1px solid var(--ui-line);display:flex;flex-direction:column;min-height:0}
+#insp .tt{padding:14px 16px;border-bottom:1px solid var(--ui-line);font-weight:700;font-size:12px;letter-spacing:.04em}
+#ibody{flex:1;overflow:auto;padding:4px 16px 30px}
+.sec{padding:14px 0;border-bottom:1px solid var(--ui-line)}
+.sec:last-child{border:0}
+.sec h4{margin:0 0 10px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ui-mut);font-weight:700}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.field>label{font-size:12px;color:#c5ced5;font-weight:600;display:flex;justify-content:space-between}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.inp,.sel{width:100%;height:40px;background:rgb(20 28 34);border:1px solid rgb(51 65 76);border-radius:12px;padding:0 12px;outline:none;font-size:13px;transition:.15s}
+.sel{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:36px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca8b2' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.sel option{background:rgb(20 28 34)}
+.inp:focus,.sel:focus{border-color:rgb(62 96 232);box-shadow:0 0 0 1px rgb(62 96 232)}
+.seg{display:flex;background:rgba(255,255,255,.05);border:1px solid var(--ui-line2);border-radius:9px;padding:2px;gap:2px}
+.seg button{flex:1;background:none;border:0;border-radius:7px;padding:6px 4px;font-size:12px;font-weight:600;color:var(--ui-mut)}
+.seg button.on{background:var(--blue);color:#fff}
+.sws{display:flex;gap:7px;flex-wrap:wrap}
+.sw{width:28px;height:28px;border-radius:8px;border:2px solid transparent;box-shadow:0 0 0 1px var(--ui-line2);padding:0;position:relative}
+.sw.on{border-color:#fff}
+.sw.cus{overflow:hidden;background:conic-gradient(#f33,#fc3,#3f6,#3cf,#63f,#f3c,#f33)}
+.sw.cus input{position:absolute;inset:-6px;opacity:0;cursor:pointer;width:46px;height:46px}
+.chk{display:flex;align-items:center;gap:9px;margin:6px 0;font-size:12.5px;cursor:pointer}
+.chk input{accent-color:var(--blue);width:15px;height:15px}
+.rg{width:100%;accent-color:var(--blue)}
+.hint{color:var(--ui-mut);font-size:11.5px;line-height:1.5;margin:6px 0 0}
+.acts2{display:flex;gap:6px;flex-wrap:wrap}
+
+#ovl{position:fixed;inset:0;background:rgba(5,10,14,.74);display:none;align-items:center;justify-content:center;z-index:50;padding:24px}
+#ovl.on{display:flex}
+#modal{background:var(--ui-panel);border:1px solid var(--ui-line2);border-radius:16px;max-width:1120px;width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 30px 90px rgba(0,0,0,.6)}
+#modal .mh{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 22px;border-bottom:1px solid var(--ui-line)}
+#modal .mh b{font-size:15px}
+#mfilters{display:flex;gap:6px;padding:12px 22px 0;flex-wrap:wrap}
+.chip{border:1px solid var(--ui-line2);background:none;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:600;color:var(--ui-mut)}
+.chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+#modal .mb{padding:18px 22px 22px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;align-items:start}
+.card{background:none;border:1px solid var(--ui-line2);border-radius:12px;padding:10px;text-align:left;transition:.15s}
+.card:hover{border-color:var(--ui-acc);background:rgba(76,111,223,.1)}
+.card .pv{position:relative;overflow:hidden;border-radius:6px;box-shadow:0 0 0 1px var(--ui-line2);margin-bottom:9px;background:#000}
+.card>b{display:block;font-size:12.5px}
+.card>span{color:var(--ui-mut);font-size:11.5px}
+.presets{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))!important}
+.presets .card .shape{height:92px;display:grid;place-items:center}
+.presets .card .shape i{display:block;background:rgba(76,111,223,.35);border:2px solid var(--ui-acc);border-radius:5px}
+
+#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);background:#0a1318;border:1px solid var(--ui-line2);border-radius:10px;padding:10px 16px;opacity:0;pointer-events:none;transition:.25s;z-index:80;font-size:12.5px}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+#show{position:fixed;inset:0;background:#000;z-index:100;display:none;align-items:center;justify-content:center;user-select:none}
+#show.on{display:flex}
+#show .box{position:relative;overflow:hidden;flex:none}
+#show .pgv{position:absolute;left:0;top:0;transform-origin:0 0}
+#show .ctl{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:6px;align-items:center;background:rgba(10,19,24,.85);border-radius:999px;padding:6px 8px;opacity:0;transition:.2s;color:#fff}
+#show:hover .ctl{opacity:1}
+#show .ctl button{background:none;border:0;border-radius:999px;padding:6px 12px;color:#fff}
+#show .ctl button:hover{background:rgba(255,255,255,.18)}
+
+/* ============ PÁGINA (unidades = pixels da arte) ============ */
+/*PG-START*/
+.pg{position:absolute;left:0;top:0;overflow:hidden;font-family:'Sora',system-ui,sans-serif;line-height:1.15}
+.pg *{box-sizing:border-box}
+.pg .el{position:absolute}
+.pg .t{white-space:pre-wrap;word-break:break-word;margin:0}
+.pg .t b{font-weight:inherit;color:var(--hl)}
+.pg .t i{font-style:italic}
+.pg .i{overflow:hidden;background:linear-gradient(135deg,#0032D2,#122029)}
+.pg .i img{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pg .i .ph{position:absolute;inset:0;display:grid;place-items:center}
+.pg .i .ph svg{width:38%;height:38%;opacity:.28}
+.pg .s svg{width:100%;height:100%;display:block}
+/*PG-END*/
+/* edição */
+#pg .el.t[contenteditable=true]{outline:2px solid #4C6FDF;outline-offset:6px;cursor:text;user-select:text;-webkit-user-select:text}
+#pg .el{cursor:move}
+#pg .el.lk{cursor:default}
+#pg .i .hint{position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:calc(13px*var(--k));color:rgba(255,255,255,.75);font-weight:600}
+#pg .hov{position:absolute;pointer-events:none;border:calc(1.5px*var(--k)) solid rgba(76,111,223,.8)}
+#pg .selbox{position:absolute;pointer-events:none;border:calc(2px*var(--k)) solid #4C6FDF}
+#pg .selbox .hd{position:absolute;pointer-events:auto;width:calc(13px*var(--k));height:calc(13px*var(--k));margin:calc(-6.5px*var(--k)) 0 0 calc(-6.5px*var(--k));background:#fff;border:calc(2px*var(--k)) solid #4C6FDF;border-radius:50%}
+#pg .selbox .hd[data-h=rot]{cursor:grab;background:#4C6FDF;border-color:#fff}
+#pg .gd{position:absolute;background:#ff3d9a;pointer-events:none}
+#pg .gd.v{width:calc(1px*var(--k));top:0;bottom:0}
+#pg .gd.h{height:calc(1px*var(--k));left:0;right:0}
+
+#print{display:none}
+@media print{
+  html,body{background:#fff;height:auto}
+  #app,#show,#ovl,#toast{display:none!important}
+  #print{display:block}
+  #print .pp{position:relative;overflow:hidden;page-break-after:always;break-after:page}
+  #print .pp:last-child{page-break-after:auto;break-after:auto}
+  .pg{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+@media (max-width:1180px){#app{grid-template-columns:170px 1fr 260px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <div class="logo" title="4juris Canva"><svg viewBox="225 217 631 647"><path fill="#fff" fill-rule="evenodd" d="M482 217H754V609H856V733H754V864H601V733H225V488C365 462 462 350 482 217ZM601 318C555 460 450 565 308 609H601Z"/></svg></div>
+    <input id="titulo" aria-label="Título da arte" placeholder="Título da arte" maxlength="90">
+    <span class="sp"></span><span id="status"></span>
+    <button class="btn ico" id="undo" title="Desfazer (Ctrl+Z)" aria-label="Desfazer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+    <button class="btn ico" id="redo" title="Refazer (Ctrl+Y)" aria-label="Refazer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+    <button class="btn" id="mtpl">Modelos</button>
+    <button class="btn" id="msize">Tamanho</button>
+    <div class="menu" id="mexp"><button class="btn" id="bexp">Baixar ▾</button><div class="pop">
+      <button data-ex="png"><span>Imagem PNG<small>Página atual</small></span></button>
+      <button data-ex="png-todas"><span>PNG de todas as páginas<small>Um arquivo por página</small></span></button>
+      <button data-ex="pdf"><span>PDF<small>Todas as páginas</small></span></button>
+      <button data-ex="json" id="dlj"><span>Arquivo .json<small>Para guardar ou integrar</small></span></button>
+    </div></div>
+    <button class="btn pri" id="play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>Apresentar</button>
+  </header>
+
+  <div id="bar">
+    <div class="grp">
+      <button class="btn" data-add="titulo"><b style="font-size:15px">T</b> Título</button>
+      <button class="btn" data-add="sub">Subtítulo</button>
+      <button class="btn" data-add="texto">Texto</button>
+    </div>
+    <div class="grp">
+      <button class="btn" data-add="img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>Imagem</button>
+      <button class="btn" data-add="foto-redonda">Foto redonda</button>
+    </div>
+    <div class="grp">
+      <button class="btn" data-add="rect">▭ Retângulo</button>
+      <button class="btn" data-add="circle">◯ Círculo</button>
+      <button class="btn" data-add="slash">// Faixas</button>
+      <button class="btn" data-add="quatro">“4”</button>
+    </div>
+  </div>
+
+  <aside id="side">
+    <div class="hd"><span>Páginas</span><span id="cnt"></span></div>
+    <div id="thumbs"></div>
+    <button class="btn" id="addpg">+ Nova página</button>
+  </aside>
+
+  <main id="main">
+    <div id="stage"><div id="wrap"><div id="clip"><div id="pg"></div></div></div></div>
+    <div id="foot">
+      <span>Arraste para mover · duplo clique no texto para editar · <kbd>Del</kbd> exclui · setas movem</span>
+      <span style="display:flex;gap:6px;align-items:center"><button class="btn sm ico" id="zout" aria-label="Menos zoom">−</button><span id="zoomv"></span><button class="btn sm ico" id="zin" aria-label="Mais zoom">+</button><button class="btn sm" id="zfit">Ajustar</button></span>
+    </div>
+  </main>
+
+  <aside id="insp"><div class="tt" id="itt">Página</div><div id="ibody"></div></aside>
+</div>
+
+<div id="ovl"><div id="modal" role="dialog" aria-modal="true"><div class="mh"><b id="mtit"></b><button class="btn sm" id="mclose">Fechar</button></div><div id="mfilters"></div><div class="mb" id="mbody"></div></div></div>
+<div id="show"><div class="box" id="sbox"></div><div class="ctl"><button id="sp">◀</button><span id="sn"></span><button id="sx">▶</button><button id="sq">Sair (Esc)</button></div></div>
+<div id="print"></div>
+<div id="toast"></div>
+<input type="file" id="file" accept="image/*" hidden>
+<input type="file" id="jfile" accept=".json,application/json" hidden>
+
+<script type="application/json" id="deck-data">null</script>
+<script>
+'use strict';
+/* ================================================================
+   UTILIDADES
+   ================================================================ */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const uid = () => Math.random().toString(36).slice(2, 9);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const rnd = v => Math.round(v * 10) / 10;
+const strip = h => { const d = document.createElement('div'); d.innerHTML = h || ''; return (d.textContent || '').trim(); };
+
+function limpar(html) {                         // texto rico mínimo: <b> (destaque), <i>, <br>
+  const t = document.createElement('template'); t.innerHTML = html; let out = '';
+  (function walk(n) {
+    n.childNodes.forEach(c => {
+      if (c.nodeType === 3) { out += esc(c.nodeValue); return; }
+      if (c.nodeType !== 1) return;
+      const tg = c.tagName.toLowerCase(), fw = c.style && c.style.fontWeight;
+      if (tg === 'br') out += '<br>';
+      else if (tg === 'b' || tg === 'strong' || (tg === 'span' && (fw === 'bold' || +fw >= 600))) { out += '<b>'; walk(c); out += '</b>'; }
+      else if (tg === 'i' || tg === 'em' || (tg === 'span' && c.style.fontStyle === 'italic')) { out += '<i>'; walk(c); out += '</i>'; }
+      else if (tg === 'div' || tg === 'p') { if (out && !out.endsWith('<br>')) out += '<br>'; walk(c); }
+      else walk(c);
+    });
+  })(t.content);
+  return out.replace(/(<br>)+$/, '');
+}
+
+/* ================================================================
+   MARCA
+   ================================================================ */
+const QUATRO = 'M482 217H754V609H856V733H754V864H601V733H225V488C365 462 462 350 482 217ZM601 318C555 460 450 565 308 609H601Z';
+const svgQuatro = fill => `<svg viewBox="225 217 631 647" aria-hidden="true"><path fill-rule="evenodd" style="fill:${fill}" d="${QUATRO}"/></svg>`;
+const svgSlash = fill => `<svg viewBox="0 0 170 150" preserveAspectRatio="none" aria-hidden="true"><polygon style="fill:${fill}" points="62,0 112,0 50,150 0,150"/><polygon style="fill:${fill}" points="120,0 170,0 108,150 58,150"/></svg>`;
+const C = { mid: '#122029', blue: '#0032D2', bl: '#4C6FDF', win: '#E9ECEC', wh: '#F8F9F9', pl: '#C0C4C7', ink: '#0b1115', w: '#FFFFFF' };
+const CORES = ['#FFFFFF', '#F8F9F9', '#E9ECEC', '#C0C4C7', '#4C6FDF', '#0032D2', '#122029', '#0b1115'];
+
+const PRESETS = [
+  { id: '16x9', n: 'Apresentação', d: '16:9 · 1920×1080', w: 1920, h: 1080 },
+  { id: '1x1', n: 'Post quadrado', d: '1:1 · 1080×1080', w: 1080, h: 1080 },
+  { id: '4x5', n: 'Post retrato', d: '4:5 · 1080×1350', w: 1080, h: 1350 },
+  { id: '9x16', n: 'Story / Reels', d: '9:16 · 1080×1920', w: 1080, h: 1920 },
+  { id: '3x1', n: 'Banner', d: '3:1 · 1800×600', w: 1800, h: 600 },
+  { id: 'a4', n: 'A4 retrato', d: '210×297 mm · 1240×1754', w: 1240, h: 1754 },
+];
+
+/* ================================================================
+   MODELO DE DADOS + FÁBRICAS
+   ================================================================ */
+const T = (html, o = {}) => ({ id: uid(), t: 'text', x: 0, y: 0, w: 400, html, size: 48, wt: 400, color: '#FFFFFF', align: 'left', lh: 1.15, ls: 0, up: false, it: false, op: 1, rot: 0, hl: C.bl, lock: false, ...o });
+const I = (o = {}) => ({ id: uid(), t: 'img', x: 0, y: 0, w: 400, h: 400, src: '', fit: 'cover', shape: 'rect', radius: 0, px: 50, py: 50, zoom: 1, op: 1, rot: 0, lock: false, ...o });
+const S = (kind, o = {}) => ({ id: uid(), t: 'shape', kind, x: 0, y: 0, w: 200, h: 200, fill: C.blue, op: 1, radius: 0, rot: 0, lock: false, ...o });
+
+let selTudo = false, justDragged = false;
+let doc = null, cur = 0, sel = null, editando = null, RO = false, scale = 1, zoom = 0, inicial = false;
+let assets = {};
+let hist = [], hi = -1;
+const EMB = new URLSearchParams(location.search).has('embed') && parent !== window;
+const enviar = m => parent.postMessage({ src: '4j-deck', ...m }, location.origin);
+const pg = () => doc.pages[cur];
+const el = id => pg().els.find(e => e.id === id);
+const asset = e => assets[e.src] || e.src || '';
+
+function novoDoc(w, h, titulo) {
+  return { id: uid(), kind: 'arte', titulo: titulo || 'Minha arte', w, h, assets: {}, pages: [{ id: uid(), bg: C.mid, els: [] }], salvoEm: 0 };
+}
+function normalizar(d) {
+  d.kind = 'arte'; d.id = d.id || uid(); d.w = clamp(+d.w || 1080, 100, 5000); d.h = clamp(+d.h || 1080, 100, 5000); d.titulo = d.titulo || 'Minha arte';
+  d.pages = (d.pages || []).length ? d.pages : [{ id: uid(), bg: C.mid, els: [] }];
+  d.pages.forEach(p => { p.id = p.id || uid(); p.bg = p.bg || C.mid; p.els = (p.els || []).map(e => (e.t === 'text' ? T('', e) : e.t === 'img' ? I(e) : S(e.kind, e))); });
+  assets = { ...(d.assets || {}) }; d.assets = {};
+  return d;
+}
+
+/* ================================================================
+   RENDER DA PÁGINA (puro: página -> HTML)
+   ================================================================ */
+function elHTML(e, edit) {
+  const base = `left:${e.x}px;top:${e.y}px;width:${e.w}px;transform:rotate(${e.rot || 0}deg);opacity:${e.op}`;
+  if (e.t === 'text') {
+    const st = `${base};font-size:${e.size}px;font-weight:${e.wt};color:${e.color};text-align:${e.align};line-height:${e.lh};letter-spacing:${e.ls}em;${e.up ? 'text-transform:uppercase;' : ''}${e.it ? 'font-style:italic;' : ''}--hl:${e.hl || e.color}`;
+    const ce = edit && editando === e.id ? ' contenteditable="true" spellcheck="false"' : '';
+    return `<div class="el t${e.lock ? ' lk' : ''}" ${edit ? `id="e_${e.id}" ` : ''}data-id="${e.id}" style="${st}"${ce}>${e.html}</div>`;
+  }
+  if (e.t === 'img') {
+    const r = e.shape === 'circle' ? '50%' : e.shape === 'round' ? e.radius + 'px' : '0';
+    const src = asset(e);
+    const inner = src ? `<img src="${src}" alt="" style="object-fit:${e.fit};object-position:${e.px}% ${e.py}%;transform:scale(${e.zoom})">` : `<div class="ph">${svgQuatro('#fff')}${edit ? '<div class="hint">Clique para adicionar imagem</div>' : ''}</div>`;
+    return `<div class="el i${e.lock ? ' lk' : ''}" ${edit ? `id="e_${e.id}" ` : ''}data-id="${e.id}" style="${base};height:${e.h}px;border-radius:${r}">${inner}</div>`;
+  }
+  const r = e.kind === 'circle' ? '50%' : e.radius + 'px';
+  let inner = '', bg = '';
+  if (e.kind === 'slash') inner = svgSlash(e.fill);
+  else if (e.kind === 'quatro') inner = svgQuatro(e.fill);
+  else if (e.kind === 'grad') bg = `background:linear-gradient(180deg,transparent,${e.fill});`;
+  else bg = `background:${e.fill};border-radius:${r};`;
+  return `<div class="el s${e.lock ? ' lk' : ''}" ${edit ? `id="e_${e.id}" ` : ''}data-id="${e.id}" style="${base};height:${e.h}px;${bg}">${inner}</div>`;
+}
+const pageHTML = (p, edit = false) => `<div class="pg" style="width:${doc.w}px;height:${doc.h}px;background:${p.bg}">${p.els.map(e => elHTML(e, edit)).join('')}</div>`;
+
+/* ================================================================
+   MODELOS (função (W,H) -> {bg, els}) — adaptam-se ao tamanho
+   ================================================================ */
+const U = (W, H) => Math.min(W, H) / 1080;
+const marca = (W, H, dark = true) => { const u = U(W, H); return T('<b>4</b>juris', { x: W * .07, y: H - 96 * u - 20, w: 420 * u, size: 46 * u, wt: 800, ls: -.01, color: dark ? '#fff' : C.mid, hl: dark ? C.bl : C.blue }); };
+function chip(txt, x, y, u, primary) {
+  const s = 30 * u, w = strip(txt).length * s * .6 + 64 * u, h = 72 * u;
+  return [S('rect', { x, y, w, h, radius: 16 * u, fill: primary ? C.blue : '#FFFFFF', op: primary ? 1 : .16 }), T(txt, { x, y: y + (h - s * 1.15) / 2, w, size: s, wt: 600, align: 'center' })];
+}
+function chips(list, x, y, u) { let cx = x; const out = []; list.filter(Boolean).forEach((t, i) => { const w = strip(t).length * 30 * u * .6 + 64 * u; out.push(...chip(t, cx, y, u, i === 0)); cx += w + 18 * u; }); return out; }
+
+const TEMPLATES = [
+  { id: 'aviso', cat: 'Avisos', nome: 'Aviso importante', build: (W, H) => { const u = U(W, H), m = W * .075, cw = W - 2 * m, by = H - 190 * u;
+    return { bg: C.mid, els: [I({ x: 0, y: 0, w: W, h: H }), S('grad', { x: 0, y: H * .3, w: W, h: H * .7, fill: C.mid }),
+      T('Aviso importante', { x: m, y: by - 76 * u - 40 * u - 110 * u - 30 * u - 250 * u - 56 * u, w: cw, size: 28 * u, wt: 700, ls: .22, up: true, color: C.bl }),
+      T('Atenção ao novo <b>horário</b>', { x: m, y: by - 76 * u - 40 * u - 110 * u - 30 * u - 250 * u, w: cw, size: 118 * u, wt: 800, ls: -.035, lh: 1.02 }),
+      T('Descreva o aviso em uma ou duas frases.', { x: m, y: by - 76 * u - 40 * u - 110 * u, w: cw, size: 40 * u, wt: 300, lh: 1.3, color: '#E9ECEC' }),
+      ...chips(['A partir de 10/11', 'Todos os times'], m, by - 76 * u, u), marca(W, H)] }; } },
+  { id: 'evento', cat: 'Eventos', nome: 'Convite de evento', build: (W, H) => { const u = U(W, H), m = W * .075, cw = W - 2 * m, by = H - 190 * u;
+    return { bg: C.mid, els: [I({ x: 0, y: 0, w: W, h: H }), S('grad', { x: 0, y: H * .25, w: W, h: H * .75, fill: C.mid }),
+      T('Você está convidado(a)', { x: m, y: by - 76 * u - 40 * u - 110 * u - 30 * u - 150 * u - 56 * u, w: cw, size: 28 * u, wt: 700, ls: .22, up: true, color: C.bl }),
+      T('4JURIS <b>Day</b>', { x: m, y: by - 76 * u - 40 * u - 110 * u - 30 * u - 150 * u, w: cw, size: 150 * u, wt: 800, ls: -.04, lh: 1 }),
+      T('Um dia para celebrar resultados, conhecer o time e planejar o próximo ciclo.', { x: m, y: by - 76 * u - 40 * u - 110 * u, w: cw, size: 40 * u, wt: 300, lh: 1.3, color: '#E9ECEC' }),
+      ...chips(['Sexta, 10/11', '14h', 'Auditório'], m, by - 76 * u, u), marca(W, H)] }; } },
+  { id: 'boas-vindas', cat: 'Pessoas', nome: 'Boas-vindas · novo colaborador', build: (W, H) => { const u = U(W, H), m = W * .07, land = W >= H * 1.2;
+    const d = land ? H * .58 : W * .5, px = land ? m + 14 * u : (W - d) / 2, py = land ? (H - d) / 2 : H * .08;
+    const tx = land ? px + d + 110 * u : m, tw = land ? W - tx - m : W - 2 * m, al = land ? 'left' : 'center', ty = land ? H * .27 : py + d + 70 * u;
+    const q = H * (land ? 1.15 : .7);
+    return { bg: C.mid, els: [S('quatro', { x: W - q * .9, y: land ? -H * .12 : H - q * .8, w: q * 631 / 647, h: q, fill: C.pl, op: .09 }),
+      S('circle', { x: px - 14 * u, y: py - 14 * u, w: d + 28 * u, h: d + 28 * u, fill: C.blue }), I({ x: px, y: py, w: d, h: d, shape: 'circle' }),
+      T('Seja bem-vindo(a)', { x: tx, y: ty, w: tw, size: 28 * u, wt: 700, ls: .22, up: true, color: C.bl, align: al }),
+      T('Nome <b>Sobrenome</b>', { x: tx, y: ty + 58 * u, w: tw, size: (land ? 104 : 96) * u, wt: 800, ls: -.035, lh: 1.02, align: al }),
+      T('Cargo · Área', { x: tx, y: ty + 58 * u + (land ? 230 : 210) * u, w: tw, size: 44 * u, wt: 300, color: '#E9ECEC', align: al }),
+      T('Uma frase curta de boas-vindas do time.', { x: tx, y: ty + 58 * u + (land ? 230 : 210) * u + 90 * u, w: tw, size: 36 * u, wt: 300, lh: 1.35, color: C.pl, align: al }),
+      marca(W, H)] }; } },
+  { id: 'destaque-mes', cat: 'Pessoas', nome: 'Destaque do mês', build: (W, H) => { const u = U(W, H), m = W * .07, land = W >= H * 1.2;
+    const d = land ? H * .56 : W * .5, px = land ? m + 14 * u : (W - d) / 2, py = land ? (H - d) / 2 : H * .1;
+    const tx = land ? px + d + 110 * u : m, tw = land ? W - tx - m : W - 2 * m, al = land ? 'left' : 'center', ty = land ? H * .27 : py + d + 70 * u;
+    return { bg: C.blue, els: [S('slash', { x: W - (land ? 560 : 420) * u, y: -20, w: (land ? 460 : 340) * u, h: H + 40, fill: '#FFFFFF', op: .1 }),
+      S('circle', { x: px - 14 * u, y: py - 14 * u, w: d + 28 * u, h: d + 28 * u, fill: '#FFFFFF' }), I({ x: px, y: py, w: d, h: d, shape: 'circle' }),
+      T('Destaque do mês', { x: tx, y: ty, w: tw, size: 28 * u, wt: 700, ls: .22, up: true, align: al }),
+      T('Nome <b>Sobrenome</b>', { x: tx, y: ty + 58 * u, w: tw, size: (land ? 104 : 96) * u, wt: 800, ls: -.035, lh: 1.02, align: al, hl: '#E9ECEC' }),
+      T('Cargo · Área', { x: tx, y: ty + 58 * u + (land ? 230 : 210) * u, w: tw, size: 44 * u, wt: 300, align: al }),
+      T('Conte, em uma ou duas frases, o que essa pessoa fez de especial.', { x: tx, y: ty + 58 * u + (land ? 230 : 210) * u + 90 * u, w: tw, size: 36 * u, wt: 300, lh: 1.35, align: al, color: '#E9ECEC' }),
+      marca(W, H)] }; } },
+  { id: 'aniversariantes', cat: 'Pessoas', nome: 'Aniversariantes do mês', build: (W, H) => { const u = U(W, H), n = 3, d = Math.min(W * .26, H * .34), gap = (W - n * d) / (n + 1), y = H * .36;
+    const els = [S('quatro', { x: W * .45, y: -H * .1, w: H * 1.1 * 631 / 647, h: H * 1.1, fill: C.pl, op: .35 }), T('Aniversariantes do <b>mês</b>', { x: W * .07, y: H * .12, w: W * .86, size: 96 * u, wt: 800, ls: -.035, lh: 1.02, align: 'center', color: C.mid, hl: C.blue })];
+    for (let i = 0; i < n; i++) { const x = gap + i * (d + gap);
+      els.push(S('circle', { x: x - 10 * u, y: y - 10 * u, w: d + 20 * u, h: d + 20 * u, fill: C.blue }), I({ x, y, w: d, h: d, shape: 'circle' }),
+        T('Nome', { x: x - 40, y: y + d + 40 * u, w: d + 80, size: 38 * u, wt: 700, up: true, ls: .02, align: 'center', color: C.mid }),
+        T('10/10', { x: x - 40, y: y + d + 40 * u + 56 * u, w: d + 80, size: 34 * u, wt: 700, align: 'center', color: C.blue })); }
+    return { bg: C.win, els: [...els, marca(W, H, false)] }; } },
+  { id: 'comunicado', cat: 'Avisos', nome: 'Comunicado', build: (W, H) => { const u = U(W, H), m = W * .08, cw = W - 2 * m;
+    return { bg: C.wh, els: [S('quatro', { x: W * .5, y: H * .02, w: H * .95 * 631 / 647, h: H * .95, fill: C.pl, op: .3 }), S('slash', { x: m, y: H * .12, w: 130 * u, h: 116 * u, fill: C.blue }),
+      T('Comunicado', { x: m, y: H * .12 + 160 * u, w: cw, size: 28 * u, wt: 700, ls: .22, up: true, color: C.blue }),
+      T('Novidade para <b>todo o time</b>', { x: m, y: H * .12 + 220 * u, w: cw * .8, size: 108 * u, wt: 800, ls: -.035, lh: 1.04, color: C.mid, hl: C.blue }),
+      T('Conte em poucas frases o que muda, a partir de quando e a quem procurar em caso de dúvida.', { x: m, y: H * .12 + 220 * u + 400 * u, w: cw * .72, size: 40 * u, wt: 300, lh: 1.45, color: '#4a5864' }), marca(W, H, false)] }; } },
+  { id: 'frase', cat: 'Redes sociais', nome: 'Frase de destaque', build: (W, H) => { const u = U(W, H), m = W * .09;
+    return { bg: C.blue, els: [S('quatro', { x: W * .35, y: H * .2, w: H * .9 * 631 / 647, h: H * .9, fill: '#FFFFFF', op: .08 }), S('slash', { x: m, y: H * .14, w: 150 * u, h: 134 * u, fill: '#FFFFFF' }),
+      T('Inovação que <b>transforma</b>, soluções que <b>conectam</b>.', { x: m, y: H * .14 + 200 * u, w: W - 2 * m, size: 120 * u, wt: 700, ls: -.035, lh: 1.06, hl: '#E9ECEC' }), marca(W, H)] }; } },
+  { id: 'dica', cat: 'Redes sociais', nome: 'Post de dica', build: (W, H) => { const u = U(W, H), m = W * .09, cw = W - 2 * m;
+    return { bg: C.wh, els: [S('rect', { x: 0, y: 0, w: W, h: 18 * u, fill: C.blue }), T('Dica 4juris', { x: m, y: H * .1, w: cw, size: 28 * u, wt: 700, ls: .22, up: true, color: C.blue }),
+      T('Um título curto e <b>direto</b>', { x: m, y: H * .1 + 70 * u, w: cw, size: 104 * u, wt: 800, ls: -.035, lh: 1.04, color: C.mid, hl: C.blue }),
+      T('Explique a dica em duas ou três frases. Texto curto funciona melhor em redes sociais.', { x: m, y: H * .1 + 70 * u + 380 * u, w: cw, size: 40 * u, wt: 300, lh: 1.45, color: '#4a5864' }), marca(W, H, false)] }; } },
+  { id: 'galeria', cat: 'Eventos', nome: 'Galeria de fotos', build: (W, H) => { const u = U(W, H), m = W * .06, g = 24 * u, top = H * .2, ah = H - top - 150 * u, aw = W - 2 * m;
+    const land = W >= H, cols = 2, rows = 2, cw = (aw - g) / cols, ch = (ah - g) / rows, els = [T('Como foi o <b>evento</b>', { x: m, y: H * .06, w: aw, size: 80 * u, wt: 800, ls: -.03, lh: 1.02 })];
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) els.push(I({ x: m + c * (cw + g), y: top + r * (ch + g), w: cw, h: ch, shape: 'round', radius: 24 * u }));
+    return { bg: C.mid, els: [...els, marca(W, H)] }; } },
+  { id: 'apr-capa', cat: 'Apresentação', nome: 'Capa de apresentação', build: (W, H) => { const u = U(W, H), m = W * .08;
+    return { bg: C.mid, els: [S('quatro', { x: W * .5, y: -H * .1, w: H * 1.2 * 631 / 647, h: H * 1.2, fill: C.pl, op: .12 }),
+      T('Sejam bem-vindos!', { x: m, y: H * .3, w: W * .8, size: 32 * u, wt: 400, ls: .32, up: true }),
+      T('Título da <b>apresentação</b>', { x: m, y: H * .3 + 80 * u, w: W * .8, size: 150 * u, wt: 800, ls: -.04, lh: 1 }),
+      T('Uma frase que resume o assunto', { x: m, y: H * .3 + 80 * u + 340 * u, w: W * .7, size: 44 * u, wt: 300, color: C.pl }), marca(W, H)] }; } },
+  { id: 'apr-secao', cat: 'Apresentação', nome: 'Seção / transição', build: (W, H) => { const u = U(W, H), m = W * .08;
+    return { bg: C.mid, els: [S('quatro', { x: W * .52, y: -H * .1, w: H * 1.2 * 631 / 647, h: H * 1.2, fill: C.pl, op: .12 }), T('Agora', { x: m, y: H * .38, w: W * .8, size: 28 * u, wt: 700, ls: .22, up: true, color: C.bl }),
+      T('Título da <b>seção</b>', { x: m, y: H * .38 + 56 * u, w: W * .8, size: 150 * u, wt: 800, ls: -.04, lh: 1 }), marca(W, H)] }; } },
+  { id: 'apr-topicos', cat: 'Apresentação', nome: 'Título e tópicos', build: (W, H) => { const u = U(W, H), m = W * .08, els = [T('Pauta de <b>hoje</b>', { x: m, y: H * .1, w: W * .84, size: 92 * u, wt: 800, ls: -.035, lh: 1.02, color: C.mid, hl: C.blue })];
+    const y0 = H * .1 + 170 * u, step = Math.min(120 * u, (H - y0 - 160 * u) / 4);
+    ['Primeiro tópico', 'Segundo tópico', 'Terceiro tópico', 'Quarto tópico'].forEach((t, i) => { const y = y0 + i * step, s = Math.min(76 * u, step * .72);
+      els.push(S('rect', { x: m, y, w: s, h: s, radius: 16 * u, fill: C.blue }), T(String(i + 1), { x: m, y: y + (s - 36 * u * 1.15) / 2, w: s, size: 36 * u, wt: 800, align: 'center' }), T(t, { x: m + s + 30 * u, y: y + (s - 46 * u * 1.15) / 2, w: W - m * 2 - s - 30 * u, size: 46 * u, wt: 600, color: C.mid })); });
+    return { bg: C.win, els: [...els, marca(W, H, false)] }; } },
+  { id: 'apr-numeros', cat: 'Apresentação', nome: 'Números em destaque', build: (W, H) => { const u = U(W, H), m = W * .07, g = 28 * u, n = 3, cw = (W - 2 * m - g * (n - 1)) / n, ch = Math.min(H * .42, 420 * u + 100), y = H * .36;
+    const els = [T('Resultados do <b>mês</b>', { x: m, y: H * .1, w: W * .86, size: 92 * u, wt: 800, ls: -.035, lh: 1.02 })];
+    [['120', 'clientes ativos'], ['85%', 'de satisfação'], ['4,8', 'nota média']].forEach(([v, r], i) => { const x = m + i * (cw + g);
+      els.push(S('rect', { x, y, w: cw, h: ch, radius: 28 * u, fill: '#FFFFFF', op: .07 }), S('rect', { x, y, w: cw, h: 10 * u, radius: 5 * u, fill: C.blue }),
+        T(v, { x: x + 30 * u, y: y + 60 * u, w: cw - 60 * u, size: Math.min(150 * u, cw * .36), wt: 800, ls: -.04, lh: 1, color: C.bl }), T(r, { x: x + 30 * u, y: y + 60 * u + Math.min(150 * u, cw * .36) + 36 * u, w: cw - 60 * u, size: 36 * u, wt: 400, color: C.pl })); });
+    return { bg: C.mid, els: [...els, marca(W, H)] }; } },
+  { id: 'branco', cat: 'Em branco', nome: 'Em branco', build: (W, H) => ({ bg: C.wh, els: [] }) },
+];
+const CATS = ['Todos', 'Avisos', 'Pessoas', 'Eventos', 'Redes sociais', 'Apresentação', 'Em branco'];
+
+/* ================================================================
+   HISTÓRICO + SALVAR
+   ================================================================ */
+let tDeb, tThumb;
+const status = t => { $('#status').textContent = t; };
+function serial() { const d = { ...doc, assets: undefined }; return JSON.stringify(d); }
+function usados() { const ids = new Set(); doc.pages.forEach(p => p.els.forEach(e => { if (e.t === 'img' && e.src && assets[e.src]) ids.add(e.src); })); return Object.fromEntries([...ids].map(i => [i, assets[i]])); }
+function snap() {
+  doc.salvoEm = Date.now();
+  const j = serial(); if (hist[hi] === j) return;
+  hist = hist.slice(0, hi + 1); hist.push(j); if (hist.length > 60) hist.shift(); hi = hist.length - 1;
+  $('#undo').disabled = hi <= 0; $('#redo').disabled = hi >= hist.length - 1;
+  persistir();
+}
+function persistir() {
+  if (!EMB || RO) { try { localStorage.setItem('4jcanva:v1', JSON.stringify({ ...doc, assets: usados() })); status('Salvo neste navegador'); } catch (e) { status('Armazenamento cheio: baixe o arquivo'); } return; }
+  enviar({ type: 'save', deck: { ...doc, assets: usados() } }); status('Salvo no sistema');
+  clearTimeout(tThumb); tThumb = setTimeout(async () => { try { enviar({ type: 'thumb', thumb: await paginaPNG(0, 480 / doc.w, 'jpeg') }); } catch (e) { } }, 1800);
+}
+const snapDeb = () => { clearTimeout(tDeb); status('Editando…'); tDeb = setTimeout(snap, 450); };
+function restaurar(i) {
+  const d = JSON.parse(hist[i]); doc = normalizar({ ...d, assets: {} }); assets = assetsVivos; hi = i; cur = clamp(cur, 0, doc.pages.length - 1); sel = null; editando = null;
+  persistir(); renderTudo(); $('#undo').disabled = hi <= 0; $('#redo').disabled = hi >= hist.length - 1;
+}
+let assetsVivos = {};
+const setAsset = (id, url) => { assets[id] = url; assetsVivos = assets; };
+
+let tToast;
+function toast(t) { const e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(tToast); tToast = setTimeout(() => e.classList.remove('on'), 2400); }
+
+/* ================================================================
+   RENDER DO EDITOR
+   ================================================================ */
+function ajustarEscala() {
+  const st = $('#stage'), w = st.clientWidth - 52, h = st.clientHeight - 52, fit = Math.max(.02, Math.min(w / doc.w, h / doc.h));
+  scale = fit * (zoom || 1); $('#zoomv').textContent = Math.round(scale * 100) + '%';
+  const wr = $('#wrap'); wr.style.width = doc.w * scale + 'px'; wr.style.height = doc.h * scale + 'px';
+  $('#pg').style.transform = `scale(${scale})`; $('#pg').style.setProperty('--k', 1 / scale);
+}
+function renderPage() {
+  const g = $('#pg'), p = pg();
+  g.innerHTML = `<div class="pg" id="pgbg" style="width:${doc.w}px;height:${doc.h}px;background:${p.bg}">${p.els.map(e => elHTML(e, !RO)).join('')}</div><div id="ov"></div>`;
+  g.style.width = doc.w + 'px'; g.style.height = doc.h + 'px';
+  $('#wrap').style.background = p.bg;
+  ajustarEscala(); drawSel();
+  if (editando) { const n = $('#e_' + editando); if (n) { n.focus(); const r = document.createRange(); r.selectNodeContents(n); if (!selTudo) r.collapse(false); selTudo = false; const s = getSelection(); s.removeAllRanges(); s.addRange(r); } }
+}
+function box(e) {   // dimensões reais (texto tem altura automática)
+  const n = $('#e_' + e.id); return { x: e.x, y: e.y, w: e.t === 'text' ? (n ? n.offsetWidth : e.w) : e.w, h: e.t === 'text' ? (n ? n.offsetHeight : 60) : e.h };
+}
+function drawSel() {
+  const ov = $('#ov'); if (!ov) return; ov.innerHTML = '';
+  const e = sel && el(sel); if (!e || RO || editando === sel) return;
+  const b = box(e), tx = e.t === 'text';
+  const hs = (tx ? ['w', 'e'] : ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']).map(h => {
+    const l = h.includes('w') ? '0%' : h.includes('e') ? '100%' : '50%', t = h.includes('n') ? '0%' : h.includes('s') ? '100%' : '50%';
+    const cur = { n: 'ns', s: 'ns', e: 'ew', w: 'ew', nw: 'nwse', se: 'nwse', ne: 'nesw', sw: 'nesw' }[h] + '-resize';
+    return `<div class="hd" data-h="${h}" style="left:${l};top:${t};cursor:${cur}"></div>`;
+  }).join('');
+  ov.innerHTML = `<div class="selbox" style="left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;transform:rotate(${e.rot || 0}deg)">${hs}<div class="hd" data-h="rot" style="left:50%;top:calc(-34px*var(--k))"></div></div>`;
+}
+function renderThumbs() {
+  $('#cnt').textContent = doc.pages.length;
+  const tw = Math.max(90, Math.min(176, $('#thumbs').clientWidth - 44)), k = tw / doc.w, th = Math.min(doc.h * k, 220), k2 = Math.min(k, th / doc.h), w2 = doc.w * k2;
+  $('#thumbs').innerHTML = doc.pages.map((p, i) => `<div class="th${i === cur ? ' on' : ''}" draggable="true" data-i="${i}"><span class="n">${i + 1}</span><div class="tw" style="width:${w2}px;height:${doc.h * k2}px"><div style="transform:scale(${k2});transform-origin:0 0;width:${doc.w}px;height:${doc.h}px;position:absolute">${pageHTML(p)}</div></div><div class="acts"><button data-a="dup" title="Duplicar" aria-label="Duplicar página"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></button><button data-a="del" title="Excluir" aria-label="Excluir página"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button></div></div>`).join('');
+}
+function updThumb(i = cur) {
+  const t = $$('#thumbs .th')[i]; if (!t) return; const inner = t.querySelector('.tw > div'); if (inner) inner.innerHTML = pageHTML(doc.pages[i]);
+}
+function renderTudo() { $('#titulo').value = doc.titulo; renderThumbs(); renderPage(); renderInsp(); }
+
+/* ---------- inspetor ---------- */
+const seg = (name, val, opts) => `<div class="seg" data-seg="${name}">${opts.map(([v, n]) => `<button data-v="${v}" class="${String(v) === String(val) ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+const sws = (name, val, list = CORES) => `<div class="sws" data-sws="${name}">${list.map(c => `<button class="sw${c.toLowerCase() === (val || '').toLowerCase() ? ' on' : ''}" data-v="${c}" aria-label="${c}" style="background:${c}"></button>`).join('')}<label class="sw cus${list.some(c => c.toLowerCase() === (val || '').toLowerCase()) ? '' : ' on'}" title="Cor personalizada"><input type="color" value="${/^#[0-9a-f]{6}$/i.test(val) ? val : '#4C6FDF'}" data-cus="${name}"></label></div>`;
+const rng = (name, label, v, min, max, step = 1, suf = '') => `<div class="field"><label>${label}<span data-out="${name}">${v}${suf}</span></label><input class="rg" type="range" min="${min}" max="${max}" step="${step}" value="${v}" data-rng="${name}"></div>`;
+const num = (name, label, v) => `<div class="field"><label>${label}</label><input class="inp" type="number" value="${rnd(v)}" data-num="${name}"></div>`;
+
+function renderInsp() {
+  const b = $('#ibody'), e = sel && el(sel);
+  if (RO) { b.innerHTML = ''; return; }
+  if (!e) {
+    $('#itt').textContent = 'Página';
+    const cp = PRESETS.find(p => p.w === doc.w && p.h === doc.h);
+    b.innerHTML = `<div class="sec"><h4>Fundo</h4>${sws('bg', pg().bg)}</div>
+    <div class="sec"><h4>Tamanho</h4><p class="hint" style="margin:0 0 10px"><b style="color:#fff">${cp ? cp.n : 'Personalizado'}</b> · ${doc.w}×${doc.h} px</p><button class="btn sm" data-act="size">Mudar tamanho…</button><p class="hint">Ao mudar, tudo se reposiciona e reescala automaticamente.</p></div>
+    <div class="sec"><h4>Dica</h4><p class="hint" style="margin:0">Clique num elemento para editar. Duplo clique em um texto para digitar; selecione palavras e use <b style="color:#fff">Ctrl+B</b> para destacar na cor da marca.</p></div>`;
+    return;
+  }
+  const nome = { text: 'Texto', img: 'Imagem', shape: 'Forma' }[e.t];
+  $('#itt').textContent = nome;
+  let h = '';
+  if (e.t === 'text') {
+    h += `<div class="sec"><h4>Texto</h4>
+      ${rng('size', 'Tamanho', Math.round(e.size), 8, 400, 1, ' px')}
+      <div class="field"><label>Peso</label>${seg('wt', e.wt, [[300, 'Leve'], [400, 'Normal'], [600, 'Semi'], [800, 'Forte']])}</div>
+      <div class="field"><label>Alinhamento</label>${seg('align', e.align, [['left', 'Esq.'], ['center', 'Centro'], ['right', 'Dir.']])}</div>
+      <div class="field"><label>Cor</label>${sws('color', e.color)}</div>
+      <div class="field"><label>Cor do destaque (Ctrl+B)</label>${sws('hl', e.hl || e.color)}</div>
+      ${rng('lh', 'Altura da linha', e.lh, .8, 2, .05)}
+      ${rng('ls', 'Espaçamento das letras', e.ls, -.08, .4, .01, ' em')}
+      <label class="chk"><input type="checkbox" data-chk="up" ${e.up ? 'checked' : ''}> CAIXA ALTA</label>
+      <label class="chk"><input type="checkbox" data-chk="it" ${e.it ? 'checked' : ''}> Itálico</label></div>`;
+  } else if (e.t === 'img') {
+    h += `<div class="sec"><h4>Imagem</h4><div class="acts2"><button class="btn sm" data-act="trocar">${asset(e) ? 'Trocar imagem' : 'Enviar imagem'}</button>${asset(e) ? '<button class="btn sm danger" data-act="limpar-img">Remover</button>' : ''}</div>
+      <div class="field" style="margin-top:12px"><label>Forma</label>${seg('shape', e.shape, [['rect', 'Reta'], ['round', 'Arredond.'], ['circle', 'Círculo']])}</div>
+      ${e.shape === 'round' ? rng('radius', 'Arredondamento', Math.round(e.radius), 0, 300, 1, ' px') : ''}
+      <div class="field"><label>Ajuste</label>${seg('fit', e.fit, [['cover', 'Preencher'], ['contain', 'Conter']])}</div>
+      ${rng('zoom', 'Zoom', e.zoom, 1, 3, .05, '×')}${rng('px', 'Posição horizontal', e.px, 0, 100, 1, '%')}${rng('py', 'Posição vertical', e.py, 0, 100, 1, '%')}</div>`;
+  } else {
+    h += `<div class="sec"><h4>Forma</h4><div class="field"><label>Cor</label>${sws('fill', e.fill)}</div>
+      ${e.kind === 'rect' ? rng('radius', 'Arredondamento', Math.round(e.radius), 0, 300, 1, ' px') : ''}</div>`;
+  }
+  h += `<div class="sec"><h4>Posição e tamanho</h4><div class="row2">${num('x', 'X', e.x)}${num('y', 'Y', e.y)}</div><div class="row2">${num('w', 'Largura', box(e).w)}${e.t === 'text' ? '' : num('h', 'Altura', e.h)}</div>
+    ${rng('rot', 'Rotação', Math.round(e.rot || 0), -180, 180, 1, '°')}${rng('op', 'Opacidade', e.op, 0, 1, .05)}
+    <div class="field"><label>Alinhar na página</label><div class="acts2"><button class="btn sm" data-al="l">⟸</button><button class="btn sm" data-al="c">↔</button><button class="btn sm" data-al="r">⟹</button><button class="btn sm" data-al="t">⤒</button><button class="btn sm" data-al="m">↕</button><button class="btn sm" data-al="b">⤓</button></div></div></div>
+    <div class="sec"><h4>Camadas</h4><div class="acts2"><button class="btn sm" data-act="frente">Trazer p/ frente</button><button class="btn sm" data-act="tras">Enviar p/ trás</button></div>
+    <label class="chk"><input type="checkbox" data-chk="lock" ${e.lock ? 'checked' : ''}> Bloquear posição</label>
+    <div class="acts2" style="margin-top:8px"><button class="btn sm" data-act="dup">Duplicar</button><button class="btn sm danger" data-act="del">Excluir</button></div></div>`;
+  b.innerHTML = h;
+}
+
+/* ================================================================
+   AÇÕES
+   ================================================================ */
+function commit(estrutural = true) { snap(); updThumb(); renderPage(); if (estrutural) renderInsp(); }
+function selecionar(id) { sel = id; if (editando && editando !== id) editando = null; drawSel(); renderInsp(); }
+function addEl(e) { pg().els.push(e); sel = e.id; snap(); updThumb(); renderPage(); renderInsp(); }
+function centro(w, h) { return { x: Math.round((doc.w - w) / 2), y: Math.round((doc.h - h) / 2) }; }
+function adicionar(k) {
+  const u = U(doc.w, doc.h);
+  if (k === 'titulo') { const w = doc.w * .8; addEl(T('Seu título aqui', { ...centro(w, 100 * u), w, size: 100 * u, wt: 800, ls: -.03, lh: 1.05, color: lum(pg().bg) < .3 ? '#fff' : C.mid })); editando = sel; selTudo = true; renderPage(); }
+  else if (k === 'sub') { const w = doc.w * .7; addEl(T('Subtítulo com mais detalhes', { ...centro(w, 50 * u), w, size: 48 * u, wt: 300, color: lum(pg().bg) < .3 ? '#E9ECEC' : '#4a5864' })); editando = sel; selTudo = true; renderPage(); }
+  else if (k === 'texto') { const w = doc.w * .6; addEl(T('Escreva seu texto', { ...centro(w, 40 * u), w, size: 40 * u, lh: 1.35, color: lum(pg().bg) < .3 ? '#fff' : C.mid })); editando = sel; selTudo = true; renderPage(); }
+  else if (k === 'img') pedirImagem({ novo: 'rect' });
+  else if (k === 'foto-redonda') pedirImagem({ novo: 'circle' });
+  else if (k === 'rect') { const w = doc.w * .4, h = doc.h * .25; addEl(S('rect', { ...centro(w, h), w, h, radius: 24 * u })); }
+  else if (k === 'circle') { const d = Math.min(doc.w, doc.h) * .35; addEl(S('circle', { ...centro(d, d), w: d, h: d })); }
+  else if (k === 'slash') { const w = doc.w * .22, h = w * 150 / 170; addEl(S('slash', { ...centro(w, h), w, h })); }
+  else if (k === 'quatro') { const h = doc.h * .5, w = h * 631 / 647; addEl(S('quatro', { ...centro(w, h), w, h, fill: C.pl, op: .35 })); }
+}
+function lum(h) { h = h.replace('#', ''); const n = parseInt(h.length === 3 ? [...h].map(x => x + x).join('') : h, 16), f = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(n >> 16 & 255) + .7152 * f(n >> 8 & 255) + .0722 * f(n & 255); }
+function dup() { const e = sel && el(sel); if (!e) return; const c = JSON.parse(JSON.stringify(e)); c.id = uid(); c.x += 30; c.y += 30; pg().els.push(c); sel = c.id; commit(); }
+function del() { if (!sel) return; pg().els = pg().els.filter(e => e.id !== sel); sel = null; editando = null; commit(); }
+function ordem(frente) { const i = pg().els.findIndex(e => e.id === sel); if (i < 0) return; const [e] = pg().els.splice(i, 1); frente ? pg().els.push(e) : pg().els.unshift(e); commit(false); }
+function alinhar(k) {
+  const e = el(sel); if (!e) return; const b = box(e);
+  if (k === 'l') e.x = 0; if (k === 'c') e.x = (doc.w - b.w) / 2; if (k === 'r') e.x = doc.w - b.w;
+  if (k === 't') e.y = 0; if (k === 'm') e.y = (doc.h - b.h) / 2; if (k === 'b') e.y = doc.h - b.h;
+  commit(false); renderInsp();
+}
+function ir(i) { cur = clamp(i, 0, doc.pages.length - 1); sel = null; editando = null; $$('#thumbs .th').forEach((t, j) => t.classList.toggle('on', j === cur)); renderPage(); renderInsp(); }
+function novaPagina(clone) {
+  const p = clone ? JSON.parse(JSON.stringify(pg())) : { bg: pg().bg, els: [] }; p.id = uid(); if (clone) p.els.forEach(e => e.id = uid());
+  doc.pages.splice(cur + 1, 0, p); cur++; sel = null; snap(); renderTudo();
+}
+function delPagina(i) {
+  if (doc.pages.length <= 1) return toast('A arte precisa ter ao menos uma página.');
+  doc.pages.splice(i, 1); cur = clamp(cur > i ? cur - 1 : cur, 0, doc.pages.length - 1); sel = null; snap(); renderTudo();
+}
+function moverPagina(i, j) { if (i === j || j < 0 || j >= doc.pages.length) return; const [p] = doc.pages.splice(i, 1); doc.pages.splice(j, 0, p); cur = j; snap(); renderTudo(); }
+
+/* ---------- tamanho ("redimensionar mágico") ---------- */
+function redimensionar(w, h) {
+  w = clamp(Math.round(w), 100, 5000); h = clamp(Math.round(h), 100, 5000);
+  const sx = w / doc.w, sy = h / doc.h, s = Math.min(sx, sy);
+  doc.pages.forEach(p => p.els.forEach(e => {
+    const manter = e.t === 'img' || (e.t === 'shape' && (e.kind === 'circle' || e.kind === 'quatro'));   // fotos, círculos e o "4" mantêm a proporção
+    if (manter) { const cx = (e.x + e.w / 2) * sx, cy = (e.y + e.h / 2) * sy; e.w *= s; e.h *= s; e.x = cx - e.w / 2; e.y = cy - e.h / 2; }
+    else { e.x *= sx; e.y *= sy; e.w *= sx; if (e.t !== 'text') e.h *= sy; }
+    if (e.t === 'text') e.size *= s; if (e.radius) e.radius *= s;
+  }));
+  doc.w = w; doc.h = h; zoom = 0; snap(); renderTudo(); toast(`Tamanho alterado para ${w}×${h}.`);
+}
+function abrirTamanho(criacao) {
+  $('#mtit').textContent = 'Tamanho da arte'; $('#mfilters').innerHTML = '';
+  $('#mbody').className = 'mb presets';
+  $('#mbody').innerHTML = PRESETS.map(p => { const k = 70 / Math.max(p.w, p.h); return `<button class="card" data-size="${p.id}"><div class="shape"><i style="width:${p.w * k}px;height:${p.h * k}px"></i></div><b>${p.n}</b><span>${p.d}</span></button>`; }).join('') +
+    `<div class="card" style="cursor:default"><b>Personalizado</b><span>Largura × altura (px)</span><div class="row2" style="margin-top:8px"><input class="inp" id="cw" type="number" min="100" max="5000" value="${doc.w}"><input class="inp" id="ch" type="number" min="100" max="5000" value="${doc.h}"></div><button class="btn sm pri" id="cok" style="margin-top:8px">Aplicar</button></div>`;
+  $('#ovl').classList.add('on');
+}
+
+/* ---------- modelos ---------- */
+let catAtual = 'Todos';
+function abrirModelos(ini) {
+  inicial = !!ini; $('#mtit').textContent = ini ? 'Comece por um modelo' : 'Modelos'; $('#mbody').className = 'mb';
+  $('#mfilters').innerHTML = CATS.map(c => `<button class="chip${c === catAtual ? ' on' : ''}" data-cat="${c}">${c}</button>`).join('') + (ini ? '' : `<label class="chk" style="margin:0 0 0 auto"><input type="checkbox" id="mapp"> Adicionar como nova página</label>`);
+  $('#ovl').classList.add('on'); listarModelos();
+}
+function listarModelos() {
+  const lista = TEMPLATES.filter(t => catAtual === 'Todos' || t.cat === catAtual);
+  $('#mbody').innerHTML = lista.map(t => `<button class="card" data-tpl="${t.id}"><div class="pv"></div><b>${t.nome}</b><span>${t.cat}</span></button>`).join('');
+  $$('#mbody .card').forEach(c => {
+    const pv = c.querySelector('.pv'), t = TEMPLATES.find(x => x.id === c.dataset.tpl), w = pv.clientWidth || 190, k = w / doc.w;
+    pv.style.height = Math.min(doc.h * k, 340) + 'px'; const k2 = Math.min(k, 340 / doc.h);
+    const r = t.build(doc.w, doc.h); pv.innerHTML = `<div style="transform:scale(${k2});transform-origin:0 0;width:${doc.w}px;height:${doc.h}px;position:absolute">${pageHTML({ bg: r.bg, els: r.els })}</div>`;
+  });
+}
+function aplicarModelo(id, anexar) {
+  const t = TEMPLATES.find(x => x.id === id), r = t.build(doc.w, doc.h);
+  if (anexar) { doc.pages.splice(cur + 1, 0, { id: uid(), bg: r.bg, els: r.els }); cur++; } else { pg().bg = r.bg; pg().els = r.els; }
+  sel = null; editando = null; snap(); renderTudo(); fechar();
+}
+const fechar = () => { $('#ovl').classList.remove('on'); };
+
+/* ---------- imagens ---------- */
+let alvoImg = null;
+function pedirImagem(a) { alvoImg = a; const f = $('#file'); f.value = ''; f.click(); }
+function lerImagem(file, max) {
+  return new Promise((ok, no) => {
+    if (!file || !file.type.startsWith('image/')) return no();
+    const r = new FileReader();
+    r.onload = () => { const im = new Image(); im.onload = () => {
+      const k = Math.min(1, max / Math.max(im.width, im.height)), w = Math.round(im.width * k), h = Math.round(im.height * k);
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(im, 0, 0, w, h);
+      ok({ url: file.type === 'image/png' ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', .82), w, h });
+    }; im.onerror = no; im.src = r.result; };
+    r.onerror = no; r.readAsDataURL(file);
+  });
+}
+async function aplicarImagem(a, file, pos) {
+  try {
+    const { url, w, h } = await lerImagem(file, 1500), id = uid(); setAsset(id, url);
+    if (a && a.id) { const e = el(a.id); e.src = id; commit(); return; }
+    const circ = a && a.novo === 'circle', mw = doc.w * (circ ? .4 : .6), mh = doc.h * (circ ? .4 : .6), s = Math.min(mw / w, mh / h);
+    const ew = circ ? Math.min(mw, mh) : w * s, eh = circ ? ew : h * s, c = pos || centro(ew, eh);
+    addEl(I({ x: pos ? pos.x - ew / 2 : c.x, y: pos ? pos.y - eh / 2 : c.y, w: ew, h: eh, src: id, shape: circ ? 'circle' : 'rect', fit: 'cover' }));
+  } catch (e) { toast('Não consegui ler essa imagem.'); }
+}
+
+/* ================================================================
+   EXPORTAÇÃO: PNG (SVG + foreignObject, fonte embutida), PDF, JSON
+   ================================================================ */
+let fontCSS = null;
+async function fontesEmbutidas() {
+  if (fontCSS !== null) return fontCSS;
+  try {
+    const link = document.querySelector('link[href*="fonts.googleapis.com/css2"]');
+    let css = await (await fetch(link.href)).text();
+    for (const u of new Set([...css.matchAll(/url\((https:[^)]+)\)/g)].map(m => m[1]))) {
+      const blob = await (await fetch(u)).blob();
+      const d = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
+      css = css.split(u).join(d);
+    }
+    fontCSS = css;
+  } catch (e) { fontCSS = ''; }
+  return fontCSS;
+}
+async function paginaPNG(i, k = 1, tipo = 'png') {
+  const estilo = document.querySelector('style').textContent, css = estilo.slice(estilo.indexOf('/*PG-START*/'), estilo.indexOf('/*PG-END*/'));
+  const wrap = document.createElement('div'); wrap.innerHTML = pageHTML(doc.pages[i]);
+  const xml = new XMLSerializer().serializeToString(wrap.firstElementChild), W = doc.w, H = doc.h;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.round(W * k)}" height="${Math.round(H * k)}" viewBox="0 0 ${W} ${H}"><foreignObject width="${W}" height="${H}"><div xmlns="http://www.w3.org/1999/xhtml" style="position:relative;width:${W}px;height:${H}px"><style><![CDATA[${await fontesEmbutidas()}\n${css}]]></style>${xml}</div></foreignObject></svg>`;
+  const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); await img.decode();
+  const cv = document.createElement('canvas'); cv.width = Math.round(W * k); cv.height = Math.round(H * k); const cx = cv.getContext('2d');
+  if (tipo === 'jpeg') { cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); }
+  cx.drawImage(img, 0, 0);
+  if (tipo === 'jpeg') return cv.toDataURL('image/jpeg', .72);
+  return new Promise((ok, no) => cv.toBlob(b => b ? ok(b) : no(new Error('png')), 'image/png'));
+}
+function baixar(nome, conteudo, tipo) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([conteudo], { type: tipo })); a.download = nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+const nomeArq = () => (doc.titulo || 'arte').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'arte';
+async function exportarPNG(idxs) {
+  try {
+    toast(idxs.length > 1 ? 'Gerando imagens…' : 'Gerando imagem…');
+    for (const i of idxs) { baixar(`${nomeArq()}${doc.pages.length > 1 ? '-pagina-' + (i + 1) : ''}.png`, await paginaPNG(i), 'image/png'); if (idxs.length > 1) await new Promise(r => setTimeout(r, 350)); }
+    toast(idxs.length > 1 ? `${idxs.length} imagens baixadas.` : `Imagem baixada (${doc.w}×${doc.h}).`);
+  } catch (e) { toast('Não consegui gerar a imagem neste navegador. Use o PDF.'); }
+}
+function pdf() {
+  $('#print').innerHTML = `<style>@page{size:${doc.w}px ${doc.h}px;margin:0}</style>` + doc.pages.map(p => `<div class="pp" style="width:${doc.w}px;height:${doc.h}px">${pageHTML(p)}</div>`).join('');
+  toast('No diálogo: destino "Salvar como PDF" e marque "Gráficos de segundo plano".'); setTimeout(() => window.print(), 350);
+}
+function salvarJSON() { snap(); baixar(nomeArq() + '.json', JSON.stringify({ ...doc, assets: usados() }, null, 2), 'application/json'); }
+
+/* ---------- apresentar ---------- */
+let show = { on: false, i: 0 };
+function renderShow() {
+  const k = Math.min(innerWidth / doc.w, innerHeight / doc.h), box = $('#sbox');
+  box.style.width = doc.w * k + 'px'; box.style.height = doc.h * k + 'px';
+  box.innerHTML = `<div class="pgv" style="transform:scale(${k});width:${doc.w}px;height:${doc.h}px">${pageHTML(doc.pages[show.i])}</div>`; $('#sn').textContent = `${show.i + 1} / ${doc.pages.length}`;
+}
+function abrirShow() { show = { on: true, i: cur }; $('#show').classList.add('on'); renderShow(); document.documentElement.requestFullscreen?.().catch(() => { }); }
+function sairShow() { if (!show.on) return; show.on = false; $('#show').classList.remove('on'); if (document.fullscreenElement) document.exitFullscreen?.().catch(() => { }); ir(show.i); }
+const passo = d => { const j = clamp(show.i + d, 0, doc.pages.length - 1); if (j !== show.i) { show.i = j; renderShow(); } };
+
+/* ================================================================
+   INTERAÇÃO NO CANVAS: mover, redimensionar, girar, guias
+   ================================================================ */
+let drag = null;
+const wrap = $('#wrap');
+const pt = ev => { const r = wrap.getBoundingClientRect(); return { x: (ev.clientX - r.left) / scale, y: (ev.clientY - r.top) / scale }; };
+
+wrap.addEventListener('pointerdown', ev => {
+  if (RO || ev.button !== 0) return;
+  const hd = ev.target.closest('.hd');
+  if (hd && sel) {
+    const e = el(sel), b = box(e), p = pt(ev); wrap.setPointerCapture(ev.pointerId);
+    drag = { mode: hd.dataset.h === 'rot' ? 'rot' : 'resize', h: hd.dataset.h, id: sel, p0: p, e0: { ...e }, b0: b, moved: false };
+    ev.preventDefault(); return;
+  }
+  const n = ev.target.closest('.el');
+  if (!n) { if (editando) finalizarEdicao(); selecionar(null); return; }
+  const id = n.dataset.id; if (editando === id) return;
+  if (editando) finalizarEdicao();
+  selecionar(id);
+  const e = el(id); if (e.lock) return;
+  wrap.setPointerCapture(ev.pointerId); drag = { mode: 'move', id, p0: pt(ev), e0: { ...e }, b0: box(e), moved: false }; ev.preventDefault();
+});
+wrap.addEventListener('pointermove', ev => {
+  if (!drag) return;
+  const e = el(drag.id), p = pt(ev), dx = p.x - drag.p0.x, dy = p.y - drag.p0.y;
+  if (!drag.moved && Math.hypot(dx, dy) * scale < 3) return; drag.moved = true;
+  if (drag.mode === 'move') {
+    let x = drag.e0.x + dx, y = drag.e0.y + dy; const b = drag.b0, g = guias(e, x, y, b);
+    e.x = g.x; e.y = g.y; mostrarGuias(g.gx, g.gy);
+  } else if (drag.mode === 'rot') {
+    const c = { x: drag.e0.x + drag.b0.w / 2, y: drag.e0.y + drag.b0.h / 2 }; let a = Math.atan2(p.y - c.y, p.x - c.x) * 180 / Math.PI + 90;
+    if (ev.shiftKey || Math.abs(((a + 360) % 90)) < 4 || Math.abs(((a + 360) % 90) - 90) < 4) a = Math.round(a / 15) * 15; e.rot = Math.round(((a + 540) % 360) - 180);
+  } else {
+    const th = (drag.e0.rot || 0) * Math.PI / 180, c = Math.cos(th), s = Math.sin(th), ldx = dx * c + dy * s, ldy = -dx * s + dy * c, h = drag.h;
+    const sx = h.includes('e') ? 1 : h.includes('w') ? -1 : 0, sy = h.includes('s') ? 1 : h.includes('n') ? -1 : 0, b0 = drag.b0, tx = e.t === 'text';
+    let nw = Math.max(20, b0.w + sx * ldx), nh = Math.max(20, b0.h + sy * ldy);
+    if (!tx && sx && sy && (e.t === 'img' || ev.shiftKey)) { const r = b0.h / b0.w; nh = nw * r; }
+    if (!sx) nw = b0.w; if (!sy || tx) nh = b0.h;
+    const cx = sx * (nw - b0.w) / 2, cy = sy * (nh - b0.h) / 2, wx = cx * c - cy * s, wy = cx * s + cy * c;
+    const ncx = drag.e0.x + b0.w / 2 + wx, ncy = drag.e0.y + b0.h / 2 + wy;
+    e.w = nw; if (!tx) e.h = nh; e.x = ncx - nw / 2; e.y = ncy - nh / 2;
+  }
+  aplicarEstilo(e); drawSel();
+});
+const fim = () => { if (!drag) return; const m = drag.moved; drag = null; justDragged = m; setTimeout(() => { justDragged = false; }, 0); $('#ov') && $$('#pg .gd').forEach(g => g.remove()); if (m) { commit(); } };
+wrap.addEventListener('pointerup', fim); wrap.addEventListener('pointercancel', fim);
+const sobre = ev => document.elementsFromPoint(ev.clientX, ev.clientY).find(n => n.classList && n.classList.contains('el'));
+wrap.addEventListener('dblclick', ev => {
+  if (RO) return; const n = sobre(ev); if (!n || !n.classList.contains('t')) return; const e = el(n.dataset.id); if (e.lock) return;
+  editando = e.id; selecionar(e.id); renderPage();
+});
+function aplicarEstilo(e) {
+  const n = $('#e_' + e.id); if (!n) return;
+  n.style.left = e.x + 'px'; n.style.top = e.y + 'px'; n.style.width = e.w + 'px'; if (e.t !== 'text') n.style.height = e.h + 'px'; n.style.transform = `rotate(${e.rot || 0}deg)`;
+}
+function guias(e, x, y, b) {
+  const th = 6 / scale, xs = [0, doc.w / 2, doc.w], ys = [0, doc.h / 2, doc.h];
+  pg().els.forEach(o => { if (o.id === e.id || o.hidden) return; const ob = box(o); xs.push(o.x, o.x + ob.w / 2, o.x + ob.w); ys.push(o.y, o.y + ob.h / 2, o.y + ob.h); });
+  let gx = null, gy = null, bx = th, by = th;
+  [0, b.w / 2, b.w].forEach(off => xs.forEach(t => { const d = Math.abs(x + off - t); if (d < bx) { bx = d; x = t - off; gx = t; } }));
+  [0, b.h / 2, b.h].forEach(off => ys.forEach(t => { const d = Math.abs(y + off - t); if (d < by) { by = d; y = t - off; gy = t; } }));
+  return { x, y, gx, gy };
+}
+function mostrarGuias(gx, gy) {
+  $$('#pg .gd').forEach(g => g.remove()); const ov = $('#ov'); if (!ov) return;
+  if (gx != null) ov.insertAdjacentHTML('beforeend', `<div class="gd v" style="left:${gx}px"></div>`);
+  if (gy != null) ov.insertAdjacentHTML('beforeend', `<div class="gd h" style="top:${gy}px"></div>`);
+}
+function finalizarEdicao() {
+  const id = editando; if (!id) return; const n = $('#e_' + id), e = el(id); editando = null;
+  if (n && e) { e.html = limpar(n.innerHTML); if (!strip(e.html)) { pg().els = pg().els.filter(x => x.id !== id); sel = null; } }
+  commit();
+}
+/* edição de texto */
+$('#pg').addEventListener('input', ev => { const n = ev.target.closest('.el.t'); if (!n) return; const e = el(n.dataset.id); e.html = limpar(n.innerHTML); updThumb(); snapDeb(); });
+$('#pg').addEventListener('keydown', ev => { if (ev.target.closest('[contenteditable]')) { if (ev.key === 'Enter') { ev.preventDefault(); document.execCommand('insertLineBreak'); } if (ev.key === 'Escape') finalizarEdicao(); } });
+$('#pg').addEventListener('paste', ev => { if (!ev.target.closest('[contenteditable]')) return; ev.preventDefault(); document.execCommand('insertText', false, ev.clipboardData.getData('text/plain')); });
+$('#pg').addEventListener('focusout', ev => { if (editando && ev.target.closest && ev.target.closest('.el.t')) setTimeout(() => { if (editando && !document.activeElement.closest('#pg .el.t')) finalizarEdicao(); }, 0); });
+/* soltar imagem no canvas */
+wrap.addEventListener('dragover', ev => { if (!RO) ev.preventDefault(); });
+wrap.addEventListener('drop', ev => { if (RO) return; ev.preventDefault(); const f = ev.dataTransfer.files[0]; if (f) { const n = ev.target.closest('.el.i'); aplicarImagem(n ? { id: n.dataset.id } : null, f, pt(ev)); } });
+wrap.addEventListener('click', ev => { if (RO || justDragged) return; const n = sobre(ev); if (n && n.classList.contains('i')) { const e = el(n.dataset.id); if (!asset(e) && sel === e.id && !ev.target.closest('.hd')) pedirImagem({ id: e.id }); } });
+$('#file').addEventListener('change', ev => { const f = ev.target.files[0]; if (f && alvoImg) aplicarImagem(alvoImg, f); });
+
+/* ================================================================
+   EVENTOS DA INTERFACE
+   ================================================================ */
+$('#bar').addEventListener('click', ev => { const b = ev.target.closest('[data-add]'); if (b && !RO) adicionar(b.dataset.add); });
+$('#ibody').addEventListener('click', ev => {
+  const b = ev.target.closest('button'); if (!b) return; const e = sel && el(sel);
+  if (b.dataset.act) { const a = b.dataset.act;
+    if (a === 'size') abrirTamanho(); else if (!e) return;
+    else if (a === 'trocar') pedirImagem({ id: e.id }); else if (a === 'limpar-img') { e.src = ''; commit(); }
+    else if (a === 'frente') ordem(true); else if (a === 'tras') ordem(false); else if (a === 'dup') dup(); else if (a === 'del') del(); return; }
+  if (b.dataset.al) return alinhar(b.dataset.al);
+  const sg = b.closest('[data-seg]'); if (sg && e) { const k = sg.dataset.seg; e[k] = k === 'wt' ? +b.dataset.v : b.dataset.v; return commit(); }
+  const sw = b.closest('[data-sws]'); if (sw) { setCor(sw.dataset.sws, b.dataset.v); }
+});
+function setCor(k, v, estr = true) {
+  if (k === 'bg') pg().bg = v; else { const e = el(sel); if (!e) return; e[k] = v; }
+  updThumb(); renderPage(); snapDeb(); if (estr) renderInsp();
+}
+$('#ibody').addEventListener('input', ev => {
+  const t = ev.target, e = sel && el(sel);
+  if (t.dataset.cus) return setCor(t.dataset.cus, t.value, false);
+  if (t.dataset.rng && e) { const k = t.dataset.rng, v = +t.value; e[k] = v; const o = $(`[data-out="${k}"]`); if (o) o.textContent = ({ size: ' px', radius: ' px', rot: '°', zoom: '×', px: '%', py: '%', ls: ' em' }[k] ? v + { size: ' px', radius: ' px', rot: '°', zoom: '×', px: '%', py: '%', ls: ' em' }[k] : v); renderPage(); updThumb(); snapDeb(); return; }
+  if (t.dataset.num && e) { const v = +t.value; if (!isNaN(v)) { e[t.dataset.num] = v; renderPage(); updThumb(); snapDeb(); } }
+});
+$('#ibody').addEventListener('change', ev => {
+  const t = ev.target, e = sel && el(sel); if (!e) return;
+  if (t.dataset.chk) { e[t.dataset.chk] = t.checked; commit(); }
+});
+$('#thumbs').addEventListener('click', ev => { const th = ev.target.closest('.th'); if (!th) return; const i = +th.dataset.i, a = ev.target.closest('[data-a]')?.dataset.a; if (a === 'dup') { cur = i; return novaPagina(true); } if (a === 'del') return delPagina(i); ir(i); });
+let dp = -1;
+$('#thumbs').addEventListener('dragstart', ev => { const th = ev.target.closest('.th'); if (!th || RO) return ev.preventDefault(); dp = +th.dataset.i; ev.dataTransfer.setData('text/plain', 'p'); });
+$('#thumbs').addEventListener('dragover', ev => { const th = ev.target.closest('.th'); if (!th || dp < 0) return; ev.preventDefault(); $$('.th.over').forEach(x => x.classList.remove('over')); th.classList.add('over'); });
+$('#thumbs').addEventListener('drop', ev => { const th = ev.target.closest('.th'); if (!th || dp < 0) return; ev.preventDefault(); moverPagina(dp, +th.dataset.i); dp = -1; });
+$('#thumbs').addEventListener('dragend', () => { dp = -1; $$('.th.over').forEach(x => x.classList.remove('over')); });
+$('#addpg').onclick = () => novaPagina(false);
+$('#titulo').addEventListener('input', ev => { doc.titulo = ev.target.value; snapDeb(); document.title = (doc.titulo || 'Arte') + ' · 4juris Canva'; });
+$('#undo').onclick = () => hi > 0 && restaurar(hi - 1); $('#redo').onclick = () => hi < hist.length - 1 && restaurar(hi + 1);
+$('#mtpl').onclick = () => abrirModelos(false); $('#msize').onclick = () => abrirTamanho();
+$('#play').onclick = abrirShow;
+$('#bexp').onclick = ev => { ev.stopPropagation(); $('#mexp').classList.toggle('on'); };
+document.addEventListener('click', () => $('#mexp').classList.remove('on'));
+$('#mexp').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-ex]'); if (!b) return; const a = b.dataset.ex;
+  if (a === 'png') exportarPNG([cur]); else if (a === 'png-todas') exportarPNG(doc.pages.map((_, i) => i)); else if (a === 'pdf') pdf(); else if (a === 'json') salvarJSON();
+});
+$('#mclose').onclick = fechar;
+$('#ovl').addEventListener('click', ev => {
+  if (ev.target.id === 'ovl') fechar();
+  const c = ev.target.closest('[data-cat]'); if (c) { catAtual = c.dataset.cat; $$('#mfilters .chip').forEach(x => x.classList.toggle('on', x.dataset.cat === catAtual)); listarModelos(); }
+  const t = ev.target.closest('[data-tpl]'); if (t) aplicarModelo(t.dataset.tpl, !!$('#mapp')?.checked);
+  const s = ev.target.closest('[data-size]'); if (s) { const p = PRESETS.find(x => x.id === s.dataset.size); fechar(); if (p.w !== doc.w || p.h !== doc.h) redimensionar(p.w, p.h); }
+  if (ev.target.id === 'cok') { fechar(); redimensionar(+$('#cw').value || doc.w, +$('#ch').value || doc.h); }
+});
+$('#zin').onclick = () => { zoom = clamp((zoom || 1) * 1.2, .2, 4); ajustarEscala(); drawSel(); };
+$('#zout').onclick = () => { zoom = clamp((zoom || 1) / 1.2, .2, 4); ajustarEscala(); drawSel(); };
+$('#zfit').onclick = () => { zoom = 0; ajustarEscala(); drawSel(); };
+
+document.addEventListener('keydown', ev => {
+  if (!doc) return;
+  if (show.on) { if (['ArrowRight', 'ArrowDown', ' ', 'Enter', 'PageDown'].includes(ev.key)) { ev.preventDefault(); passo(1); } else if (['ArrowLeft', 'ArrowUp', 'Backspace', 'PageUp'].includes(ev.key)) { ev.preventDefault(); passo(-1); } else if (ev.key === 'Escape') sairShow(); return; }
+  const campo = ev.target.closest && ev.target.closest('input,textarea,select,[contenteditable]');
+  if ((ev.ctrlKey || ev.metaKey) && !campo) { if (ev.key === 'z') { ev.preventDefault(); hi > 0 && restaurar(hi - 1); } else if (ev.key === 'y' || (ev.shiftKey && ev.key === 'Z')) { ev.preventDefault(); hi < hist.length - 1 && restaurar(hi + 1); } else if (ev.key === 'd') { ev.preventDefault(); dup(); } return; }
+  if (campo || RO) return;
+  if (ev.key === 'Delete' || ev.key === 'Backspace') { if (sel) { ev.preventDefault(); del(); } }
+  else if (ev.key === 'Escape') { selecionar(null); fechar(); }
+  else if (ev.key === 'Enter' && sel && el(sel).t === 'text') { ev.preventDefault(); editando = sel; renderPage(); }
+  else if (ev.key.startsWith('Arrow') && sel) { ev.preventDefault(); const e = el(sel), s = ev.shiftKey ? 10 : 1; if (ev.key === 'ArrowLeft') e.x -= s; if (ev.key === 'ArrowRight') e.x += s; if (ev.key === 'ArrowUp') e.y -= s; if (ev.key === 'ArrowDown') e.y += s; aplicarEstilo(e); drawSel(); snapDeb(); }
+});
+$('#sp').onclick = () => passo(-1); $('#sx').onclick = () => passo(1); $('#sq').onclick = sairShow;
+$('#show').addEventListener('click', ev => { if (ev.target.closest('.ctl')) return; passo(ev.clientX < innerWidth / 3 ? -1 : 1); });
+document.addEventListener('fullscreenchange', () => { if (show.on && !document.fullscreenElement) sairShow(); });
+addEventListener('resize', () => { if (!doc) return; if (show.on) renderShow(); else { ajustarEscala(); drawSel(); } });
+addEventListener('beforeunload', () => { if (!doc || RO) return; clearTimeout(tDeb); snap(); });
+$('#stage').addEventListener('wheel', ev => { if (!ev.ctrlKey || !doc) return; ev.preventDefault(); zoom = clamp((zoom || 1) * (ev.deltaY < 0 ? 1.1 : 1 / 1.1), .2, 4); ajustarEscala(); drawSel(); }, { passive: false });
+
+/* ================================================================
+   INÍCIO
+   ================================================================ */
+function iniciar(d, titulo, tamanho) {
+  if (doc) return;
+  if (d) doc = normalizar(d);
+  else { const t = tamanho || { w: 1080, h: 1080 }; doc = normalizar(novoDoc(t.w, t.h, titulo)); inicial = true; }
+  assetsVivos = assets;
+  hist = [serial()]; hi = 0; $('#undo').disabled = true; $('#redo').disabled = true;
+  document.title = (doc.titulo || 'Arte') + ' · 4juris Canva'; document.body.classList.toggle('ro', RO);
+  $('#titulo').readOnly = RO; renderTudo();
+  (document.fonts && document.fonts.ready || Promise.resolve()).then(() => { ajustarEscala(); drawSel(); });
+  if (inicial && !RO) setTimeout(() => abrirModelos(true), 150);
+}
+if (EMB) {
+  addEventListener('message', ev => {
+    const m = ev.data;
+    if (ev.origin !== location.origin || ev.source !== parent || !m || m.src !== '4j-deck' || m.type !== 'load') return;
+    RO = !!m.readonly; iniciar(m.deck, m.titulo, m.tamanho);
+  });
+  enviar({ type: 'ready' });
+  setTimeout(() => iniciar(null), 3000);
+} else {
+  let ls = null; try { ls = JSON.parse(localStorage.getItem('4jcanva:v1')); } catch (e) { }
+  const q = new URLSearchParams(location.search), p = PRESETS.find(x => x.id === q.get('tamanho'));
+  iniciar(ls, 'Minha arte', p && { w: p.w, h: p.h });
+}
+</script>
+</body>
+</html>

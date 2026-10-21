@@ -7,7 +7,7 @@ import { SugestaoForm } from '@/components/SugestaoForm'
 export function CaixaSugestoes() {
   const [aberto, setAberto] = useState(false)
   const { pathname } = useLocation()
-  if (pathname.startsWith('/apresentacoes/')) return null // não cobre o editor
+  if (pathname.startsWith('/canva/')) return null // não cobre o editor
   return (
     <>
       <button type="button" onClick={() => setAberto(true)} aria-label="Enviar sugestão anônima"

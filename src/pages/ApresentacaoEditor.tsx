@@ -9,6 +9,7 @@ import { ImpressaoApresentacao } from '@/components/ImpressaoApresentacao'
 import { feedback, toast } from '@/components/toast'
 import { cn, uid } from '@/lib/utils'
 import { EditorLivreApresentacao } from '@/components/EditorLivreApresentacao'
+import { ehArte, tamanhoDe } from '@/domain/canva'
 import { CORES_TEMA, modeloPorId, novoSlide, revisar, slideDoModelo, itensDe } from '@/domain/apresentacoes'
 
 export default function ApresentacaoEditor() {
@@ -23,16 +24,16 @@ function EditorLivre({ id }: { id: string }) {
   const navigate = useNavigate()
   const a = s.apresentacoes.find((x) => x.id === id)
   const [salvoEm, setSalvoEm] = useState<string | null>(null)
-  if (!a) return <Card><EmptyState icon="Presentation" title="Apresentação não encontrada" action={<Link to="/apresentacoes" className="text-brand font-semibold">Voltar para Apresentações</Link>} /></Card>
+  if (!a) return <Card><EmptyState icon="Presentation" title="Apresentação não encontrada" action={<Link to="/canva" className="text-brand font-semibold">Voltar para o 4juris Canva</Link>} /></Card>
   const meu = a.criadaPorId === s.realUser().id
   return (
     <>
-      <Link to="/apresentacoes" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted hover:text-ink mb-3"><Icon name="ArrowLeft" className="h-4 w-4" />Apresentações</Link>
-      <PageHeader title={a.titulo} subtitle={`Editor livre 4JURIS${meu ? '' : ` · por ${s.nomeDe(a.criadaPorId)} (somente leitura)`}`}
+      <Link to="/canva" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted hover:text-ink mb-3"><Icon name="ArrowLeft" className="h-4 w-4" />4juris Canva</Link>
+      <PageHeader title={a.titulo} subtitle={`${ehArte(a.modeloId) ? `Arte · ${tamanhoDe(a.modeloId).w}×${tamanhoDe(a.modeloId).h} px` : 'Apresentação'}${meu ? '' : ` · por ${s.nomeDe(a.criadaPorId)} (somente leitura)`}`}
         eyebrow={meu ? (salvoEm ? <Badge tone="success" dot>Salvo às {salvoEm}</Badge> : <Badge tone="neutral">Edições são salvas automaticamente</Badge>) : <Badge tone="brand">Compartilhada</Badge>}
         actions={meu
           ? <Toggle checked={a.compartilhada} onChange={(v) => feedback(s.salvarApresentacao(a.id, { compartilhada: v }), v ? 'Compartilhada com a comunidade.' : 'Agora só você vê.')} label={a.compartilhada ? 'Compartilhada com toda a comunidade' : 'Só você vê esta apresentação'} />
-          : <Button variant="ghost" icon="Copy" onClick={() => { const r = s.duplicarApresentacao(a.id); if (feedback(r, 'Cópia criada em "Minhas".') && r.ok) navigate(`/apresentacoes/${r.id}`) }}>Duplicar para editar</Button>} />
+          : <Button variant="ghost" icon="Copy" onClick={() => { const r = s.duplicarApresentacao(a.id); if (feedback(r, 'Cópia criada em "Minhas".') && r.ok) navigate(`/canva/${r.id}`) }}>Duplicar para editar</Button>} />
       <EditorLivreApresentacao a={a} somenteLeitura={!meu} onSalvo={() => setSalvoEm(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))} />
     </>
   )
@@ -53,7 +54,7 @@ function EditorModelo() {
   const modelo = modeloPorId(a?.modeloId ?? '')
   const problemas = useMemo(() => (a ? revisar(modelo, a) : []), [a, modelo])
 
-  if (!a) return <Card><EmptyState icon="Presentation" title="Apresentação não encontrada" action={<Link to="/apresentacoes" className="text-brand font-semibold">Voltar para Apresentações</Link>} /></Card>
+  if (!a) return <Card><EmptyState icon="Presentation" title="Apresentação não encontrada" action={<Link to="/canva" className="text-brand font-semibold">Voltar para o 4juris Canva</Link>} /></Card>
   const meu = a.criadaPorId === eu
   const slide = a.slides[sel] ?? a.slides[0]
   const sm = slideDoModelo(modelo, slide.modeloSlideId)
@@ -75,7 +76,7 @@ function EditorModelo() {
 
   return (
     <>
-      <Link to="/apresentacoes" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted hover:text-ink mb-3 no-print"><Icon name="ArrowLeft" className="h-4 w-4" />Apresentações</Link>
+      <Link to="/canva" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted hover:text-ink mb-3 no-print"><Icon name="ArrowLeft" className="h-4 w-4" />4juris Canva</Link>
       <PageHeader title={a.titulo} subtitle={`${modelo.nome} · ${a.slides.length} slide(s)${meu ? '' : ` · por ${s.nomeDe(a.criadaPorId)} (somente leitura)`}`}
         eyebrow={meu ? (salvoEm ? <Badge tone="success" dot>Salvo às {salvoEm}</Badge> : <Badge tone="neutral">Edições são salvas automaticamente</Badge>) : <Badge tone="brand">Compartilhada</Badge>}
         actions={<>

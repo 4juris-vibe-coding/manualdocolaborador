@@ -54,7 +54,7 @@ export const NAV: NavGroup[] = [
     items: [
       { to: '/onboarding', label: 'Minha integração', icon: 'Rocket', desc: 'Primeiros passos na 4JURIS.' },
       { to: '/conteudos', label: 'Conteúdos & trilhas', icon: 'GraduationCap', desc: 'Materiais de apoio e trilhas voluntárias.' },
-      { to: '/apresentacoes', label: 'Apresentações', icon: 'Presentation', desc: 'Crie apresentações a partir de modelos prontos.' },
+      { to: '/canva', label: '4juris Canva', icon: 'Palette', desc: 'Crie apresentações, posts, stories e artes com modelos prontos.' },
       { to: '/cultura', label: 'Nossa cultura', icon: 'Sparkle', desc: 'Propósito, missão, visão e valores.' },
       { to: '/manual', label: 'Manual de convivência', icon: 'BookOpen', desc: 'Cultura, comunicação e boas práticas.' },
       { to: '/faq', label: 'Central de dúvidas', icon: 'HelpCircle', desc: 'Perguntas frequentes e busca.' },

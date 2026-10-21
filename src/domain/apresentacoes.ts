@@ -96,8 +96,26 @@ const resultados: ModeloApresentacao = {
   temaPadrao: { variante: 'claro', cor: '#0f9d6b', mostrarLogo: true },
 }
 
-/** `modeloId` das apresentações feitas no Editor livre (HTML embutido), que não usam modelo de campos. */
+/** `modeloId` das apresentações feitas no Editor livre (HTML embutido), que não usam modelo de campos.
+ *  Formato: "editor-livre" ou "editor-livre:<id do modelo pronto>" (ids em MODELOS_EDITOR_LIVRE). */
 export const MODELO_EDITOR_LIVRE = 'editor-livre'
+export const ehEditorLivre = (modeloId: string) => modeloId === MODELO_EDITOR_LIVRE || modeloId.startsWith(`${MODELO_EDITOR_LIVRE}:`)
+export const modeloProntoDe = (modeloId: string) => (modeloId.split(':')[1] ?? '4jurisday')
+
+/** Modelos prontos do Editor livre. Os slides de cada um ficam em public/4jurisday-apresentacao.html (TEMPLATES);
+ *  mantenha os ids iguais nos dois lugares. */
+export const MODELOS_EDITOR_LIVRE = [
+  { id: 'avisos', nome: 'Aviso importante', descricao: 'Foto de fundo, mensagem e data/público.', icone: 'Megaphone' },
+  { id: 'novo-colaborador', nome: 'Boas-vindas · novo colaborador', descricao: 'Foto, nome, cargo e mensagem de boas-vindas.', icone: 'UserPlus' },
+  { id: 'novas-contratacoes', nome: 'Novas contratações', descricao: 'Abertura e grade de pessoas com foto.', icone: 'Users' },
+  { id: 'aniversariantes', nome: 'Aniversariantes do mês', descricao: 'Fotos e datas em fundo claro.', icone: 'Cake' },
+  { id: 'destaque-mes', nome: 'Destaque do mês', descricao: 'Homenagem a uma pessoa, com foto.', icone: 'Trophy' },
+  { id: 'evento', nome: 'Convite de evento', descricao: 'Foto de fundo com data, hora e local.', icone: 'CalendarDays' },
+  { id: 'comunicado', nome: 'Comunicado com imagem', descricao: 'Imagem de um lado, texto do outro.', icone: 'FileText' },
+  { id: 'galeria', nome: 'Galeria do evento', descricao: 'Até 4 fotos com legenda.', icone: 'Heart' },
+  { id: '4jurisday', nome: '4JURIS Day completo', descricao: 'Roteiro completo do evento.', icone: 'Presentation' },
+  { id: 'branco', nome: 'Em branco', descricao: 'Só uma capa para começar.', icone: 'Square' },
+] as const
 
 export const MODELOS: ModeloApresentacao[] = [institucional, resultados]
 export const modeloPorId = (id: string) => MODELOS.find((m) => m.id === id) ?? MODELOS[0]

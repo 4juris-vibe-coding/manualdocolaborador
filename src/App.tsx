@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ToastHost } from '@/components/toast'
 import Login from '@/pages/Login'
@@ -57,6 +57,12 @@ const Apresentacoes = lazy(() => import('@/pages/Apresentacoes'))
 const ApresentacaoEditor = lazy(() => import('@/pages/ApresentacaoEditor'))
 const Admin = lazy(() => import('@/pages/Admin'))
 const Seguranca = lazy(() => import('@/pages/Seguranca'))
+
+/** Links antigos (/apresentacoes/:id) apontam para o 4juris Canva. */
+function RedirecionarCanva() {
+  const { id = '' } = useParams()
+  return <Navigate to={`/canva/${id}`} replace />
+}
 
 function Carregando() {
   return (
@@ -123,8 +129,10 @@ export function App() {
             <Route path="/rh/faturamento" element={<RHFaturamento />} />
             <Route path="/avaliacoes" element={<MinhasAvaliacoes />} />
             <Route path="/sugestoes" element={<Sugestoes />} />
-            <Route path="/apresentacoes" element={<Apresentacoes />} />
-            <Route path="/apresentacoes/:id" element={<ApresentacaoEditor />} />
+            <Route path="/canva" element={<Apresentacoes />} />
+            <Route path="/apresentacoes" element={<Navigate to="/canva" replace />} />
+            <Route path="/canva/:id" element={<ApresentacaoEditor />} />
+            <Route path="/apresentacoes/:id" element={<RedirecionarCanva />} />
             <Route path="/cultura" element={<Cultura />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/configuracoes" element={<AdminConfig />} />

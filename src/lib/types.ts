@@ -782,6 +782,8 @@ export interface Apresentacao {
   /** Presente (null = ainda vazio) quando a apresentação é do "Editor livre" (public/4jurisday-apresentacao.html);
    *  nesse caso o conteúdo vive aqui e `slides` é só um espaço reservado. */
   deck?: unknown | null
+  /** Miniatura (data URL JPEG) gerada pelo editor embutido, usada na lista do 4juris Canva. */
+  capa?: string
 }
 
 /* ---------- Caixa de sugestões (anônima) ---------- */

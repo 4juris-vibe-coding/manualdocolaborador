@@ -173,7 +173,7 @@ textarea.inp{resize:vertical;min-height:84px;line-height:1.45}
 .slide b{font-weight:inherit;color:var(--acc)}
 .slide i{font-style:italic}
 .slide .foot{position:absolute;left:120px;right:120px;bottom:54px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:26px;font-size:26px;color:var(--fg2);font-weight:600;letter-spacing:.02em}
-.slide .foot .br{font-weight:800;color:var(--fg);letter-spacing:-.01em;display:flex;align-items:center;gap:12px}
+.slide .foot .br{font-weight:800;color:var(--fg);letter-spacing:-.01em;display:flex;align-items:center}
 .slide .foot .br em{font-style:normal;color:var(--accS2)}
 .slide .foot .br img{height:42px;display:block}
 .slide .kicker{font-size:28px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:var(--acc);margin-bottom:28px}
@@ -230,6 +230,28 @@ textarea.inp{resize:vertical;min-height:84px;line-height:1.45}
 .slide .imgl .content{padding-left:1010px} .slide .imgr .content{padding-right:1010px}
 .slide .body{font-size:calc(var(--k)*40px);line-height:1.5;color:var(--fg2);margin-top:44px;font-weight:300}
 
+/* foto de fundo / pessoa em destaque / galeria */
+.slide .bgimg{position:absolute;inset:0;background:linear-gradient(135deg,var(--accS),#122029);display:grid;place-items:center;overflow:hidden}
+.slide .bgimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.slide .bgimg svg{width:420px;opacity:.22}
+.slide .ovl{position:absolute;inset:0;background:linear-gradient(180deg,rgba(18,32,41,.1) 0%,rgba(18,32,41,.5) 42%,rgba(18,32,41,.93) 100%)}
+.slide .fotobg{color:#fff}
+.slide .fotobg .sub{color:rgba(255,255,255,.82)}
+.slide .chips{display:flex;gap:18px;flex-wrap:wrap;margin-top:44px}
+.slide .chip{font-size:32px;font-weight:600;padding:16px 30px;border-radius:16px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:var(--fg);line-height:1.1}
+.slide .chip:first-child{background:var(--chipbg);color:var(--chipfg);border-color:transparent}
+.slide .bv{flex-direction:row;align-items:center;gap:110px;padding-bottom:150px}
+.slide .bv .av.big{width:540px;height:540px;flex:none;margin:0}
+.slide .bvt{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start}
+.slide .bvt .chip{margin-top:44px;background:var(--card);border-color:var(--line);color:var(--acc)}
+.slide .bvt .body{margin-top:34px}
+.slide .gal{flex:1;min-height:0;display:grid;gap:28px;margin-top:50px;width:100%}
+.slide .ft{position:relative;border-radius:28px;overflow:hidden;background:linear-gradient(135deg,var(--accS),#122029);display:grid;place-items:center}
+.slide .ft img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.slide .ft>svg{width:160px;opacity:.25}
+.slide .ft .lg{position:absolute;left:0;right:0;bottom:0;padding:70px 30px 26px;background:linear-gradient(180deg,transparent,rgba(18,32,41,.88));color:#fff;font-size:30px;font-weight:600}
+.slide.editing .ft[data-img]:hover:after{display:none}
+
 /* encerramento */
 .slide .ct{display:flex;gap:120px;margin-top:100px}
 .slide .ct b{display:block;color:var(--fg);font-weight:800;font-size:38px;margin-bottom:10px}
@@ -275,6 +297,8 @@ body.ro #foot span:first-child{visibility:hidden}
     <span id="status"></span>
     <button class="btn ico" id="undo" title="Desfazer (Ctrl+Z)" aria-label="Desfazer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
     <button class="btn ico" id="redo" title="Refazer (Ctrl+Y)" aria-label="Refazer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+    <button class="btn" id="tpl" title="Modelos prontos: aviso, novo colaborador, evento…"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Modelos</button>
+    <button class="btn" id="png" title="Baixa o slide atual como imagem (1920×1080)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>Imagem</button>
     <button class="btn" id="pdf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>PDF</button>
     <button class="btn" id="dlhtml" title="Baixa um .html com a apresentação gravada dentro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Baixar .html</button>
     <button class="btn pri" id="play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>Apresentar</button>
@@ -417,7 +441,7 @@ const LAYOUTS = {
     render: (s, c) => `<div class="content">${ed(c, s, 'kicker', 'Rótulo (opcional)', 'kicker opt')}${ed(c, s, 'titulo', 'Título', 'h-lg')}<div class="grow"><div class="gn" style="grid-template-columns:repeat(${s.items.length},1fr)">${s.items.map((n, i) => `<div class="cn">${ed(c, s, 'valor', 'Nº', 'v', 'div', n, i)}${ed(c, s, 'rotulo', 'Descrição', 'r', 'div', n, i)}</div>`).join('')}</div></div></div>`,
   }),
   imagem: L('Imagem + texto', 'Foto de um lado, texto do outro', {
-    bg: '#F8F9F9', deco: { t: 'nenhum', p: 'dir' }, align: 'esq', opt: { img: 'esq' },
+    bg: '#F8F9F9', deco: { t: 'nenhum', p: 'dir' }, align: 'esq', opt: { img: 'esq' }, imgs: [{ k: 'imagem', n: 'Imagem' }],
     opts: [{ k: 'img', n: 'Posição da imagem', o: [['esq', 'Esquerda'], ['dir', 'Direita']] }],
     f: { kicker: '', titulo: 'Título do assunto', corpo: 'Escreva aqui o conteúdo principal. Poucas frases funcionam melhor em apresentações.', imagem: '' },
     render: (s, c) => `<div class="${s.opt.img === 'dir' ? 'imgr' : 'imgl'}"><div class="ip ${s.opt.img === 'dir' ? 'dir' : 'esq'}" ${c.edit ? 'data-img="f:imagem"' : ''}>${s.f.imagem ? `<img src="${s.f.imagem}" alt="">` : quatro('#fff')}</div><div class="content mid">${ed(c, s, 'kicker', 'Rótulo (opcional)', 'kicker opt')}${ed(c, s, 'titulo', 'Título', 'h-lg')}${ed(c, s, 'corpo', 'Texto', 'body')}</div></div>`,
@@ -427,13 +451,32 @@ const LAYOUTS = {
     f: { citacao: 'Uma frase que inspira o time a ir além.', autor: 'Nome · cargo' },
     render: (s, c) => `<div class="content mid"><div class="mk">${barras('var(--accS)')}</div>${ed(c, s, 'citacao', 'Citação', 'qt')}${ed(c, s, 'autor', 'Autoria', 'qa opt')}</div>`,
   }),
+  fotoFundo: L('Foto de fundo', 'Avisos e convites: imagem grande, título e data/local', {
+    bg: '#122029', escuro: true, deco: { t: 'nenhum', p: 'dir' }, align: 'esq',
+    imgs: [{ k: 'imagem', n: 'Imagem de fundo' }],
+    f: { kicker: 'Aviso importante', titulo: 'Atenção ao novo <b>horário</b>', sub: 'Descreva o aviso em uma ou duas frases.', chip1: 'A partir de 10/11', chip2: 'Todos os times', chip3: '', imagem: '' },
+    render: (s, c) => `<div class="bgimg">${s.f.imagem ? `<img src="${s.f.imagem}" alt="">` : quatro('#fff')}</div><div class="ovl"></div><div class="content fotobg" style="justify-content:flex-end">${ed(c, s, 'kicker', 'Rótulo (opcional)', 'kicker opt')}${ed(c, s, 'titulo', 'Título do aviso', 'h-xl')}${ed(c, s, 'sub', 'Detalhe (opcional)', 'sub opt')}<div class="chips">${['chip1', 'chip2', 'chip3'].map(k => ed(c, s, k, 'Data, hora ou local', 'chip opt')).join('')}</div></div>`,
+  }),
+  boasVindas: L('Pessoa em destaque', 'Novo colaborador, destaque do mês, homenagem', {
+    bg: '#122029', deco: { t: 'quatro', p: 'dir' }, align: 'esq',
+    imgs: [{ k: 'foto', n: 'Foto da pessoa' }],
+    f: { kicker: 'Seja bem-vindo(a)', nome: 'Nome <b>Sobrenome</b>', cargo: 'Cargo · Área', frase: 'Uma frase curta de boas-vindas do time.', inicio: 'Começa em 03/11', foto: '' },
+    render: (s, c) => `<div class="content bv"><div class="av big" ${c.edit ? 'data-img="f:foto"' : ''}>${s.f.foto ? `<img src="${s.f.foto}" alt="">` : quatro('#fff')}</div><div class="bvt">${ed(c, s, 'kicker', 'Rótulo', 'kicker')}${ed(c, s, 'nome', 'Nome', 'h-xl')}${ed(c, s, 'cargo', 'Cargo · área', 'sub')}${ed(c, s, 'frase', 'Mensagem (opcional)', 'body opt')}${ed(c, s, 'inicio', 'Data de início (opcional)', 'chip opt')}</div></div>`,
+  }),
+  galeria: L('Galeria de fotos', 'Registro de evento ou ação: 1 a 4 fotos com legenda', {
+    bg: '#122029', deco: { t: 'nenhum', p: 'dir' }, align: 'esq',
+    f: { titulo: 'Como foi o <b>evento</b>' },
+    list: { key: 'galeria', n: 'Foto', min: 1, max: 4, novo: () => ({ img: '', legenda: 'Legenda' }), resumo: i => strip(i.legenda) || 'Foto',
+      padrao: () => [{ img: '', legenda: 'Legenda da foto' }, { img: '', legenda: 'Legenda da foto' }, { img: '', legenda: 'Legenda da foto' }] },
+    render: (s, c) => { const n = s.items.length; return `<div class="content" style="padding-bottom:150px">${ed(c, s, 'titulo', 'Título', 'h-lg')}<div class="gal" style="grid-template-columns:repeat(${n <= 3 ? n : 2},1fr)">${s.items.map((it, i) => `<div class="ft" ${c.edit ? `data-img="item:${i}:img"` : ''}>${it.img ? `<img src="${it.img}" alt="">` : quatro('#fff')}<div class="lg">${ed(c, s, 'legenda', 'Legenda', '', 'div', it, i)}</div></div>`).join('')}</div></div>`; },
+  }),
   encerramento: L('Encerramento', 'Agradecimento e contatos', {
     bg: '#F8F9F9', deco: { t: 'nenhum', p: 'dir' }, align: 'esq', semRodape: true,
     f: { titulo: 'Obrigado!', c1t: 'Contato', c1d: 'rh@4juris.com.br', c2t: 'Próximo encontro', c2d: 'Data e local', vert: '4JURIS' },
     render: (s, c) => `<div class="content mid" style="padding-right:560px">${ed(c, s, 'titulo', 'Título', 'h-xl')}<div class="ct"><div>${ed(c, s, 'c1t', 'Rótulo', '', 'b')}${ed(c, s, 'c1d', 'Detalhe', '', 'div')}</div><div>${ed(c, s, 'c2t', 'Rótulo', '', 'b')}${ed(c, s, 'c2d', 'Detalhe', '', 'div')}</div></div></div><div class="vert">${ed(c, s, 'vert', 'MARCA', '')}</div>`,
   }),
 };
-const LAYOUT_ORDER = ['capa', 'secao', 'destaque', 'pessoas', 'topicos', 'programacao', 'numeros', 'imagem', 'citacao', 'encerramento'];
+const LAYOUT_ORDER = ['capa', 'secao', 'destaque', 'fotoFundo', 'boasVindas', 'pessoas', 'galeria', 'topicos', 'programacao', 'numeros', 'imagem', 'citacao', 'encerramento'];
 const up = s => s.opt && s.opt.caixa === 'alta' ? ' up' : '';
 
 /* campo editável (só vira contenteditable no editor) */
@@ -458,15 +501,15 @@ function trocarLayout(s, id) {
 
 /* cores derivadas do fundo do slide: garante contraste em qualquer cor */
 function slideVars(s, deck) {
-  const bg = s.bg, dark = lum(bg) < .25, acc = deck.accent;
+  const bgReal = s.bg, bg = LAYOUTS[s.layout].escuro ? '#122029' : s.bg, dark = lum(bg) < .25, acc = deck.accent;   // layouts sobre foto são sempre escuros
   const accT = (() => { const cand = dark ? mix(acc, '#ffffff', .32) : acc; return contrast(bg, cand) >= 3 ? cand : (dark ? '#ffffff' : '#122029'); })();
-  const onAcc = contrast(bg, acc) < 2;                           // acento "some" no fundo (ex.: azul sobre azul)
+  const onAcc = contrast(bg, acc) < 1.4;                         // preenchimento "some" no fundo (ex.: azul sobre azul); azul sobre Midnight é o look da marca
   const accS = onAcc ? (dark ? 'rgba(255,255,255,.9)' : '#122029') : acc;
   const azulBg = dark && contrast(bg, '#0032D2') < 2.5;
   const g1 = !dark || s.glow === false ? 'transparent' : azulBg ? 'rgba(255,255,255,.16)' : 'rgba(0,50,210,.40)';
   const g2 = !dark || s.glow === false ? 'transparent' : azulBg ? 'rgba(0,10,90,.45)' : 'rgba(0,50,210,.20)';
   const v = {
-    bg, fg: dark ? '#ffffff' : '#122029', fg2: dark ? 'rgba(255,255,255,.74)' : '#4a5864',
+    bg: bgReal, fg: dark ? '#ffffff' : '#122029', fg2: dark ? 'rgba(255,255,255,.74)' : '#4a5864',
     line: dark ? 'rgba(255,255,255,.16)' : 'rgba(18,32,41,.16)', card: dark ? 'rgba(255,255,255,.06)' : 'rgba(18,32,41,.05)',
     acc: accT, accS, accS2: dark && !onAcc ? accT : accS, chipbg: onAcc ? (dark ? '#ffffff' : '#122029') : acc, chipfg: onAcc ? (dark ? acc : '#ffffff') : '#ffffff',
     mark: dark ? 'rgba(192,196,199,.16)' : 'rgba(192,196,199,.55)', glow1: g1, glow2: g2, k: s.k || 1, midnightx: '#122029',
@@ -496,7 +539,7 @@ function slideHTML(s, ctx) {
    ================================================================ */
 const KEY = '4jurisday:deck:v1';
 /* Modo embutido (?embed=1): o sistema hospeda este editor num iframe e troca o deck por postMessage.
-   parent -> editor: {src:'4j-deck', type:'load', deck|null, titulo, readonly}
+   parent -> editor: {src:'4j-deck', type:'load', deck|null, titulo, template, readonly}
    editor -> parent: {src:'4j-deck', type:'ready'} e {src:'4j-deck', type:'save', deck} */
 const EMB = new URLSearchParams(location.search).has('embed') && parent !== window;
 let RO = false;
@@ -522,6 +565,33 @@ function deckPadrao() {
     salvoEm: 0, slides: [capa, prog, sec1, novas, pal, aniv, aniv2, cof, num, rec, fim] };
 }
 
+/* ---------- modelos prontos (cada um devolve slides novos) ---------- */
+const mk = (layout, o = {}) => {
+  const s = novoSlide(layout); if (o.f) Object.assign(s.f, o.f); if (o.items) s.items = o.items;
+  if (o.bg) s.bg = o.bg; if (o.deco) s.deco = { ...s.deco, ...o.deco }; if (o.opt) s.opt = { ...s.opt, ...o.opt };
+  return s;
+};
+const pessoa = info => ({ nome: 'Nome Sobrenome', info, foto: '' });
+const TEMPLATES = [
+  { id: '4jurisday', nome: '4JURIS Day completo', desc: 'Roteiro do evento: capa, programação, novas contratações, aniversariantes, reconhecimento…', build: () => deckPadrao().slides },
+  { id: 'avisos', nome: 'Aviso importante', desc: 'Foto de fundo, mensagem e chips de data/público', build: () => [mk('fotoFundo')] },
+  { id: 'comunicado', nome: 'Comunicado com imagem', desc: 'Imagem de um lado, texto do outro', build: () => [mk('imagem', { f: { kicker: 'Comunicado', titulo: 'Novidade para <b>todo o time</b>', corpo: 'Conte em poucas frases o que muda, a partir de quando e a quem procurar em caso de dúvida.' } })] },
+  { id: 'novo-colaborador', nome: 'Boas-vindas · novo colaborador', desc: 'Foto, nome, cargo e mensagem. Duplique o slide para cada pessoa', build: () => [mk('boasVindas')] },
+  { id: 'novas-contratacoes', nome: 'Novas contratações', desc: 'Abertura + grade de pessoas com foto', build: () => [mk('secao', { f: { kicker: 'Time 4JURIS', titulo: 'Novas <b>contratações</b>' } }), mk('pessoas', { f: { titulo: 'Novas contratações' }, items: [pessoa('Cargo'), pessoa('Cargo'), pessoa('Cargo')] })] },
+  { id: 'aniversariantes', nome: 'Aniversariantes do mês', desc: 'Fotos e datas, em fundo claro', build: () => [mk('pessoas', { bg: '#E9ECEC', opt: { caixa: 'normal' }, f: { titulo: 'Aniversariantes do <b>mês</b>' }, items: [pessoa('10/10'), pessoa('12/10'), pessoa('25/10'), pessoa('31/10')] })] },
+  { id: 'destaque-mes', nome: 'Destaque do mês', desc: 'Homenagem a uma pessoa, com foto e mensagem', build: () => [mk('boasVindas', { deco: { t: 'barra', p: 'dir' }, f: { kicker: 'Destaque do mês', cargo: 'Cargo · Área', frase: 'Conte, em uma ou duas frases, o que essa pessoa fez de especial.', inicio: '' } })] },
+  { id: 'evento', nome: 'Convite de evento', desc: 'Foto de fundo com data, hora e local', build: () => [mk('fotoFundo', { f: { kicker: 'Você está convidado(a)', titulo: '4JURIS <b>Day</b>', sub: 'Um dia para celebrar resultados, conhecer o time e planejar o próximo ciclo.', chip1: 'Sexta, 10/11', chip2: '14h', chip3: 'Auditório' } })] },
+  { id: 'galeria', nome: 'Galeria do evento', desc: 'Até 4 fotos com legenda', build: () => [mk('galeria')] },
+  { id: 'branco', nome: 'Em branco', desc: 'Só uma capa para começar do zero', build: () => [mk('capa', { f: { eyebrow: '', titulo: 'Título da <b>apresentação</b>', sub: '' } })] },
+];
+function deckDeTemplate(id, titulo) {
+  const d = deckPadrao(), tp = TEMPLATES.find(x => x.id === id) || TEMPLATES[0];
+  d.slides = tp.build(); d.id = uid();
+  if (tp.id !== '4jurisday') { d.rodape.texto = ''; d.rodape.marca = '4juris'; }
+  if (titulo) d.titulo = titulo; else if (tp.id !== '4jurisday') d.titulo = tp.nome;
+  return d;
+}
+
 function carregar() {
   let emb = null, ls = null;
   try { emb = JSON.parse($('#deck-data').textContent); } catch (e) { }
@@ -545,10 +615,20 @@ function snap() {
   const j = JSON.stringify(deck);
   if (hist[hi] === j) return;
   hist = hist.slice(0, hi + 1); hist.push(j); if (hist.length > 80) hist.shift(); hi = hist.length - 1;
-  if (EMB) { if (!RO) { enviar({ type: 'save', deck: JSON.parse(j) }); status('Salvo no sistema'); } }
+  if (EMB) { if (!RO) { enviar({ type: 'save', deck: JSON.parse(j) }); status('Salvo no sistema'); agendarMiniatura(); } }
   else try { localStorage.setItem(KEY, j); status('Salvo automaticamente neste navegador'); }
   catch (e) { status('Armazenamento cheio: baixe o arquivo para não perder'); }
   $('#undo').disabled = hi <= 0; $('#redo').disabled = hi >= hist.length - 1;
+}
+let tMini;
+function agendarMiniatura() {          // capa da lista do 4juris Canva: 1º slide em 480×270
+  clearTimeout(tMini);
+  tMini = setTimeout(async () => {
+    try {
+      const im = await createImageBitmap(await slideParaPNG(0)), cv = document.createElement('canvas'); cv.width = 480; cv.height = 270;
+      cv.getContext('2d').drawImage(im, 0, 0, 480, 270); enviar({ type: 'thumb', thumb: cv.toDataURL('image/jpeg', .72) });
+    } catch (e) { }
+  }, 1800);
 }
 const snapDeb = () => { clearTimeout(tDeb); status('Editando…'); tDeb = setTimeout(snap, 500); };
 function restaurar(i) {
@@ -640,9 +720,11 @@ function renderInsp() {
     ${(l.opts || []).map(o => `<div class="field"><label>${o.n}</label>${seg('opt.' + o.k, s.opt[o.k], o.o)}</div>`).join('')}
     <label class="chk"><input type="checkbox" data-s="rodape" ${!s.semRodape ? 'checked' : ''}> Mostrar rodapé neste slide</label>
   </div>
-  ${l.list ? `<div class="sec"><h4>${l.list.n}s (${s.items.length}/${l.list.max})</h4>${s.items.map((it, i) => `<div class="lrow"><span class="i">${i + 1}</span><span class="t">${esc(l.list.resumo(it)) || '—'}</span>${'foto' in it ? `<button data-li="foto" data-i="${i}" title="Escolher foto" aria-label="Escolher foto">${IC.img}</button>` : ''}<button data-li="up" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Subir">${IC.up}</button><button data-li="dn" data-i="${i}" ${i === s.items.length - 1 ? 'disabled' : ''} aria-label="Descer">${IC.dn}</button><button data-li="rm" data-i="${i}" ${s.items.length <= l.list.min ? 'disabled' : ''} aria-label="Remover">${IC.x}</button></div>`).join('')}
-    <button class="btn sm" data-li="add" ${s.items.length >= l.list.max ? 'disabled' : ''}>+ Adicionar ${l.list.n.toLowerCase()}</button><p class="hint">Edite o texto direto no slide.${'foto' in s.items[0] ? ' Clique no círculo para enviar a foto.' : ''}</p></div>` : ''}
+  ${l.list ? `<div class="sec"><h4>${l.list.n}s (${s.items.length}/${l.list.max})</h4>${s.items.map((it, i) => `<div class="lrow"><span class="i">${i + 1}</span><span class="t">${esc(l.list.resumo(it)) || '—'}</span>${'foto' in it || 'img' in it ? `<button data-li="foto" data-i="${i}" title="Escolher foto" aria-label="Escolher foto">${IC.img}</button>` : ''}<button data-li="up" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Subir">${IC.up}</button><button data-li="dn" data-i="${i}" ${i === s.items.length - 1 ? 'disabled' : ''} aria-label="Descer">${IC.dn}</button><button data-li="rm" data-i="${i}" ${s.items.length <= l.list.min ? 'disabled' : ''} aria-label="Remover">${IC.x}</button></div>`).join('')}
+    <button class="btn sm" data-li="add" ${s.items.length >= l.list.max ? 'disabled' : ''}>+ Adicionar ${l.list.n.toLowerCase()}</button><p class="hint">Edite o texto direto no slide.${'foto' in s.items[0] || 'img' in s.items[0] ? ' Clique na foto para trocar a imagem.' : ''}</p></div>` : ''}
+  ${(l.imgs || []).length ? `<div class="sec"><h4>Imagens</h4>${l.imgs.map(o => `<div class="field"><label>${o.n}</label><div class="acts2"><button class="btn sm" data-act="img:${o.k}">${IC.img} ${s.f[o.k] ? 'Trocar' : 'Enviar'} imagem</button>${s.f[o.k] ? `<button class="btn sm danger" data-act="imgx:${o.k}">Remover</button>` : ''}</div></div>`).join('')}<p class="hint">Aceita JPG e PNG. Também dá para arrastar a imagem para cima do slide.</p></div>` : ''}
   <div class="sec"><h4>Notas do apresentador</h4><textarea class="inp" data-s="notas" placeholder="Visíveis só no modo apresentação (tecla N)">${esc(s.notas)}</textarea></div>
+  <div class="sec"><h4>Exportar</h4><div class="acts2"><button class="btn sm" data-act="png">Imagem deste slide</button><button class="btn sm" data-act="png-todos">Imagens de todos</button></div><p class="hint">PNG 1920×1080, pronto para Slack, WhatsApp, e-mail ou TV.</p></div>
   <div class="sec"><h4>Slide</h4><div class="acts2"><button class="btn sm" data-act="dup">Duplicar</button><button class="btn sm" data-act="mv-" ${cur === 0 ? 'disabled' : ''}>◀ Mover</button><button class="btn sm" data-act="mv+" ${cur === deck.slides.length - 1 ? 'disabled' : ''}>Mover ▶</button><button class="btn sm danger" data-act="del" ${deck.slides.length <= 1 ? 'disabled' : ''}>Excluir</button></div></div>`;
 }
 
@@ -688,8 +770,8 @@ function lerImagem(file, quad, max) {
 async function aplicarImagem(alvo, file) {
   try {
     const s = sl(), [t, a, b] = alvo.split(':');
-    if (t === 'item') { s.items[+a][b] = await lerImagem(file, true, 520); }
-    else if (t === 'f') { s.f[a] = await lerImagem(file, false, 1500); }
+    if (t === 'item') { s.items[+a][b] = await lerImagem(file, b === 'foto', b === 'foto' ? 520 : 1300); }
+    else if (t === 'f') { s.f[a] = await lerImagem(file, a === 'foto', a === 'foto' ? 700 : 1600); }
     else if (t === 'logo') { deck.logo = await lerImagem(file, false, 500); }
     commit();
   } catch (e) { toast('Não consegui ler essa imagem.'); }
@@ -708,6 +790,40 @@ function baixarHTML() {
 }
 function salvarJSON() { snap(); baixar(nomeArq() + '.json', JSON.stringify(deck, null, 2), 'application/json'); }
 
+/* ---------- imagem PNG (o navegador desenha o próprio slide: SVG + foreignObject, com a fonte embutida) ---------- */
+let fontCSS = null;
+async function fontesEmbutidas() {
+  if (fontCSS !== null) return fontCSS;
+  try {
+    const link = document.querySelector('link[href*="fonts.googleapis.com/css2"]');
+    let css = await (await fetch(link.href)).text();
+    for (const u of new Set([...css.matchAll(/url\((https:[^)]+)\)/g)].map(m => m[1]))) {
+      const blob = await (await fetch(u)).blob();
+      const dataUrl = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
+      css = css.split(u).join(dataUrl);
+    }
+    fontCSS = css;
+  } catch (e) { fontCSS = ''; }
+  return fontCSS;
+}
+async function slideParaPNG(i) {
+  const estilo = document.querySelector('style').textContent;
+  const css = estilo.slice(estilo.indexOf('.slide{position:absolute'), estilo.indexOf('/* somente leitura'));
+  const wrap = document.createElement('div'); wrap.innerHTML = slideHTML(deck.slides[i], ctxV(i));
+  const xml = new XMLSerializer().serializeToString(wrap.firstElementChild);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080"><foreignObject width="1920" height="1080"><div xmlns="http://www.w3.org/1999/xhtml" style="position:relative;width:1920px;height:1080px"><style><![CDATA[${await fontesEmbutidas()}\n${css}]]></style>${xml}</div></foreignObject></svg>`;
+  const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); await img.decode();
+  const cv = document.createElement('canvas'); cv.width = 1920; cv.height = 1080; cv.getContext('2d').drawImage(img, 0, 0);
+  return new Promise((ok, no) => cv.toBlob(b => b ? ok(b) : no(new Error('png')), 'image/png'));
+}
+async function exportarPNG(idxs) {
+  try {
+    toast(idxs.length > 1 ? 'Gerando imagens…' : 'Gerando imagem…');
+    for (const i of idxs) { baixar(`${nomeArq()}-slide-${String(i + 1).padStart(2, '0')}.png`, await slideParaPNG(i), 'image/png'); if (idxs.length > 1) await new Promise(r => setTimeout(r, 350)); }
+    toast(idxs.length > 1 ? `${idxs.length} imagens baixadas.` : 'Imagem baixada (1920×1080).');
+  } catch (e) { toast('Não consegui gerar a imagem neste navegador. Use o PDF.'); }
+}
+
 /* ---------- PDF ---------- */
 function pdf() {
   $('#print').innerHTML = deck.slides.map((s, i) => `<div class="pp">${slideHTML(s, ctxV(i))}</div>`).join('');
@@ -716,7 +832,24 @@ function pdf() {
 }
 
 /* ---------- modal de layouts ---------- */
+function abrirModelos() {
+  $('#mtit').textContent = 'Modelos prontos';
+  $('#mbody').innerHTML = `<label class="chk" style="grid-column:1/-1;margin:0"><input type="checkbox" id="mapp"> Adicionar ao final desta apresentação (em vez de substituir tudo)</label>` +
+    TEMPLATES.map(t => `<button class="lay" data-tpl="${t.id}"><div class="pv"></div><b>${t.nome}</b><span>${t.desc}</span></button>`).join('');
+  $('#ovl').classList.add('on');
+  $$('#mbody .lay').forEach(b => {
+    const pv = b.querySelector('.pv'), k = pv.clientWidth / 1920, s = TEMPLATES.find(x => x.id === b.dataset.tpl).build()[0];
+    pv.innerHTML = slideHTML(s, { deck, edit: false, idx: 0 }); pv.firstElementChild.style.transform = `scale(${k})`;
+  });
+}
+function aplicarModelo(id, anexar) {
+  const novos = TEMPLATES.find(x => x.id === id).build();
+  if (anexar) { cur = deck.slides.length; deck.slides.push(...novos); }
+  else { deck.slides = novos; cur = 0; }
+  snap(); renderTudo(); fechar(); toast(anexar ? 'Slides adicionados no fim.' : 'Modelo aplicado. Use Desfazer para voltar.');
+}
 function abrirLayouts() {
+  $('#mtit').textContent = 'Escolha um layout';
   $('#mbody').innerHTML = LAYOUT_ORDER.map(id => `<button class="lay" data-lay="${id}"><div class="pv"><div class="pvi"></div></div><b>${LAYOUTS[id].nome}</b><span>${LAYOUTS[id].desc}</span></button>`).join('');
   $('#ovl').classList.add('on');
   $$('#mbody .lay').forEach(b => {
@@ -777,10 +910,10 @@ stage.addEventListener('paste', e => {
 stage.addEventListener('click', e => {
   const t = e.target.closest('[data-img]'); if (t && !e.target.closest('[contenteditable]')) pedirImagem(t.dataset.img);
 });
-stage.addEventListener('dragover', e => { if (e.target.closest('[data-img]')) e.preventDefault(); });
+stage.addEventListener('dragover', e => { if (e.target.closest('[data-img]') || (LAYOUTS[sl().layout].imgs || []).length) e.preventDefault(); });
 stage.addEventListener('drop', e => {
-  const t = e.target.closest('[data-img]'); if (!t) return;
-  e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) aplicarImagem(t.dataset.img, f);
+  const t = e.target.closest('[data-img]'), pad = (LAYOUTS[sl().layout].imgs || [])[0], alvo = t ? t.dataset.img : pad && 'f:' + pad.k;
+  if (!alvo) return; e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) aplicarImagem(alvo, f);
 });
 $('#file').addEventListener('change', e => { const f = e.target.files[0]; if (f && alvoImg) aplicarImagem(alvoImg, f); });
 
@@ -849,10 +982,13 @@ function lista(a, i) {
   else if (a === 'rm' && s.items.length > l.min) s.items.splice(i, 1);
   else if (a === 'up' && i > 0) [s.items[i - 1], s.items[i]] = [s.items[i], s.items[i - 1]];
   else if (a === 'dn' && i < s.items.length - 1) [s.items[i + 1], s.items[i]] = [s.items[i], s.items[i + 1]];
-  else if (a === 'foto') return pedirImagem(`item:${i}:foto`);
+  else if (a === 'foto') return pedirImagem(`item:${i}:${'img' in s.items[i] ? 'img' : 'foto'}`);
   commit();
 }
 function acao(a) {
+  if (a.startsWith('img:')) return pedirImagem('f:' + a.slice(4));
+  if (a.startsWith('imgx:')) { sl().f[a.slice(5)] = ''; return commit(); }
+  if (a === 'png') return exportarPNG([cur]); if (a === 'png-todos') return exportarPNG(deck.slides.map((_, i) => i));
   if (a === 'dup') dupSlide(); else if (a === 'del') delSlide(); else if (a === 'mv-') mover(cur, cur - 1); else if (a === 'mv+') mover(cur, cur + 1);
   else if (a === 'logo') pedirImagem('logo:x'); else if (a === 'logo-x') { deck.logo = ''; commit(); }
   else if (a === 'json-save') salvarJSON(); else if (a === 'json-open') { $('#jfile').value = ''; $('#jfile').click(); }
@@ -871,7 +1007,12 @@ $('#redo').onclick = () => hi < hist.length - 1 && restaurar(hi + 1);
 $('#play').onclick = () => abrirShow(cur);
 $('#pdf').onclick = pdf; $('#dlhtml').onclick = baixarHTML;
 $('#addbtn').onclick = abrirLayouts; $('#mclose').onclick = fechar;
-$('#ovl').addEventListener('click', e => { if (e.target.id === 'ovl') fechar(); const b = e.target.closest('[data-lay]'); if (b) addSlide(b.dataset.lay); });
+$('#ovl').addEventListener('click', e => {
+  if (e.target.id === 'ovl') fechar();
+  const b = e.target.closest('[data-lay]'); if (b) addSlide(b.dataset.lay);
+  const m = e.target.closest('[data-tpl]'); if (m) aplicarModelo(m.dataset.tpl, $('#mapp').checked);
+});
+$('#tpl').onclick = abrirModelos; $('#png').onclick = () => exportarPNG([cur]);
 $('#prev').onclick = () => ir(cur - 1); $('#next').onclick = () => ir(cur + 1);
 $('#tab-s').onclick = () => { aba = 's'; renderInsp(); }; $('#tab-d').onclick = () => { aba = 'd'; renderInsp(); };
 
@@ -909,10 +1050,9 @@ addEventListener('beforeunload', () => { if (!deck || RO) return; clearTimeout(t
 /* ================================================================
    INÍCIO
    ================================================================ */
-function iniciar(d, titulo) {
+function iniciar(d, titulo, template) {
   if (deck) return;
-  deck = normalizar(d || deckPadrao());
-  if (!d && titulo) { deck.titulo = titulo; deck.rodape.texto = deck.rodape.texto; const c = deck.slides[0]; if (c && c.layout === 'capa') c.f.titulo = esc(titulo); }
+  deck = normalizar(d || deckDeTemplate(template, titulo));
   hist = [JSON.stringify(deck)]; hi = 0;
   document.title = (deck.titulo || 'Apresentação') + ' · 4JURIS Day';
   $('#undo').disabled = true; $('#redo').disabled = true;
@@ -920,12 +1060,13 @@ function iniciar(d, titulo) {
   $('#titulo').readOnly = RO;
   renderTudo();
   (document.fonts && document.fonts.ready || Promise.resolve()).then(renderStage);
+  if (EMB && !RO && !d) { enviar({ type: 'save', deck: JSON.parse(hist[0]) }); agendarMiniatura(); }   // deck novo (modelo): grava já
 }
 if (EMB) {
   addEventListener('message', e => {
     const m = e.data;
     if (e.origin !== location.origin || e.source !== parent || !m || m.src !== '4j-deck' || m.type !== 'load') return;
-    RO = !!m.readonly; iniciar(m.deck, m.titulo);
+    RO = !!m.readonly; iniciar(m.deck, m.titulo, m.template);
   });
   enviar({ type: 'ready' });
   setTimeout(() => iniciar(null), 3000);        // aberto fora do sistema: segue com o modelo padrão
