@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import gsap from 'gsap'
-import { Eye, EyeOff, ArrowRight, ShieldCheck, Sparkles, Layers, Fingerprint } from 'lucide-react'
-import { Logo } from '@/components/ui'
+import { ArrowRight, ShieldCheck, Sparkles, Layers, Fingerprint, FlaskConical } from 'lucide-react'
+import { Logo, Avatar } from '@/components/ui'
+import { useStore } from '@/lib/store'
+import { PERSONAS_DEMO } from '@/lib/mock'
+import { CONFIG } from '@/data/config'
+import { cn } from '@/lib/utils'
 
 /* ------------------------------------------------------------------
    Fundo tecnológico: rede de partículas reativa ao mouse (canvas)
@@ -16,6 +20,7 @@ function useParticleNetwork(canvasRef: React.RefObject<HTMLCanvasElement>) {
     let w = 0, h = 0
     const mouse = { x: -9999, y: -9999 }
     const DPR = Math.min(window.devicePixelRatio || 1, 2)
+    const reduzirMovimento = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
     type P = { x: number; y: number; vx: number; vy: number }
     let pts: P[] = []
@@ -84,7 +89,7 @@ function useParticleNetwork(canvasRef: React.RefObject<HTMLCanvasElement>) {
         ctx.fillStyle = 'rgba(180,200,255,.65)'
         ctx.beginPath(); ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2); ctx.fill()
       }
-      raf = requestAnimationFrame(draw)
+      if (!reduzirMovimento) raf = requestAnimationFrame(draw)
     }
     draw()
 
@@ -101,11 +106,15 @@ export default function Login() {
   const navigate = useNavigate()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const brandRef = useRef<HTMLDivElement>(null)
-  const glowRef = useRef<HTMLDivElement>(null)
   const heroRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLDivElement>(null)
-  const [showPw, setShowPw] = useState(false)
+  const location = useLocation()
+  const pessoas = useStore((s) => s.colaboradores)
+  const entrar = useStore((s) => s.entrar)
+  const [email, setEmail] = useState('')
+  const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
+  const destino = (location.state as { de?: string } | null)?.de ?? '/'
 
   useParticleNetwork(canvasRef)
 
@@ -117,8 +126,6 @@ export default function Login() {
       gsap.from('.gsap-point', { x: -14, opacity: 0, duration: 0.5, stagger: 0.1, ease: 'power2.out', delay: 0.7 })
     })
 
-    const xGlow = gsap.quickTo(glowRef.current, 'x', { duration: 0.6, ease: 'power3' })
-    const yGlow = gsap.quickTo(glowRef.current, 'y', { duration: 0.6, ease: 'power3' })
     const xHero = gsap.quickTo(heroRef.current, 'x', { duration: 1, ease: 'power3' })
     const yHero = gsap.quickTo(heroRef.current, 'y', { duration: 1, ease: 'power3' })
 
@@ -127,7 +134,6 @@ export default function Login() {
       if (!el) return
       const r = el.getBoundingClientRect()
       const mx = e.clientX - r.left, my = e.clientY - r.top
-      xGlow(mx); yGlow(my)
       const cx = (mx / r.width - 0.5), cy = (my / r.height - 0.5)
       xHero(cx * -22); yHero(cy * -22)
     }
@@ -135,32 +141,34 @@ export default function Login() {
     return () => { window.removeEventListener('mousemove', onMove); ctx.revert() }
   }, [])
 
+  const acessar = (id: string) => {
+    setLoading(true)
+    entrar(id)
+    setTimeout(() => navigate(destino === '/login' ? '/' : destino, { replace: true }), 250)
+  }
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    try { sessionStorage.setItem('4juris_auth', '1') } catch { /* noop */ }
-    setTimeout(() => navigate('/'), 500)
+    const p = pessoas.find((c) => c.email.toLowerCase() === email.trim().toLowerCase())
+    if (!email.trim()) { setErro('Informe o e-mail ou escolha um perfil de demonstração abaixo.'); return }
+    if (!p) { setErro('E-mail não encontrado nos dados de demonstração.'); return }
+    if (p.status === 'encerrado') { setErro('Esta parceria foi encerrada — o acesso está desativado.'); return }
+    acessar(p.id)
   }
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-[1.05fr_.95fr] bg-ink">
+    <div className="min-h-screen grid lg:grid-cols-[1.05fr_.95fr] bg-midnight">
       {/* -------- Painel de marca (tecnológico) -------- */}
       <div ref={brandRef} className="relative overflow-hidden hidden lg:flex flex-col justify-between p-14 text-white tech-grid">
         <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
-        {/* brilho que segue o cursor */}
-        <div
-          ref={glowRef}
-          className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 h-[420px] w-[420px] rounded-full"
-          style={{ background: 'radial-gradient(circle, rgba(0,50,210,.55) 0%, rgba(0,50,210,0) 65%)', left: 0, top: 0 }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-ink/10 via-transparent to-ink/70 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-midnight/10 via-transparent to-midnight/70 pointer-events-none" />
 
         {/* topo */}
         <div className="relative z-10 flex items-center gap-3">
           <Logo size={42} />
           <div className="leading-none">
             <div className="text-[17px] font-extrabold tracking-tight">4JURIS</div>
-            <div className="text-[11px] text-[#8592a0] mt-1 font-medium">Pessoas & Gestão</div>
+            <div className="text-[11px] text-[#8592a0] mt-1 font-medium">Pessoas & Comunidade</div>
           </div>
         </div>
 
@@ -173,7 +181,7 @@ export default function Login() {
             Inovação que transforma, <span className="text-brand-300">pessoas</span> que conectam.
           </h1>
           <p className="mt-5 text-[15.5px] leading-relaxed text-[#aab6c0] max-w-[420px]">
-            O portal de gestão de pessoas e colaboradores PJ da 4JURIS — sua jornada, benefícios, reembolsos e conquistas em um só lugar.
+            O portal da comunidade 4JURIS — comunicação, agenda, reconhecimento e as rotinas da sua parceria em um só lugar.
           </p>
 
           <div className="mt-9 space-y-3.5">
@@ -202,42 +210,54 @@ export default function Login() {
             <Logo size={42} />
             <div className="leading-none">
               <div className="text-[17px] font-extrabold text-ink tracking-tight">4JURIS</div>
-              <div className="text-[11px] text-muted mt-1 font-medium">Pessoas & Gestão</div>
+              <div className="text-[11px] text-muted mt-1 font-medium">Pessoas & Comunidade</div>
             </div>
           </div>
 
           <h2 className="text-[25px] font-bold text-ink">Acesse sua conta</h2>
-          <p className="text-muted text-[14px] mt-2 mb-8">Bem-vindo(a) de volta. Entre para continuar.</p>
+          <p className="text-muted text-[14px] mt-2 mb-6">Bem-vindo(a) de volta.</p>
 
-          <label className="label">E-mail corporativo</label>
-          <input className="input mb-4" type="email" defaultValue="marina.alves@4juris.com.br" autoComplete="username" placeholder="voce@4juris.com.br" />
-
-          <label className="label">Senha</label>
-          <div className="relative mb-5">
-            <input className="input pr-11" type={showPw ? 'text' : 'password'} defaultValue="4juris" autoComplete="current-password" placeholder="••••••••" />
-            <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-lg text-muted hover:bg-winter hover:text-ink flex items-center justify-center transition">
-              {showPw ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
-            </button>
+          <div className="mb-6 text-[12.5px] text-warning-ink bg-gold-soft border border-warning-line rounded-xl px-3.5 py-3 leading-relaxed flex gap-2.5">
+            <FlaskConical className="h-4 w-4 shrink-0 mt-0.5" />
+            <span><b>Ambiente de demonstração.</b> Não há senha nem servidor: escolha um perfil para explorar o que cada papel vê. Em produção, o acesso será feito pelo provedor de identidade da empresa.</span>
           </div>
 
-          <div className="flex items-center justify-between mb-7">
-            <label className="flex items-center gap-2 text-[13px] text-ink-2 cursor-pointer select-none">
-              <input type="checkbox" defaultChecked className="h-4 w-4 rounded border-line-strong accent-brand" />
-              Manter conectado
-            </label>
-            <button type="button" className="text-[13px] font-semibold text-brand hover:underline">Esqueci a senha</button>
+          <fieldset className="mb-6">
+            <legend className="label mb-2">Entrar como (demonstração)</legend>
+            <div className="grid gap-2">
+              {PERSONAS_DEMO.map((p) => {
+                const c = pessoas.find((x) => x.id === p.id)
+                if (!c) return null
+                return (
+                  <button key={p.id} type="button" disabled={loading} onClick={() => acessar(p.id)}
+                    className={cn('flex items-center gap-3 rounded-xl border border-line px-3 py-2.5 text-left transition hover:border-brand hover:bg-brand-50 focus-visible:ring-2 focus-visible:ring-brand outline-none')}>
+                    <Avatar nome={c.nome} cor={c.avatarCor} size="sm" />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[13.5px] font-semibold text-ink">{p.rotulo}</span>
+                      <span className="block text-[12px] text-muted truncate">{p.desc}</span>
+                    </span>
+                    <ArrowRight className="h-4 w-4 text-muted" />
+                  </button>
+                )
+              })}
+            </div>
+          </fieldset>
+
+          <div className="flex items-center gap-3 my-5 text-[11.5px] text-muted uppercase tracking-wide font-semibold">
+            <span className="h-px flex-1 bg-line" />ou pelo e-mail cadastrado<span className="h-px flex-1 bg-line" />
           </div>
 
-          <button type="submit" disabled={loading} className="w-full h-12 rounded-xl bg-brand text-white font-semibold text-[14.5px] shadow-brand hover:bg-brand-600 transition flex items-center justify-center gap-2 active:translate-y-px">
+          <label className="label" htmlFor="login-email">E-mail</label>
+          <input id="login-email" className="input" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErro('') }}
+            autoComplete="username" placeholder="nome@demo.4juris.com.br" aria-invalid={!!erro} aria-describedby={erro ? 'login-erro' : undefined} />
+          {erro && <p id="login-erro" role="alert" className="text-[12px] text-danger font-medium mt-1.5">{erro}</p>}
+
+          <button type="submit" disabled={loading} className="mt-5 w-full h-12 rounded-xl bg-brand text-white font-semibold text-[14.5px] hover:bg-brand-600 transition flex items-center justify-center gap-2 active:translate-y-px">
             {loading ? 'Entrando...' : <>Entrar <ArrowRight className="h-[18px] w-[18px]" /></>}
           </button>
 
-          <div className="mt-6 text-[12px] text-muted bg-brand-50 border border-brand-100 rounded-xl px-3.5 py-3 leading-relaxed">
-            <b className="text-brand-700">Ambiente de demonstração.</b> A autenticação será conectada ao backend. Clique em <b>Entrar</b> para acessar o sistema.
-          </div>
-
           <p className="mt-6 text-center text-[12.5px] text-muted">
-            Problemas para acessar? Fale com o <a href="mailto:rh@4juris.com.br" className="text-brand font-semibold">RH da 4JURIS</a>.
+            Problemas para acessar? Fale com o <a href={`mailto:${CONFIG.emailRH}`} className="text-brand font-semibold">RH da 4JURIS</a>.
           </p>
         </form>
       </div>

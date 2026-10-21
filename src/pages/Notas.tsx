@@ -5,15 +5,16 @@ import { Modal } from '@/components/Modal'
 import { toast } from '@/components/toast'
 import { brl, fmtDate, STATUS_SOLIC, cn } from '@/lib/utils'
 import NotasAdmin from './NotasAdmin'
+import { can } from '@/domain/permissions'
+import { hojeISO } from '@/domain/datas'
 
-const ADMIN_NF = ['admin', 'rh', 'diretoria']
 
 /** Página role-aware: admin/RH veem a visão de gestão. O botão "Ver como colaborador"
     ativa o modo de visualização global (papel efetivo vira 'colaborador'). */
 export default function Notas() {
   const papel = useStore((s) => s.currentUser().papel)
   const setPreview = useStore((s) => s.setPreview)
-  const isAdmin = ADMIN_NF.includes(papel)
+  const isAdmin = can(papel, 'financeiro:gerenciar')
 
   if (isAdmin) return <div key="admin"><NotasAdmin onVerColaborador={() => setPreview(true)} /></div>
   return <div key="colab" className="animate-fade-in"><NotasColaborador /></div>
@@ -22,19 +23,24 @@ export default function Notas() {
 const PASSOS = [
   'Acesse o portal do Emissor Nacional e faça login.',
   'Clique em "Nova NFS-e".',
-  'Informe o tomador: 4JURIS MARKETING LTDA · CNPJ 46.937.316/0001-05.',
+  'Informe o tomador: {TOMADOR}.',
   'Preencha a descrição do serviço e o valor conforme contrato.',
   'Selecione a atividade econômica compatível (ex.: 73.19-0-03 — Marketing direto).',
   'Revise, emita e baixe o PDF.',
-  'Anexe e envie a nota aqui pelo sistema até o dia 22.',
+  'Anexe e envie a nota aqui pelo sistema até o dia {DIA}.',
 ]
 
 function NotasColaborador() {
   const user = useStore((s) => s.currentUser())
   const notas = useStore((s) => s.notas.filter((n) => n.colaboradorId === user.id))
   const enviar = useStore((s) => s.enviarNota)
-  const atual = notas.find((n) => n.competencia === '2026-07')
-  const historico = notas.filter((n) => n.competencia !== '2026-07')
+  const mesAtual = hojeISO().slice(0, 7)
+  const atual = notas.find((n) => n.competencia === mesAtual)
+  const historico = notas.filter((n) => n.competencia !== mesAtual)
+  const contrato = useStore((x) => x.contratos.find((k) => k.colaboradorId === user.id && k.status !== 'encerrado'))
+  const geral = useStore((x) => x.config.geral)
+  const diaEnvio = useStore((x) => x.config.financeiro.diaEnvioNF)
+  const passo = (t: string) => t.replace('{TOMADOR}', `${geral.razaoSocialTomador} · CNPJ ${geral.cnpjTomador}`).replace('{DIA}', String(diaEnvio))
   const [envio, setEnvio] = useState<string | null>(null)
   const [arquivo, setArquivo] = useState('')
 
@@ -54,7 +60,7 @@ function NotasColaborador() {
         <StatCard icon="CalendarClock" tone="warning" value="Dia 22" label="Vencimento p/ envio da NF" />
         <StatCard icon="Wallet" tone="success" value="Dia 25" label="Data de pagamento" />
         <StatCard icon="FileCheck2" tone="brand" value={notas.filter((n) => n.status !== 'aguardando').length} label="Notas enviadas" />
-        <StatCard icon="Coins" tone="ink" value={brl(user.remuneracao)} label="Valor mensal" />
+        <StatCard icon="Coins" tone="ink" value={brl(contrato?.valorMensal ?? 0)} label="Valor mensal do contrato" />
       </div>
 
       {/* NF do mês */}
@@ -64,7 +70,7 @@ function NotasColaborador() {
             <div className="flex items-center gap-4">
               <span className="h-12 w-12 rounded-xl bg-brand-50 text-brand flex items-center justify-center"><Icon name="FileText" className="h-6 w-6" /></span>
               <div>
-                <div className="text-[15px] font-bold text-ink">Nota fiscal · Julho / 2026</div>
+                <div className="text-[15px] font-bold text-ink">Nota fiscal · <span className="capitalize">{new Date(mesAtual + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</span></div>
                 <div className="text-[13px] text-muted">{brl(atual.valor)} · envie até {fmtDate(atual.prazo)} · pagamento {fmtDate(atual.pagamentoEm)}</div>
               </div>
             </div>
@@ -91,9 +97,9 @@ function NotasColaborador() {
               <Info label="Chave PIX" valor={user.pixChave || user.cnpj || '—'} icon="QrCode" destaque />
             </div>
             <div className="px-5 pb-5">
-              <div className="bg-success-soft border border-[#bfe6d5] rounded-xl p-3.5 flex gap-3">
+              <div className="bg-success-soft border border-success-line rounded-xl p-3.5 flex gap-3">
                 <Icon name="ShieldCheck" className="h-5 w-5 text-success shrink-0" />
-                <p className="text-[12.5px] text-[#0b7350] leading-relaxed">O pagamento é feito via PIX para a chave associada ao seu <b>CNPJ</b>. Para alterar, atualize seus dados no perfil ou fale com o RH.</p>
+                <p className="text-[12.5px] text-success-ink leading-relaxed">O pagamento é feito via PIX para a chave associada ao seu <b>CNPJ</b>. Para alterar, atualize seus dados no perfil ou fale com o RH.</p>
               </div>
             </div>
           </Card>
@@ -106,13 +112,13 @@ function NotasColaborador() {
                 {PASSOS.map((p, i) => (
                   <li key={i} className="flex gap-3.5">
                     <span className="h-7 w-7 rounded-lg bg-brand text-white text-[12.5px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
-                    <span className="text-[13.5px] text-ink-2 leading-relaxed pt-0.5">{p}</span>
+                    <span className="text-[13.5px] text-ink-2 leading-relaxed pt-0.5">{passo(p)}</span>
                   </li>
                 ))}
               </ol>
               <div className="mt-5 bg-brand-50 border border-brand-100 rounded-xl p-4 flex gap-3">
                 <Icon name="Info" className="h-5 w-5 text-brand shrink-0" />
-                <p className="text-[13px] text-brand-700 leading-relaxed">Em caso de dúvida sobre a atividade econômica, consulte o Financeiro em <b>financeiro@4juris.com.br</b> antes de emitir.</p>
+                <p className="text-[13px] text-brand-700 leading-relaxed">Em caso de dúvida sobre a atividade econômica, consulte o Financeiro em <b>{geral.emailFinanceiro}</b> antes de emitir.</p>
               </div>
             </div>
           </Card>
@@ -137,7 +143,7 @@ function NotasColaborador() {
       </div>
 
       {/* Modal enviar NF */}
-      <Modal open={!!envio} onClose={() => { setEnvio(null); setArquivo('') }} title="Enviar nota fiscal" subtitle="Anexe o PDF da NF-e de julho/2026."
+      <Modal open={!!envio} onClose={() => { setEnvio(null); setArquivo('') }} title="Enviar nota fiscal" subtitle={`Anexe o PDF da NF-e de ${new Date(mesAtual + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}.`}
         footer={<><Button variant="ghost" onClick={() => { setEnvio(null); setArquivo('') }}>Cancelar</Button><Button icon="Send" onClick={confirmarEnvio}>Enviar</Button></>}>
         <Field label="Arquivo da NF-e (PDF)" required>
           <label className={cn('flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl py-7 cursor-pointer transition', arquivo ? 'border-brand bg-brand-50' : 'border-line-strong hover:border-brand hover:bg-brand-50/50')}>

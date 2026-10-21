@@ -5,7 +5,11 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#122029" />
-    <title>4JURIS Pessoas · Gestão de colaboradores</title>
+    <title>4JURIS Pessoas · Comunidade e gestão de pessoas</title>
+    <script>
+      // Aplica o tema antes da renderização (evita piscar).
+      try { var t = localStorage.getItem('4juris_tema'); if (t === 'escuro' || (t !== 'claro' && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark') } catch (e) {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

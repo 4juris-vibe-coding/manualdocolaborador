@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/gerar-avaliacoes-experiencia",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}

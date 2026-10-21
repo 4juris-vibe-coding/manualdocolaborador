@@ -5,15 +5,16 @@ import { Modal } from '@/components/Modal'
 import { toast } from '@/components/toast'
 import { brl, fmtDate, STATUS_SOLIC, cn, podeVerReembolsosView } from '@/lib/utils'
 import ReembolsosAdmin from './ReembolsosAdmin'
+import { can } from '@/domain/permissions'
+import { hojeISO } from '@/domain/datas'
 
 const CATEGORIAS = ['Software & Ferramentas', 'Viagem & Deslocamento', 'Alimentação', 'Material de escritório', 'Cursos & Educação', 'Outros']
-const ADMIN_REEMB = ['admin', 'rh', 'diretoria']
 
 /** Página role-aware: admin/RH gerenciam todos os reembolsos; podem ver como colaborador. */
 export default function Reembolsos() {
   const papel = useStore((s) => s.currentUser().papel)
   const setPreview = useStore((s) => s.setPreview)
-  if (ADMIN_REEMB.includes(papel)) return <ReembolsosAdmin onVerColaborador={() => setPreview(true)} />
+  if (can(papel, 'financeiro:gerenciar')) return <ReembolsosAdmin onVerColaborador={() => setPreview(true)} />
   return <ReembolsosColaborador />
 }
 
@@ -52,7 +53,7 @@ function ReembolsosColaborador() {
     e.preventDefault()
     const d = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>
     if (!d.categoria || !d.descricao || !d.valor) { toast('Preencha categoria, descrição e valor.', 'danger'); return }
-    add({ colaboradorId: user.id, categoria: d.categoria, descricao: d.descricao, valor: parseFloat(d.valor.replace(',', '.')), data: d.data || '2026-07-23', comprovante: file || undefined })
+    add({ colaboradorId: user.id, categoria: d.categoria, descricao: d.descricao, valor: parseFloat(d.valor.replace(',', '.')), data: d.data || hojeISO(), comprovante: file || undefined })
     setOpen(false); setFile('')
     toast('Reembolso solicitado! Acompanhe o status abaixo.')
   }
@@ -117,7 +118,7 @@ function ReembolsosColaborador() {
           <Field label="Descrição" required><input name="descricao" className="input" placeholder="Ex.: Assinatura de ferramenta" /></Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Valor (R$)" required><input name="valor" className="input" placeholder="0,00" inputMode="decimal" /></Field>
-            <Field label="Data da despesa"><input name="data" type="date" className="input" defaultValue="2026-07-23" /></Field>
+            <Field label="Data da despesa"><input name="data" type="date" className="input" defaultValue={hojeISO()} max={hojeISO()} /></Field>
           </div>
           <Field label="Comprovante / Nota fiscal">
             <label className={cn('flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl py-6 cursor-pointer transition', file ? 'border-brand bg-brand-50' : 'border-line-strong hover:border-brand hover:bg-brand-50/50')}>

@@ -43,29 +43,11 @@ export function firstName(nome = '') {
   return nome.trim().split(/\s+/)[0]
 }
 
-export function tempoCasa(iso?: string) {
-  if (!iso) return '—'
-  const m = Math.max(0, Math.round((Date.now() - new Date(iso + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24 * 30.44)))
-  const y = Math.floor(m / 12), r = m % 12
-  if (y === 0) return `${m} ${m === 1 ? 'mês' : 'meses'}`
-  return `${y} ${y === 1 ? 'ano' : 'anos'}${r ? ` e ${r} ${r === 1 ? 'mês' : 'meses'}` : ''}`
-}
-
-/** Nível de gamificação: cada nível exige +500 pontos acumulados. */
-export function nivelInfo(pontos: number) {
-  const base = 500
-  const nivel = Math.floor(pontos / base) + 1
-  const pontosNoNivel = pontos % base
-  const proximo = base
-  return { nivel, pontosNoNivel, proximo, progresso: Math.round((pontosNoNivel / proximo) * 100) }
-}
-
 export const STATUS_COLAB: Record<string, { label: string; tone: string }> = {
+  integracao: { label: 'Em integração', tone: 'brand' },
   ativo: { label: 'Ativo', tone: 'success' },
-  ferias: { label: 'Em férias', tone: 'warning' },
-  recesso: { label: 'Em recesso', tone: 'warning' },
-  pendente: { label: 'Pendente', tone: 'brand' },
-  inativo: { label: 'Inativo', tone: 'neutral' },
+  pendente: { label: 'Cadastro pendente', tone: 'warning' },
+  encerrado: { label: 'Parceria encerrada', tone: 'neutral' },
 }
 
 export const STATUS_SOLIC: Record<string, { label: string; tone: string }> = {
@@ -99,18 +81,22 @@ export const REEMBOLSO_ETAPAS: { key: string; titulo: string; icon: string; tone
   { key: 'recusado', titulo: 'Recusados', icon: 'XCircle', tone: 'danger' },
 ]
 
-/** Status de tarefas de gamificação (Kanban). */
-export const STATUS_TAREFA: Record<string, { label: string; tone: string }> = {
-  disponivel: { label: 'Disponível', tone: 'neutral' },
+/** Status de iniciativas voluntárias da comunidade. */
+export const STATUS_INICIATIVA: Record<string, { label: string; tone: string }> = {
+  aberta: { label: 'Aberta a voluntários', tone: 'neutral' },
   andamento: { label: 'Em andamento', tone: 'brand' },
-  aprovacao: { label: 'Aguardando aprovação', tone: 'warning' },
+  revisao: { label: 'Aguardando confirmação', tone: 'warning' },
   concluida: { label: 'Concluída', tone: 'success' },
 }
 
 export const REGIME_LABEL: Record<string, string> = {
   PJ: 'Pessoa Jurídica (PJ)',
-  CLT: 'CLT',
-  autonomo: 'Autônomo',
+  MEI: 'MEI',
+  autonomo: 'Autônomo(a)',
+}
+
+export function mesLabel(comp: string) {
+  return new Date(comp + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
 }
 
 interface SetorLike { id: string; liderancaIds: string[]; reembolsoApenasLideranca: boolean }

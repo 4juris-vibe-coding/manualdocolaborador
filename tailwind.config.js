@@ -1,41 +1,31 @@
 /** @type {import('tailwindcss').Config} */
+// Cores definidas como variáveis CSS (src/index.css) para suportar tema claro e escuro.
+const v = (nome) => `rgb(var(--c-${nome}) / <alpha-value>)`
+
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
         // Paleta oficial 4JURIS (Rebranding)
         brand: {
-          DEFAULT: '#0032D2', // 4JURIS Blue
-          50: '#F2F5FE',
-          100: '#E7ECFD',
-          200: '#C9D5FB',
-          300: '#9DB0FF',
-          400: '#4d6bec',
-          500: '#0032D2',
-          600: '#0029ac',
-          700: '#001f83',
-          800: '#001a6b',
-          900: '#001456',
+          DEFAULT: v('brand'),
+          50: v('brand-50'), 100: v('brand-100'), 200: v('brand-200'), 300: v('brand-300'), 400: v('brand-400'),
+          500: v('brand'), 600: v('brand-600'), 700: v('brand-700'), 800: v('brand-800'), 900: v('brand-900'),
         },
-        ink: {
-          DEFAULT: '#122029', // Midnight Blue
-          soft: '#1c2f3a',
-          2: '#3d4b56',
-        },
-        winter: '#E9ECEC',   // Winter White
-        platinum: '#C0C4C7', // Platinum
-        surface: {
-          DEFAULT: '#FFFFFF',
-          2: '#FBFCFE',
-          3: '#F4F6F9',
-        },
-        line: { DEFAULT: '#E4E8ED', strong: '#D3D9DF' },
-        muted: { DEFAULT: '#6a7681', 2: '#97a0a9' },
-        success: { DEFAULT: '#0f9d6b', soft: '#e3f6ee' },
-        warning: { DEFAULT: '#c98a12', soft: '#fbf1dc' },
-        danger: { DEFAULT: '#d8433b', soft: '#fbe6e5' },
-        gold: { DEFAULT: '#c98a12', soft: '#fbf1dc' },
+        ink: { DEFAULT: v('ink'), soft: v('ink-soft'), 2: v('ink-2') },
+        // Fundo escuro institucional (Midnight Blue) — fixo nos dois temas.
+        midnight: { DEFAULT: '#122029', soft: '#1c2f3a' },
+        winter: v('winter'),
+        platinum: v('platinum'),
+        surface: { DEFAULT: v('surface'), 2: v('surface-2'), 3: v('surface-3') },
+        line: { DEFAULT: v('line'), strong: v('line-strong') },
+        muted: { DEFAULT: v('muted'), 2: v('muted-2') },
+        success: { DEFAULT: v('success'), soft: v('success-soft'), line: v('success-line'), ink: v('success-ink') },
+        warning: { DEFAULT: v('warning'), soft: v('warning-soft'), line: v('warning-line'), ink: v('warning-ink') },
+        danger: { DEFAULT: v('danger'), soft: v('danger-soft'), line: v('danger-line'), ink: v('danger-ink'), hover: v('danger-hover') },
+        gold: { DEFAULT: v('warning'), soft: v('warning-soft') },
       },
       fontFamily: {
         sans: ['Sora', 'ui-sans-serif', 'system-ui', 'sans-serif'],
@@ -46,19 +36,19 @@ export default {
         '3xl': '24px',
       },
       boxShadow: {
-        xs: '0 1px 2px rgba(18,32,41,.05)',
-        sm: '0 1px 2px rgba(18,32,41,.05), 0 4px 12px rgba(18,32,41,.05)',
-        md: '0 2px 6px rgba(18,32,41,.06), 0 14px 34px rgba(18,32,41,.09)',
-        lg: '0 10px 30px rgba(18,32,41,.10), 0 30px 60px rgba(18,32,41,.14)',
-        brand: '0 4px 16px rgba(0,50,210,.30)',
-        glow: '0 0 0 1px rgba(0,50,210,.4), 0 0 24px rgba(0,50,210,.35)',
+        xs: '0 1px 2px rgb(var(--c-shadow) / .05)',
+        sm: '0 1px 2px rgb(var(--c-shadow) / .05), 0 4px 12px rgb(var(--c-shadow) / .05)',
+        md: '0 2px 6px rgb(var(--c-shadow) / .06), 0 14px 34px rgb(var(--c-shadow) / .09)',
+        lg: '0 10px 30px rgb(var(--c-shadow) / .10), 0 30px 60px rgb(var(--c-shadow) / .14)',
+        brand: '0 1px 2px rgb(var(--c-shadow) / .18)',
+        glow: '0 1px 2px rgb(var(--c-shadow) / .18)',
       },
       keyframes: {
         'fade-in': { from: { opacity: '0' }, to: { opacity: '1' } },
         'slide-up': { from: { opacity: '0', transform: 'translateY(14px)' }, to: { opacity: '1', transform: 'none' } },
         'scale-in': { from: { opacity: '0', transform: 'scale(.97)' }, to: { opacity: '1', transform: 'none' } },
         shimmer: { '100%': { transform: 'translateX(100%)' } },
-        'pop': { '0%': { transform: 'scale(.8)', opacity: '0' }, '60%': { transform: 'scale(1.05)' }, '100%': { transform: 'scale(1)', opacity: '1' } },
+        pop: { '0%': { transform: 'scale(.8)', opacity: '0' }, '60%': { transform: 'scale(1.05)' }, '100%': { transform: 'scale(1)', opacity: '1' } },
       },
       animation: {
         'fade-in': 'fade-in .3s ease',

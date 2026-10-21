@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tokens de cor (RGB) — tema claro e escuro. */
+:root {
+  --c-brand: 0 50 210; --c-brand-50: 242 245 254; --c-brand-100: 231 236 253; --c-brand-200: 201 213 251;
+  --c-brand-300: 157 176 255; --c-brand-400: 77 107 236; --c-brand-600: 0 41 172; --c-brand-700: 0 31 131;
+  --c-brand-800: 0 26 107; --c-brand-900: 0 20 86;
+  --c-ink: 18 32 41; --c-ink-soft: 28 47 58; --c-ink-2: 61 75 86;
+  --c-winter: 233 236 236; --c-platinum: 192 196 199;
+  --c-surface: 255 255 255; --c-surface-2: 251 252 254; --c-surface-3: 244 246 249;
+  --c-line: 228 232 237; --c-line-strong: 211 217 223;
+  --c-muted: 88 99 110; --c-muted-2: 98 108 119;
+  --c-success: 11 122 82; --c-success-soft: 227 246 238; --c-success-line: 191 230 213; --c-success-ink: 11 107 73;
+  --c-warning: 146 95 0; --c-warning-soft: 251 241 220; --c-warning-line: 236 217 168; --c-warning-ink: 122 91 18;
+  --c-danger: 192 46 38; --c-danger-soft: 251 230 229; --c-danger-line: 240 192 189; --c-danger-ink: 155 44 38; --c-danger-hover: 248 213 211;
+  --c-shadow: 18 32 41;
+  color-scheme: light;
+}
+.dark {
+  --c-brand: 62 96 232; --c-brand-50: 17 27 58; --c-brand-100: 22 35 84; --c-brand-200: 32 52 120;
+  --c-brand-300: 157 176 255; --c-brand-400: 120 145 250; --c-brand-600: 98 130 250; --c-brand-700: 176 192 255;
+  --c-brand-800: 200 212 255; --c-brand-900: 220 228 255;
+  --c-ink: 232 237 241; --c-ink-soft: 210 218 224; --c-ink-2: 185 196 204;
+  --c-winter: 34 45 53; --c-platinum: 58 71 82;
+  --c-surface: 20 28 34; --c-surface-2: 24 34 41; --c-surface-3: 14 20 24;
+  --c-line: 38 50 59; --c-line-strong: 51 65 76;
+  --c-muted: 156 168 178; --c-muted-2: 132 145 155;
+  --c-success: 52 196 142; --c-success-soft: 16 48 31; --c-success-line: 26 82 56; --c-success-ink: 120 220 175;
+  --c-warning: 224 168 58; --c-warning-soft: 51 39 13; --c-warning-line: 92 70 24; --c-warning-ink: 240 200 120;
+  --c-danger: 196 52 44; --c-danger-soft: 58 23 21; --c-danger-line: 100 40 36; --c-danger-ink: 255 170 164; --c-danger-hover: 80 30 28;
+  --c-shadow: 0 0 0;
+  color-scheme: dark;
+}
+
 @layer base {
   * {
     @apply border-line;
@@ -19,20 +51,20 @@
   /* Scrollbars */
   * {
     scrollbar-width: thin;
-    scrollbar-color: theme('colors.platinum') transparent;
+    scrollbar-color: rgb(var(--c-platinum)) transparent;
   }
   *::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
   *::-webkit-scrollbar-thumb {
-    background: theme('colors.platinum');
+    background: rgb(var(--c-platinum));
     border-radius: 20px;
     border: 3px solid transparent;
     background-clip: content-box;
   }
   *::-webkit-scrollbar-thumb:hover {
-    background: theme('colors.muted.2');
+    background: rgb(var(--c-muted-2));
     background-clip: content-box;
   }
 }
@@ -44,7 +76,7 @@
   .input {
     @apply w-full h-11 px-3.5 rounded-xl border border-line-strong bg-surface text-[13.5px]
            text-ink placeholder:text-muted-2 outline-none transition
-           focus:border-brand focus:ring-4 focus:ring-brand-100;
+           focus:border-brand focus:ring-1 focus:ring-brand;
   }
   .label {
     @apply block text-[12.5px] font-semibold text-ink-2 mb-1.5;
@@ -55,12 +87,24 @@
            transition hover:border-line-strong;
   }
   .chip-active {
-    @apply bg-ink text-white border-ink;
+    @apply bg-ink text-surface border-ink;
   }
 }
 
-/* Grade tecnológica reutilizável (login / heros) */
+/* Grade tecnológica reutilizável (login / heros).
+   Desenhada numa camada própria (::before) para NUNCA substituir o fundo
+   do elemento — antes, ela apagava gradientes e deixava texto branco sobre branco. */
 .tech-grid {
+  position: relative;
+  isolation: isolate;
+}
+.tech-grid::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
@@ -74,4 +118,22 @@
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* No tema escuro, o azul usado como TEXTO é mais claro que o azul de fundo dos botões (contraste AA nos dois usos). */
+.dark .text-brand,
+.dark .hover\:text-brand:hover,
+.dark .group:hover .group-hover\:text-brand { color: rgb(150 172 255); }
+/* Textos de status sobre fundos suaves no escuro usam a variante clara de cada tom. */
+.dark .text-success { color: rgb(var(--c-success-ink)); }
+.dark .text-warning { color: rgb(var(--c-warning-ink)); }
+.dark .text-danger { color: rgb(var(--c-danger-ink)); }
+
+/* Impressão / "Salvar como PDF": só o conteúdo principal. */
+@media print {
+  aside, header, .no-print, [role='status'] { display: none !important; }
+  body { background: white !important; }
+  main { padding: 0 !important; }
+  .card { box-shadow: none !important; break-inside: avoid; }
+  html.dark { --c-surface: 255 255 255; --c-surface-2: 251 252 254; --c-surface-3: 255 255 255; --c-ink: 18 32 41; --c-ink-2: 61 75 86; --c-line: 228 232 237; --c-muted: 106 118 129; }
 }

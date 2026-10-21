@@ -60,7 +60,7 @@ function ArtigoDetalhe({ artigo, onBack }: { artigo: Artigo; onBack: () => void 
           <ol className="space-y-4">
             {artigo.passoAPasso.map((s, i) => (
               <li key={i} className="flex gap-3.5">
-                <span className="h-7 w-7 rounded-lg bg-ink text-white text-[12.5px] font-bold flex items-center justify-center shrink-0 tabular-nums">{i + 1}</span>
+                <span className="h-7 w-7 rounded-lg bg-midnight dark:bg-brand text-white text-[12.5px] font-bold flex items-center justify-center shrink-0 tabular-nums">{i + 1}</span>
                 <span className="text-[14px] text-ink-2 leading-relaxed pt-0.5">{s}</span>
               </li>
             ))}
@@ -124,7 +124,7 @@ export default function CentralDuvidas() {
   if (sel && ARTIGOS[sel]) {
     return (
       <>
-        <PageHeader title="Central de Dúvidas" subtitle="Manual do colaborador — tutoriais de benefícios e processos." />
+        <PageHeader title="Central de dúvidas" subtitle="Tutoriais de parcerias, processos administrativos e da plataforma." />
         <ArtigoDetalhe artigo={ARTIGOS[sel]} onBack={() => setSel(null)} />
       </>
     )
@@ -150,7 +150,7 @@ export default function CentralDuvidas() {
 
   return (
     <>
-      <PageHeader title="Central de Dúvidas" subtitle="Manual do colaborador — tutoriais de benefícios e processos." />
+      <PageHeader title="Central de dúvidas" subtitle="Tutoriais de parcerias, processos administrativos e da plataforma." />
 
       {/* Busca */}
       <div className="relative mb-8 max-w-md">

@@ -14,15 +14,15 @@ function StatusSelect({ value, onChange, className }: { value: StatusNota; onCha
   const tone = STATUS_SOLIC[value]?.tone ?? 'neutral'
   const toneCls: Record<string, string> = {
     neutral: 'bg-winter text-ink-2 border-line', brand: 'bg-brand-50 text-brand-700 border-brand-200',
-    success: 'bg-success-soft text-success border-[#bfe6d5]', warning: 'bg-warning-soft text-warning border-[#ecd9a8]',
-    danger: 'bg-danger-soft text-danger border-[#f0c0bd]',
+    success: 'bg-success-soft text-success border-success-line', warning: 'bg-warning-soft text-warning border-warning-line',
+    danger: 'bg-danger-soft text-danger border-danger-line',
   }
   return (
     <div className={cn('relative', className)}>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as StatusNota)}
-        className={cn('appearance-none w-full h-9 pl-3 pr-8 rounded-lg border text-[12.5px] font-semibold cursor-pointer outline-none transition focus:ring-4 focus:ring-brand-100', toneCls[tone])}
+        className={cn('appearance-none w-full h-9 pl-3 pr-8 rounded-lg border text-[12.5px] font-semibold cursor-pointer outline-none transition focus:ring-1 focus:ring-brand', toneCls[tone])}
       >
         {STATUS_OPCOES.map((st) => <option key={st} value={st}>{STATUS_SOLIC[st].label}</option>)}
       </select>
@@ -39,7 +39,7 @@ export default function NotasAdmin({ onVerColaborador }: { onVerColaborador: () 
   const gerar = useStore((x) => x.gerarNotasCompetencia)
 
   const competencias = useMemo(() => Array.from(new Set(s.notas.map((n) => n.competencia))).sort().reverse(), [s.notas])
-  const [comp, setComp] = useState('2026-07')
+  const [comp, setComp] = useState(() => new Date().toISOString().slice(0, 7))
   const [view, setView] = useState('kanban')
   const [colabF, setColabF] = useState('todos')
   const [statusF, setStatusF] = useState('todos')
@@ -65,7 +65,7 @@ export default function NotasAdmin({ onVerColaborador }: { onVerColaborador: () 
     .sort((a, b) => nomeDe(a.colaboradorId).localeCompare(nomeDe(b.colaboradorId)))
 
   // Entregas
-  const ativos = s.colaboradores.filter((c) => c.status === 'ativo')
+  const ativos = s.colaboradores.filter((c) => c.status === 'ativo' || c.status === 'integracao')
   const notaDoColab = (cid: string) => doComp.find((n) => n.colaboradorId === cid)
   const entregou = (cid: string) => { const n = notaDoColab(cid); return !!n && n.status !== 'aguardando' }
   const entregaram = ativos.filter((c) => entregou(c.id))
@@ -137,7 +137,7 @@ export default function NotasAdmin({ onVerColaborador }: { onVerColaborador: () 
                     onDragOver={(e) => { e.preventDefault(); setOver(col.key) }}
                     onDragLeave={() => setOver((o) => (o === col.key ? null : o))}
                     onDrop={() => { setOver(null); if (drag) { mudar(drag, col.key as StatusNota); setDrag(null) } }}
-                    className={cn('flex-1 min-w-[200px] rounded-2xl border bg-surface-2 transition', over === col.key ? 'border-brand ring-4 ring-brand-100' : 'border-line')}
+                    className={cn('flex-1 min-w-[200px] rounded-2xl border bg-surface-2 transition', over === col.key ? 'border-brand bg-brand-50' : 'border-line')}
                   >
                     <div className="flex items-center gap-2 px-3.5 py-3 border-b border-line">
                       <Icon name={col.icon} className="h-[17px] w-[17px] text-muted" />
@@ -283,7 +283,8 @@ export default function NotasAdmin({ onVerColaborador }: { onVerColaborador: () 
             <select name="colaboradorId" className="input" defaultValue="" onChange={(e) => {
               const c = colabDe(e.target.value)
               const valorInput = (e.currentTarget.form?.elements.namedItem('valor') as HTMLInputElement | null)
-              if (c && valorInput && !valorInput.value) valorInput.value = String(c.remuneracao)
+              const k = s.contratos.find((x) => x.colaboradorId === c?.id && x.status !== 'encerrado')
+              if (c && k && valorInput && !valorInput.value) valorInput.value = String(k.valorMensal)
             }}>
               <option value="" disabled>Selecione...</option>
               {s.colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}

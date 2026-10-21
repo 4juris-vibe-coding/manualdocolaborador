@@ -1,0 +1,935 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4JURIS Day · Editor de apresentações</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@200;300;400;600;700;800&display=swap" rel="stylesheet">
+<!--
+  ============================================================
+  4JURIS Day · Modelo de apresentação editável (arquivo único)
+  ------------------------------------------------------------
+  • Tudo é dado: a apresentação é um JSON (veja "MODELO DE DADOS" no script).
+  • Cada slide = { layout, bg, deco, align, f:{campos}, items:[...] }.
+  • Layouts ficam em LAYOUTS: cada um tem campos padrão + função render().
+  • Para integrar ao sistema: use deck (JSON) como payload da API e reaproveite
+    slideHTML() para renderizar preview, apresentação e PDF.
+  • "Baixar .html" grava a apresentação dentro do próprio arquivo (#deck-data).
+  ============================================================
+-->
+<style>
+:root{
+  --midnight:#122029; --blue:#0032D2; --blue-l:#4C6FDF; --winter:#E9ECEC; --plat:#C0C4C7;
+  --ui-bg:#0b1318; --ui-panel:#122029; --ui-panel2:#17262f; --ui-line:rgba(255,255,255,.09); --ui-line2:rgba(255,255,255,.16);
+  --ui-fg:#E9ECEC; --ui-mut:#8d9ba6; --ui-acc:#4C6FDF;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ui-bg);color:var(--ui-fg);font-family:'Sora',system-ui,sans-serif;font-size:13px;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+::selection{background:var(--blue);color:#fff}
+*{scrollbar-width:thin;scrollbar-color:#2a3b46 transparent}
+
+/* ---------- casca do editor ---------- */
+#app{display:grid;grid-template-columns:232px 1fr 312px;grid-template-rows:56px 1fr;height:100vh}
+#top{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--ui-panel);border-bottom:1px solid var(--ui-line)}
+#top .logo{width:30px;height:30px;border-radius:8px;background:var(--blue);display:grid;place-items:center;flex:none}
+#top .logo svg{width:16px;height:16px}
+#titulo{background:transparent;border:1px solid transparent;border-radius:8px;padding:7px 10px;font-weight:700;font-size:14px;width:min(360px,34vw)}
+#titulo:hover{border-color:var(--ui-line2)} #titulo:focus{outline:none;border-color:var(--ui-acc);background:rgba(255,255,255,.04)}
+#top .sp{flex:1}
+#status{color:var(--ui-mut);font-size:12px;white-space:nowrap}
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--ui-line2);background:rgba(255,255,255,.04);border-radius:9px;padding:8px 12px;font-weight:600;font-size:12.5px;transition:.15s;white-space:nowrap}
+.btn:hover{background:rgba(255,255,255,.09)}
+.btn:disabled{opacity:.35;cursor:default}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.pri:hover{background:#0a41ee}
+.btn.sm{padding:5px 9px;font-size:12px;border-radius:8px}
+.btn.ico{padding:8px}
+.btn svg{width:15px;height:15px;flex:none}
+.btn.danger:hover{background:rgba(220,60,50,.25);border-color:rgba(220,60,50,.6)}
+
+#side{background:var(--ui-panel);border-right:1px solid var(--ui-line);display:flex;flex-direction:column;min-height:0}
+#side .hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ui-mut)}
+#thumbs{flex:1;overflow:auto;padding:4px 12px 14px;display:flex;flex-direction:column;gap:10px}
+.th{position:relative;display:flex;gap:8px;align-items:flex-start;cursor:pointer;border-radius:10px;padding:6px;border:1px solid transparent}
+.th:hover{background:rgba(255,255,255,.04)}
+.th.on{border-color:var(--ui-acc);background:rgba(76,111,223,.12)}
+.th .n{width:16px;flex:none;text-align:right;font-size:11px;color:var(--ui-mut);padding-top:2px}
+.th .tw{position:relative;width:176px;height:99px;overflow:hidden;border-radius:6px;box-shadow:0 0 0 1px var(--ui-line2);flex:none;pointer-events:none}
+.th .tw .slide{transform:scale(.091667);transform-origin:0 0}
+.th .acts{position:absolute;right:10px;bottom:10px;display:none;gap:4px}
+.th:hover .acts{display:flex}
+.th .acts button{width:24px;height:24px;border-radius:6px;border:0;background:rgba(10,18,23,.85);display:grid;place-items:center}
+.th .acts button:hover{background:var(--blue)}
+.th .acts svg{width:13px;height:13px}
+.th.over{box-shadow:0 -3px 0 var(--ui-acc)}
+#addbtn{margin:0 12px 12px;justify-content:center}
+
+#main{position:relative;min-width:0;min-height:0;display:flex;flex-direction:column;background:radial-gradient(900px 500px at 50% 0,#13222b,var(--ui-bg))}
+#stage{flex:1;min-height:0;display:grid;place-items:center;overflow:hidden;padding:26px}
+#frame{position:relative;box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 0 1px var(--ui-line2);border-radius:4px;overflow:hidden;flex:none}
+#frame .slide{transform-origin:0 0}
+#foot{display:flex;justify-content:space-between;align-items:center;padding:0 22px 14px;color:var(--ui-mut);font-size:12px;gap:16px}
+#foot kbd{background:rgba(255,255,255,.08);border:1px solid var(--ui-line2);border-radius:5px;padding:1px 6px;font:inherit;font-size:11px}
+#foot .nav{display:flex;gap:6px;align-items:center}
+
+#insp{background:var(--ui-panel);border-left:1px solid var(--ui-line);display:flex;flex-direction:column;min-height:0}
+.tabs{display:flex;border-bottom:1px solid var(--ui-line)}
+.tabs button{flex:1;background:none;border:0;border-bottom:2px solid transparent;padding:14px 8px;font-weight:700;font-size:12px;letter-spacing:.04em;color:var(--ui-mut)}
+.tabs button.on{color:#fff;border-color:var(--ui-acc)}
+#ibody{flex:1;overflow:auto;padding:6px 16px 30px}
+.sec{padding:14px 0;border-bottom:1px solid var(--ui-line)}
+.sec:last-child{border:0}
+.sec h4{margin:0 0 10px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ui-mut);font-weight:700}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.field>label,.lbl{font-size:12px;color:#c5ced5;font-weight:600}
+.inp,.sel,textarea.inp{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--ui-line2);border-radius:8px;padding:8px 10px;outline:none}
+/* dropdown padrão do sistema (.input de index.css, tokens do tema escuro): h-11, rounded-xl, 13.5px, foco brand */
+.inp,.sel{height:44px;border-radius:14px;padding:0 14px;font-size:13.5px;background:rgb(20 28 34);border-color:rgb(51 65 76);transition:.15s}
+textarea.inp{height:auto;padding:10px 14px}
+.sel{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:38px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca8b2' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center}
+.sel option{background:rgb(20 28 34);color:#E9ECEC}
+.inp:focus,.sel:focus{border-color:rgb(62 96 232);box-shadow:0 0 0 1px rgb(62 96 232)}
+textarea.inp{resize:vertical;min-height:84px;line-height:1.45}
+.seg{display:flex;background:rgba(255,255,255,.05);border:1px solid var(--ui-line2);border-radius:9px;padding:2px;gap:2px}
+.seg button{flex:1;background:none;border:0;border-radius:7px;padding:6px 4px;font-size:12px;font-weight:600;color:var(--ui-mut)}
+.seg button.on{background:var(--blue);color:#fff}
+.sws{display:flex;gap:8px;flex-wrap:wrap}
+.sw{width:30px;height:30px;border-radius:9px;border:2px solid transparent;box-shadow:0 0 0 1px var(--ui-line2);padding:0;position:relative}
+.sw.on{border-color:#fff}
+.sw.cus{overflow:hidden;background:conic-gradient(#f33,#fc3,#3f6,#3cf,#63f,#f3c,#f33)}
+.sw.cus input{position:absolute;inset:-6px;opacity:0;cursor:pointer;width:46px;height:46px}
+.chk{display:flex;align-items:center;gap:9px;margin:6px 0;font-size:12.5px;cursor:pointer}
+.chk input{accent-color:var(--blue);width:15px;height:15px}
+.rg{width:100%;accent-color:var(--blue)}
+.hint{color:var(--ui-mut);font-size:11.5px;line-height:1.5;margin:6px 0 0}
+.lrow{display:flex;align-items:center;gap:6px;padding:7px 8px;border:1px solid var(--ui-line);border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.03)}
+.lrow .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.lrow .i{width:22px;color:var(--ui-mut);font-size:11px}
+.lrow button{width:24px;height:24px;border:0;border-radius:6px;background:rgba(255,255,255,.06);display:grid;place-items:center;padding:0}
+.lrow button:hover:not(:disabled){background:var(--blue)}
+.lrow button:disabled{opacity:.25;cursor:default}
+.lrow button svg{width:12px;height:12px}
+.acts2{display:flex;gap:6px;flex-wrap:wrap}
+
+/* ---------- popover / modal ---------- */
+#ovl{position:fixed;inset:0;background:rgba(5,10,14,.72);display:none;align-items:center;justify-content:center;z-index:50;padding:24px}
+#ovl.on{display:flex}
+#modal{background:var(--ui-panel);border:1px solid var(--ui-line2);border-radius:16px;max-width:1040px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 30px 90px rgba(0,0,0,.6)}
+#modal .mh{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--ui-line)}
+#modal .mh b{font-size:15px}
+#modal .mb{padding:20px 22px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.lay{background:none;border:1px solid var(--ui-line2);border-radius:12px;padding:10px;text-align:left;transition:.15s}
+.lay:hover{border-color:var(--ui-acc);background:rgba(76,111,223,.1)}
+.lay .pv{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:6px;box-shadow:0 0 0 1px var(--ui-line2);margin-bottom:9px}
+.lay .pv .slide{transform-origin:0 0}
+.lay>b{display:block;font-size:12.5px}
+.lay>span{color:var(--ui-mut);font-size:11.5px}
+
+#ftb{position:fixed;z-index:60;display:none;background:#0a1318;border:1px solid var(--ui-line2);border-radius:10px;padding:4px;gap:2px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#ftb.on{display:flex}
+#ftb button{background:none;border:0;border-radius:7px;padding:6px 10px;font-size:12px;font-weight:600}
+#ftb button:hover{background:var(--blue)}
+#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);background:#0a1318;border:1px solid var(--ui-line2);border-radius:10px;padding:10px 16px;opacity:0;pointer-events:none;transition:.25s;z-index:80;font-size:12.5px}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- modo apresentação ---------- */
+#show{position:fixed;inset:0;background:#000;z-index:100;display:none;align-items:center;justify-content:center;user-select:none}
+#show.on{display:flex}
+#show.idle{cursor:none}
+#show .box{position:relative;overflow:hidden;flex:none}
+#show .slide{transform-origin:0 0}
+#show .box.fade .slide{animation:fadein .45s ease}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+#show .bar{position:absolute;left:0;bottom:0;height:4px;background:var(--blue-l);transition:width .3s}
+#show .ctl{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:6px;align-items:center;background:rgba(10,19,24,.85);border-radius:999px;padding:6px 8px;opacity:0;transition:.2s;color:#fff}
+#show:hover .ctl{opacity:1} #show.idle .ctl{opacity:0}
+#show .ctl button{background:none;border:0;border-radius:999px;padding:6px 12px;color:#fff}
+#show .ctl button:hover{background:rgba(255,255,255,.18)}
+#show .notes{position:absolute;left:24px;right:24px;bottom:56px;background:rgba(10,19,24,.92);color:#fff;border-radius:14px;padding:16px 20px;font-size:18px;line-height:1.5;display:none;max-height:35vh;overflow:auto;white-space:pre-wrap}
+#show .notes.on{display:block}
+
+/* ============================================================
+   SLIDE (1920 × 1080) — idêntico no editor, miniaturas, show e PDF
+   ============================================================ */
+.slide{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;background:var(--bg);color:var(--fg);font-family:'Sora',system-ui,sans-serif;text-align:left;line-height:1.1}
+.slide *{box-sizing:border-box}
+.slide .fx{position:absolute;inset:0;background:radial-gradient(1500px 850px at 95% -12%,var(--glow1),transparent 62%),radial-gradient(1100px 760px at -8% 112%,var(--glow2),transparent 60%)}
+.slide .deco{position:absolute;pointer-events:none}
+.slide .deco.q{height:1230px;aspect-ratio:631/647;top:-70px}
+.slide .deco.q svg{width:100%;height:100%;display:block}
+.slide .deco.q.dir{right:-190px} .slide .deco.q.esq{left:-210px} .slide .deco.q.centro{left:50%;margin-left:-600px}
+.slide .deco.b{inset:0;overflow:hidden}
+.slide .deco.b i{position:absolute;top:-120px;bottom:-120px;background:var(--accS);transform:skewX(-18deg)}
+.slide .deco.b.dir i:nth-child(1){right:-150px;width:430px} .slide .deco.b.dir i:nth-child(2){right:330px;width:64px}
+.slide .deco.b.esq i:nth-child(1){left:-150px;width:430px} .slide .deco.b.esq i:nth-child(2){left:330px;width:64px}
+.slide .deco.b.centro i:nth-child(1){left:50%;margin-left:-215px;width:430px;opacity:.5} .slide .deco.b.centro i:nth-child(2){left:50%;margin-left:300px;width:64px}
+.slide .content{position:absolute;inset:0;padding:110px 120px 170px;display:flex;flex-direction:column}
+.slide[data-al=centro] .content{align-items:center;text-align:center}
+.slide .mid{justify-content:center}
+.slide b{font-weight:inherit;color:var(--acc)}
+.slide i{font-style:italic}
+.slide .foot{position:absolute;left:120px;right:120px;bottom:54px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:26px;font-size:26px;color:var(--fg2);font-weight:600;letter-spacing:.02em}
+.slide .foot .br{font-weight:800;color:var(--fg);letter-spacing:-.01em;display:flex;align-items:center;gap:12px}
+.slide .foot .br em{font-style:normal;color:var(--accS2)}
+.slide .foot .br img{height:42px;display:block}
+.slide .kicker{font-size:28px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:var(--acc);margin-bottom:28px}
+.slide .eyebrow{font-size:34px;font-weight:400;letter-spacing:.34em;text-transform:uppercase;margin-bottom:44px}
+.slide .h-xxl{font-size:calc(var(--k)*230px);font-weight:800;letter-spacing:-.045em;line-height:.98}
+.slide .h-xl{font-size:calc(var(--k)*150px);font-weight:800;letter-spacing:-.035em;line-height:1.02;max-width:1560px}
+.slide .h-lg{font-size:calc(var(--k)*88px);font-weight:800;letter-spacing:-.03em;line-height:1.05;max-width:1500px}
+.slide .up{text-transform:uppercase;letter-spacing:-.01em}
+.slide .sub{font-size:calc(var(--k)*48px);font-weight:300;line-height:1.3;color:var(--fg2);margin-top:34px;max-width:1300px}
+.slide .grow{flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0}
+
+/* pessoas */
+.slide .gp{display:flex;flex-wrap:wrap;justify-content:center;gap:56px 40px;margin:0 auto;max-width:1600px;width:100%}
+.slide .p{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px}
+.slide .av{border-radius:50%;background:var(--blue);display:grid;place-items:center;overflow:hidden;box-shadow:0 0 0 6px var(--accS),0 18px 44px rgba(0,0,0,.28);position:relative;margin-bottom:18px;outline:8px solid var(--bg);outline-offset:-1px}
+.slide .av img{width:100%;height:100%;object-fit:cover;display:block}
+.slide .av svg{width:46%;height:46%}
+.slide .pn{font-size:34px;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+.slide .pi{font-size:30px;font-weight:600;color:var(--acc)}
+
+/* números */
+.slide .gn{display:grid;gap:36px;width:100%}
+.slide .cn{background:var(--card);border:1px solid var(--line);border-top:10px solid var(--accS);border-radius:30px;padding:48px 44px}
+.slide .cn .v{font-size:calc(var(--k)*150px);font-weight:800;letter-spacing:-.04em;color:var(--acc);line-height:1}
+.slide .cn .r{font-size:38px;color:var(--fg2);margin-top:22px;line-height:1.25;font-weight:400}
+
+/* tópicos */
+.slide .lt{display:flex;flex-direction:column;gap:22px;margin-top:60px}
+.slide .tp{display:flex;align-items:center;gap:32px;font-size:calc(var(--k)*48px);font-weight:600;line-height:1.2}
+.slide .tp .nm{flex:none;width:80px;height:80px;border-radius:18px;background:var(--chipbg);color:var(--chipfg);display:grid;place-items:center;font-size:36px;font-weight:800}
+
+/* programação */
+.slide .pg{margin-top:50px;display:flex;flex-direction:column}
+.slide .pr{display:grid;grid-template-columns:240px 1fr 420px;gap:32px;align-items:center;padding:26px 0;border-bottom:1px solid var(--line)}
+.slide .pr:first-child{border-top:1px solid var(--line)}
+.slide .pr .h{font-size:46px;font-weight:800;color:var(--acc);letter-spacing:-.02em}
+.slide .pr .t{font-size:calc(var(--k)*46px);font-weight:600;line-height:1.15}
+.slide .pr .rs{font-size:32px;color:var(--fg2);text-align:right}
+
+/* destaque / citação */
+.slide .stmt{font-size:calc(var(--k)*132px);font-weight:700;letter-spacing:-.035em;line-height:1.06;max-width:1560px}
+.slide .mk{width:150px;margin-bottom:56px}
+.slide .mk svg{width:100%;display:block}
+.slide .qt{font-size:calc(var(--k)*80px);font-weight:600;letter-spacing:-.025em;line-height:1.18;max-width:1500px}
+.slide .qa{display:flex;align-items:center;gap:24px;margin-top:56px;font-size:36px;color:var(--fg2)}
+.slide .qa:before{content:'';width:80px;height:6px;border-radius:3px;background:var(--accS)}
+.slide[data-al=centro] .qa:before{display:none}
+
+/* imagem + texto */
+.slide .ip{position:absolute;top:0;bottom:0;width:880px;background:linear-gradient(135deg,var(--accS),var(--midnightx));display:grid;place-items:center;overflow:hidden}
+.slide .ip img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.slide .ip svg{width:300px;opacity:.35}
+.slide .ip.esq{left:0} .slide .ip.dir{right:0}
+.slide .imgl .content{padding-left:1010px} .slide .imgr .content{padding-right:1010px}
+.slide .body{font-size:calc(var(--k)*40px);line-height:1.5;color:var(--fg2);margin-top:44px;font-weight:300}
+
+/* encerramento */
+.slide .ct{display:flex;gap:120px;margin-top:100px}
+.slide .ct b{display:block;color:var(--fg);font-weight:800;font-size:38px;margin-bottom:10px}
+.slide .ct div div{font-size:34px;color:var(--fg2);line-height:1.4}
+.slide .vert{position:absolute;right:-30px;top:0;bottom:0;display:flex;align-items:center;pointer-events:auto}
+.slide .vert>div{writing-mode:vertical-rl;transform:rotate(180deg);font-size:430px;font-weight:800;letter-spacing:-.04em;line-height:.9;color:var(--acc);white-space:nowrap}
+
+/* edição inline */
+.slide.editing [contenteditable]{outline:2px dashed transparent;outline-offset:6px;border-radius:6px;cursor:text;transition:outline-color .12s;min-width:30px}
+.slide.editing [contenteditable]:hover{outline-color:rgba(76,111,223,.55)}
+.slide.editing [contenteditable]:focus{outline:2px solid #4C6FDF;background:rgba(76,111,223,.08)}
+.slide.editing [contenteditable]:empty:before{content:attr(data-ph);opacity:.35;pointer-events:none}
+.slide:not(.editing) .opt:empty{display:none}
+.slide.editing [data-img]{cursor:pointer}
+.slide.editing [data-img]:hover:after{content:'Trocar imagem';position:absolute;inset:0;background:rgba(0,0,0,.55);color:#fff;display:grid;place-items:center;font-size:26px;font-weight:700;text-align:center}
+.slide.editing .av[data-img]:hover:after{font-size:22px}
+
+/* somente leitura (apresentação de outra pessoa): só navegar, apresentar e exportar */
+body.ro #insp,body.ro #addbtn,body.ro .th .acts,body.ro #undo,body.ro #redo,body.ro #dlhtml{display:none}
+body.ro #app{grid-template-columns:232px 1fr}
+body.ro #foot span:first-child{visibility:hidden}
+
+/* ---------- impressão / PDF ---------- */
+#print{display:none}
+@page{size:1920px 1080px;margin:0}
+@media print{
+  html,body{background:#fff;height:auto}
+  #app,#show,#ovl,#ftb,#toast{display:none!important}
+  #print{display:block}
+  #print .pp{position:relative;width:1920px;height:1080px;overflow:hidden;page-break-after:always;break-after:page}
+  #print .pp:last-child{page-break-after:auto;break-after:auto}
+  .slide{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+@media (max-width:1180px){#app{grid-template-columns:200px 1fr 270px}.th .tw{width:150px;height:84px}.th .tw .slide{transform:scale(.078125)}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <div class="logo" title="4JURIS"><svg viewBox="225 217 631 647"><path fill="#fff" fill-rule="evenodd" d="M482 217H754V609H856V733H754V864H601V733H225V488C365 462 462 350 482 217ZM601 318C555 460 450 565 308 609H601Z"/></svg></div>
+    <input id="titulo" aria-label="Título da apresentação" placeholder="Título da apresentação" maxlength="90">
+    <span class="sp"></span>
+    <span id="status"></span>
+    <button class="btn ico" id="undo" title="Desfazer (Ctrl+Z)" aria-label="Desfazer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+    <button class="btn ico" id="redo" title="Refazer (Ctrl+Y)" aria-label="Refazer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+    <button class="btn" id="pdf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>PDF</button>
+    <button class="btn" id="dlhtml" title="Baixa um .html com a apresentação gravada dentro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Baixar .html</button>
+    <button class="btn pri" id="play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>Apresentar</button>
+  </header>
+
+  <aside id="side">
+    <div class="hd"><span>Slides</span><span id="cnt"></span></div>
+    <div id="thumbs"></div>
+    <button class="btn" id="addbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Novo slide</button>
+  </aside>
+
+  <main id="main">
+    <div id="stage"><div id="frame"></div></div>
+    <div id="foot">
+      <span>Clique em qualquer texto para editar · selecione palavras e use <kbd>Ctrl</kbd>+<kbd>B</kbd> para destacar na cor da marca</span>
+      <span class="nav"><button class="btn sm ico" id="prev" aria-label="Slide anterior">◀</button><span id="pos"></span><button class="btn sm ico" id="next" aria-label="Próximo slide">▶</button></span>
+    </div>
+  </main>
+
+  <aside id="insp">
+    <div class="tabs"><button id="tab-s" class="on">Slide</button><button id="tab-d">Apresentação</button></div>
+    <div id="ibody"></div>
+  </aside>
+</div>
+
+<div id="ovl"><div id="modal" role="dialog" aria-modal="true"><div class="mh"><b id="mtit">Escolha um layout</b><button class="btn sm" id="mclose">Fechar</button></div><div class="mb" id="mbody"></div></div></div>
+<div id="show"><div class="box" id="sbox"></div><div class="notes" id="snotes"></div><div class="bar" id="sbar"></div>
+  <div class="ctl"><button id="sp">◀</button><span id="sn" style="font-variant-numeric:tabular-nums"></span><button id="sx">▶</button><button id="snb" title="Notas (N)">Notas</button><button id="sq">Sair (Esc)</button></div></div>
+<div id="print"></div>
+<div id="ftb"><button data-c="bold">Destacar</button><button data-c="italic">Itálico</button><button data-c="clear">Limpar</button></div>
+<div id="toast"></div>
+<input type="file" id="file" accept="image/*" hidden>
+<input type="file" id="jfile" accept=".json,application/json" hidden>
+
+<script type="application/json" id="deck-data">null</script>
+<script>
+'use strict';
+const SRC = '<!doctype html>\n' + document.documentElement.outerHTML;   // fonte original, para "Baixar .html"
+
+/* ================================================================
+   UTILIDADES
+   ================================================================ */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const uid = () => 's' + Math.random().toString(36).slice(2, 9);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const strip = h => { const d = document.createElement('div'); d.innerHTML = h || ''; return (d.textContent || '').trim(); };
+
+const hex2rgb = h => { h = h.replace('#', ''); if (h.length === 3) h = [...h].map(x => x + x).join(''); const n = parseInt(h, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+const rgb2hex = c => '#' + c.map(v => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, '0')).join('');
+const lum = h => { const [r, g, b] = hex2rgb(h).map(v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * r + .7152 * g + .0722 * b; };
+const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+const mix = (a, b, t) => { const A = hex2rgb(a), B = hex2rgb(b); return rgb2hex(A.map((v, i) => v + (B[i] - v) * t)); };
+
+/* texto rico mínimo: só <b> (destaque na cor da marca), <i> e <br> */
+function limpar(html) {
+  const t = document.createElement('template'); t.innerHTML = html; let out = '';
+  (function walk(n) {
+    n.childNodes.forEach(c => {
+      if (c.nodeType === 3) { out += esc(c.nodeValue); return; }
+      if (c.nodeType !== 1) return;
+      const tg = c.tagName.toLowerCase(), fw = c.style && c.style.fontWeight;
+      if (tg === 'br') out += '<br>';
+      else if (tg === 'b' || tg === 'strong' || (tg === 'span' && (fw === 'bold' || +fw >= 600))) { out += '<b>'; walk(c); out += '</b>'; }
+      else if (tg === 'i' || tg === 'em' || (tg === 'span' && c.style.fontStyle === 'italic')) { out += '<i>'; walk(c); out += '</i>'; }
+      else if (tg === 'div' || tg === 'p') { if (out && !out.endsWith('<br>')) out += '<br>'; walk(c); }
+      else walk(c);
+    });
+  })(t.content);
+  return out.replace(/(<br>)+$/, '');
+}
+
+/* ================================================================
+   MARCA — símbolos vetoriais
+   ================================================================ */
+const QUATRO = 'M482 217H754V609H856V733H754V864H601V733H225V488C365 462 462 350 482 217ZM601 318C555 460 450 565 308 609H601Z';
+const quatro = (fill) => `<svg viewBox="225 217 631 647" aria-hidden="true"><path fill-rule="evenodd" style="fill:${fill}" d="${QUATRO}"/></svg>`;
+const barras = (fill) => `<svg viewBox="0 0 170 150" aria-hidden="true"><polygon style="fill:${fill}" points="62,0 112,0 50,150 0,150"/><polygon style="fill:${fill}" points="120,0 170,0 108,150 58,150"/></svg>`;
+
+/* ================================================================
+   MODELO DE DADOS
+   deck   = { id, titulo, accent, logo, rodape:{mostrar,marca,texto,numero}, transicao, salvoEm, slides:[slide] }
+   slide  = { id, layout, bg, glow, deco:{t:'quatro'|'barra'|'nenhum', p:'esq'|'centro'|'dir'},
+              align:'esq'|'centro', k:0.7..1.3, opt:{}, semRodape, notas, f:{campo:html}, items:[...], listKind }
+   ================================================================ */
+const BGS = [
+  { c: '#122029', n: 'Midnight Blue' }, { c: '#0032D2', n: 'Azul 4JURIS' }, { c: '#E9ECEC', n: 'Winter White' },
+  { c: '#F8F9F9', n: 'Branco' }, { c: '#C0C4C7', n: 'Platinum' },
+];
+const ACCENTS = [{ c: '#0032D2', n: 'Azul 4JURIS' }, { c: '#0A6CFF', n: 'Azul vivo' }, { c: '#00A3C4', n: 'Ciano' }, { c: '#7A3CF0', n: 'Violeta' }, { c: '#E0A20E', n: 'Âmbar' }];
+
+const L = (nome, desc, cfg) => ({ nome, desc, ...cfg });
+const LAYOUTS = {
+  capa: L('Capa', 'Abertura com título grande', {
+    bg: '#122029', deco: { t: 'quatro', p: 'dir' }, align: 'esq',
+    f: { eyebrow: 'Sejam bem-vindos!', titulo: '4juris <b>Day</b>', sub: '' },
+    render: (s, c) => `<div class="content mid">${ed(c, s, 'eyebrow', 'Chamada', 'eyebrow opt')}${ed(c, s, 'titulo', 'Título da apresentação', 'h-xxl')}${ed(c, s, 'sub', 'Subtítulo (opcional)', 'sub opt')}</div>`,
+  }),
+  secao: L('Seção / transição', 'Palestra, intervalo, nova etapa', {
+    bg: '#122029', deco: { t: 'quatro', p: 'dir' }, align: 'esq', alinhavel: true, opt: { caixa: 'normal' },
+    opts: [{ k: 'caixa', n: 'Caixa do título', o: [['normal', 'Normal'], ['alta', 'ALTA']] }],
+    f: { kicker: '', titulo: 'Título da <b>seção</b>', sub: '' },
+    render: (s, c) => `<div class="content mid">${ed(c, s, 'kicker', 'Rótulo (opcional)', 'kicker opt')}${ed(c, s, 'titulo', 'Título da seção', 'h-xl' + up(s))}${ed(c, s, 'sub', 'Subtítulo (opcional)', 'sub opt')}</div>`,
+  }),
+  destaque: L('Frase de destaque', 'Uma ideia grande, com a marca "//"', {
+    bg: '#F8F9F9', deco: { t: 'quatro', p: 'dir' }, align: 'esq', alinhavel: true,
+    f: { texto: 'Inovação que <b>transforma</b>, soluções que <b>conectam</b>.' },
+    render: (s, c) => `<div class="content mid"><div class="mk">${barras('var(--accS)')}</div>${ed(c, s, 'texto', 'Escreva a frase', 'stmt')}</div>`,
+  }),
+  pessoas: L('Pessoas', 'Novas contratações, aniversariantes, homenagens', {
+    bg: '#122029', deco: { t: 'quatro', p: 'dir' }, align: 'centro', opt: { caixa: 'alta' },
+    opts: [{ k: 'caixa', n: 'Caixa do título', o: [['normal', 'Normal'], ['alta', 'ALTA']] }],
+    f: { titulo: 'Novas contratações' },
+    list: { key: 'pessoas', n: 'Pessoa', min: 1, max: 8, novo: () => ({ nome: 'Nome Sobrenome', info: 'Cargo', foto: '' }), resumo: i => strip(i.nome),
+      padrao: () => [{ nome: 'Nome Sobrenome', info: 'Cargo', foto: '' }, { nome: 'Nome Sobrenome', info: 'Cargo', foto: '' }, { nome: 'Nome Sobrenome', info: 'Cargo', foto: '' }] },
+    render: (s, c) => {
+      const n = s.items.length, sz = n <= 3 ? 300 : n <= 4 ? 270 : n <= 6 ? 235 : 200;
+      return `<div class="content" style="align-items:center;text-align:center">${ed(c, s, 'titulo', 'Título', 'h-lg' + up(s))}<div class="grow" style="width:100%"><div class="gp">${s.items.map((p, i) => `<div class="p" style="width:${sz + 90}px"><div class="av" ${c.edit ? `data-img="item:${i}:foto"` : ''} style="width:${sz}px;height:${sz}px">${p.foto ? `<img src="${p.foto}" alt="">` : quatro('#fff')}</div>${ed(c, s, 'nome', 'Nome', 'pn', 'div', p, i)}${ed(c, s, 'info', 'Cargo ou data', 'pi opt', 'div', p, i)}</div>`).join('')}</div></div></div>`;
+    },
+  }),
+  topicos: L('Tópicos / pauta', 'Lista numerada de itens', {
+    bg: '#122029', deco: { t: 'nenhum', p: 'dir' }, align: 'esq',
+    f: { kicker: '', titulo: 'Pauta de hoje' },
+    list: { key: 'topicos', n: 'Tópico', min: 1, max: 7, novo: () => ({ texto: 'Novo tópico' }), resumo: i => strip(i.texto),
+      padrao: () => [{ texto: 'Primeiro tópico' }, { texto: 'Segundo tópico' }, { texto: 'Terceiro tópico' }, { texto: 'Quarto tópico' }] },
+    render: (s, c) => `<div class="content">${ed(c, s, 'kicker', 'Rótulo (opcional)', 'kicker opt')}${ed(c, s, 'titulo', 'Título', 'h-lg')}<div class="lt">${s.items.map((it, i) => `<div class="tp"><span class="nm">${i + 1}</span>${ed(c, s, 'texto', 'Tópico', '', 'div', it, i)}</div>`).join('')}</div></div>`,
+  }),
+  programacao: L('Programação', 'Horários, atividades e responsáveis', {
+    bg: '#F8F9F9', deco: { t: 'quatro', p: 'dir' }, align: 'esq',
+    f: { kicker: '', titulo: 'Programação do dia' },
+    list: { key: 'programacao', n: 'Atividade', min: 1, max: 7, novo: () => ({ hora: '00h00', titulo: 'Atividade', resp: 'Responsável' }), resumo: i => strip(i.hora) + ' · ' + strip(i.titulo),
+      padrao: () => [{ hora: '09h00', titulo: 'Abertura e boas-vindas', resp: 'Time 4JURIS' }, { hora: '09h30', titulo: 'Palestra principal', resp: 'Convidado(a)' }, { hora: '10h30', titulo: 'Coffee break', resp: '' }, { hora: '11h00', titulo: 'Momento de reconhecimento', resp: 'Liderança' }] },
+    render: (s, c) => `<div class="content">${ed(c, s, 'kicker', 'Rótulo (opcional)', 'kicker opt')}${ed(c, s, 'titulo', 'Título', 'h-lg')}<div class="pg">${s.items.map((r, i) => `<div class="pr">${ed(c, s, 'hora', 'Hora', 'h', 'div', r, i)}${ed(c, s, 'titulo', 'Atividade', 't', 'div', r, i)}${ed(c, s, 'resp', 'Quem', 'rs opt', 'div', r, i)}</div>`).join('')}</div></div>`,
+  }),
+  numeros: L('Números', 'Indicadores em cartões', {
+    bg: '#122029', deco: { t: 'nenhum', p: 'dir' }, align: 'esq',
+    f: { kicker: '', titulo: 'Nossos números' },
+    list: { key: 'numeros', n: 'Número', min: 1, max: 4, novo: () => ({ valor: '0', rotulo: 'o que esse número mede' }), resumo: i => strip(i.valor) + ' · ' + strip(i.rotulo),
+      padrao: () => [{ valor: '120', rotulo: 'clientes ativos' }, { valor: '85%', rotulo: 'de satisfação' }, { valor: '4,8', rotulo: 'nota média' }] },
+    render: (s, c) => `<div class="content">${ed(c, s, 'kicker', 'Rótulo (opcional)', 'kicker opt')}${ed(c, s, 'titulo', 'Título', 'h-lg')}<div class="grow"><div class="gn" style="grid-template-columns:repeat(${s.items.length},1fr)">${s.items.map((n, i) => `<div class="cn">${ed(c, s, 'valor', 'Nº', 'v', 'div', n, i)}${ed(c, s, 'rotulo', 'Descrição', 'r', 'div', n, i)}</div>`).join('')}</div></div></div>`,
+  }),
+  imagem: L('Imagem + texto', 'Foto de um lado, texto do outro', {
+    bg: '#F8F9F9', deco: { t: 'nenhum', p: 'dir' }, align: 'esq', opt: { img: 'esq' },
+    opts: [{ k: 'img', n: 'Posição da imagem', o: [['esq', 'Esquerda'], ['dir', 'Direita']] }],
+    f: { kicker: '', titulo: 'Título do assunto', corpo: 'Escreva aqui o conteúdo principal. Poucas frases funcionam melhor em apresentações.', imagem: '' },
+    render: (s, c) => `<div class="${s.opt.img === 'dir' ? 'imgr' : 'imgl'}"><div class="ip ${s.opt.img === 'dir' ? 'dir' : 'esq'}" ${c.edit ? 'data-img="f:imagem"' : ''}>${s.f.imagem ? `<img src="${s.f.imagem}" alt="">` : quatro('#fff')}</div><div class="content mid">${ed(c, s, 'kicker', 'Rótulo (opcional)', 'kicker opt')}${ed(c, s, 'titulo', 'Título', 'h-lg')}${ed(c, s, 'corpo', 'Texto', 'body')}</div></div>`,
+  }),
+  citacao: L('Citação', 'Frase de alguém, com autoria', {
+    bg: '#0032D2', deco: { t: 'nenhum', p: 'dir' }, align: 'esq', alinhavel: true,
+    f: { citacao: 'Uma frase que inspira o time a ir além.', autor: 'Nome · cargo' },
+    render: (s, c) => `<div class="content mid"><div class="mk">${barras('var(--accS)')}</div>${ed(c, s, 'citacao', 'Citação', 'qt')}${ed(c, s, 'autor', 'Autoria', 'qa opt')}</div>`,
+  }),
+  encerramento: L('Encerramento', 'Agradecimento e contatos', {
+    bg: '#F8F9F9', deco: { t: 'nenhum', p: 'dir' }, align: 'esq', semRodape: true,
+    f: { titulo: 'Obrigado!', c1t: 'Contato', c1d: 'rh@4juris.com.br', c2t: 'Próximo encontro', c2d: 'Data e local', vert: '4JURIS' },
+    render: (s, c) => `<div class="content mid" style="padding-right:560px">${ed(c, s, 'titulo', 'Título', 'h-xl')}<div class="ct"><div>${ed(c, s, 'c1t', 'Rótulo', '', 'b')}${ed(c, s, 'c1d', 'Detalhe', '', 'div')}</div><div>${ed(c, s, 'c2t', 'Rótulo', '', 'b')}${ed(c, s, 'c2d', 'Detalhe', '', 'div')}</div></div></div><div class="vert">${ed(c, s, 'vert', 'MARCA', '')}</div>`,
+  }),
+};
+const LAYOUT_ORDER = ['capa', 'secao', 'destaque', 'pessoas', 'topicos', 'programacao', 'numeros', 'imagem', 'citacao', 'encerramento'];
+const up = s => s.opt && s.opt.caixa === 'alta' ? ' up' : '';
+
+/* campo editável (só vira contenteditable no editor) */
+function ed(c, s, k, ph, cls = '', tag = 'div', it = null, i = 0) {
+  const v = (it ? it[k] : s.f[k]) ?? '';
+  const a = c.edit ? ` contenteditable="true" spellcheck="false" data-f="${k}"${it ? ` data-i="${i}"` : ''} data-ph="${esc(ph)}"` : '';
+  return `<${tag} class="${cls}"${a}>${v}</${tag}>`;
+}
+
+function novoSlide(id) {
+  const l = LAYOUTS[id];
+  const s = { id: uid(), layout: id, bg: l.bg, glow: true, deco: { ...l.deco }, align: l.align, k: 1, opt: { ...(l.opt || {}) }, semRodape: !!l.semRodape, notas: '', f: { ...l.f } };
+  if (l.list) { s.items = l.list.padrao(); s.listKind = l.list.key; }
+  return s;
+}
+function trocarLayout(s, id) {
+  const l = LAYOUTS[id]; s.layout = id;
+  for (const k in l.f) if (!(k in s.f)) s.f[k] = l.f[k];
+  s.opt = { ...(l.opt || {}), ...s.opt };
+  if (l.list && s.listKind !== l.list.key) { s.items = l.list.padrao(); s.listKind = l.list.key; }
+}
+
+/* cores derivadas do fundo do slide: garante contraste em qualquer cor */
+function slideVars(s, deck) {
+  const bg = s.bg, dark = lum(bg) < .25, acc = deck.accent;
+  const accT = (() => { const cand = dark ? mix(acc, '#ffffff', .32) : acc; return contrast(bg, cand) >= 3 ? cand : (dark ? '#ffffff' : '#122029'); })();
+  const onAcc = contrast(bg, acc) < 2;                           // acento "some" no fundo (ex.: azul sobre azul)
+  const accS = onAcc ? (dark ? 'rgba(255,255,255,.9)' : '#122029') : acc;
+  const azulBg = dark && contrast(bg, '#0032D2') < 2.5;
+  const g1 = !dark || s.glow === false ? 'transparent' : azulBg ? 'rgba(255,255,255,.16)' : 'rgba(0,50,210,.40)';
+  const g2 = !dark || s.glow === false ? 'transparent' : azulBg ? 'rgba(0,10,90,.45)' : 'rgba(0,50,210,.20)';
+  const v = {
+    bg, fg: dark ? '#ffffff' : '#122029', fg2: dark ? 'rgba(255,255,255,.74)' : '#4a5864',
+    line: dark ? 'rgba(255,255,255,.16)' : 'rgba(18,32,41,.16)', card: dark ? 'rgba(255,255,255,.06)' : 'rgba(18,32,41,.05)',
+    acc: accT, accS, accS2: dark && !onAcc ? accT : accS, chipbg: onAcc ? (dark ? '#ffffff' : '#122029') : acc, chipfg: onAcc ? (dark ? acc : '#ffffff') : '#ffffff',
+    mark: dark ? 'rgba(192,196,199,.16)' : 'rgba(192,196,199,.55)', glow1: g1, glow2: g2, k: s.k || 1, midnightx: '#122029',
+  };
+  return Object.entries(v).map(([k, x]) => `--${k}:${x}`).join(';');
+}
+
+/* ================================================================
+   RENDER DO SLIDE  (função pura: deck + slide -> HTML)
+   ================================================================ */
+function slideHTML(s, ctx) {
+  const deck = ctx.deck, l = LAYOUTS[s.layout], c = ctx;
+  const d = s.deco || { t: 'nenhum' };
+  const deco = d.t === 'quatro' ? `<div class="deco q ${d.p}">${quatro('var(--mark)')}</div>` : d.t === 'barra' ? `<div class="deco b ${d.p}"><i></i><i></i></div>` : '';
+  let foot = '';
+  if (deck.rodape.mostrar && !s.semRodape) {
+    const m = esc(deck.rodape.marca || '');
+    const marca = deck.logo ? `<img src="${deck.logo}" alt="">` : (m.startsWith('4') ? `<em>4</em>${m.slice(1)}` : m);
+    const fs = s.layout === 'imagem' ? (s.opt.img === 'dir' ? ' style="right:1010px"' : ' style="left:1010px"') : '';   // não cai sobre a foto
+    foot = `<div class="foot"${fs}><span class="br">${marca}</span><span>${esc(deck.rodape.texto || '')}${deck.rodape.numero ? `${deck.rodape.texto ? ' · ' : ''}${ctx.idx + 1}` : ''}</span></div>`;
+  }
+  return `<div class="slide${c.edit ? ' editing' : ''}" data-al="${s.align}" style="${slideVars(s, deck)}"><div class="fx"></div>${deco}${l.render(s, c)}${foot}</div>`;
+}
+
+/* ================================================================
+   ESTADO
+   ================================================================ */
+const KEY = '4jurisday:deck:v1';
+/* Modo embutido (?embed=1): o sistema hospeda este editor num iframe e troca o deck por postMessage.
+   parent -> editor: {src:'4j-deck', type:'load', deck|null, titulo, readonly}
+   editor -> parent: {src:'4j-deck', type:'ready'} e {src:'4j-deck', type:'save', deck} */
+const EMB = new URLSearchParams(location.search).has('embed') && parent !== window;
+let RO = false;
+let deck = null, cur = 0, hist = [], hi = -1, aba = 's';
+const enviar = m => parent.postMessage({ src: '4j-deck', ...m }, location.origin);
+
+function deckPadrao() {
+  const n = id => novoSlide(id);
+  const capa = n('capa');
+  const prog = n('programacao');
+  const sec1 = n('secao'); sec1.f.titulo = 'Novas <b>contratações</b>'; sec1.f.kicker = 'Boas-vindas';
+  const novas = n('pessoas');
+  const pal = n('secao'); pal.f = { kicker: 'Agora', titulo: 'Palestra', sub: '' }; pal.opt.caixa = 'alta'; pal.deco.p = 'esq';
+  const aniv = n('destaque'); aniv.f.texto = 'Aniversariantes do <b>mês</b>.'; aniv.bg = '#E9ECEC';
+  const aniv2 = n('pessoas'); aniv2.f.titulo = 'Outubro'; aniv2.bg = '#E9ECEC'; aniv2.opt.caixa = 'normal';
+  aniv2.items = [{ nome: 'Nome', info: '10/10', foto: '' }, { nome: 'Nome', info: '12/10', foto: '' }, { nome: 'Nome', info: '25/10', foto: '' }];
+  const cof = n('secao'); cof.f = { kicker: '', titulo: 'Coffee <b>Break</b>', sub: '' }; cof.bg = '#E9ECEC';
+  const rec = n('secao'); rec.f = { kicker: 'Prêmio', titulo: 'Momento de <b>reconhecimento</b>', sub: '' }; rec.opt.caixa = 'alta'; rec.deco.p = 'dir'; rec.bg = '#0b1115';
+  const num = n('numeros'); num.f.titulo = 'Resultados do <b>mês</b>';
+  const fim = n('encerramento');
+  return { id: uid(), titulo: '4juris Day · Outubro/26', accent: '#0032D2', logo: '', transicao: 'fade',
+    rodape: { mostrar: true, marca: '4juris day', texto: 'Outubro/26', numero: false },
+    salvoEm: 0, slides: [capa, prog, sec1, novas, pal, aniv, aniv2, cof, num, rec, fim] };
+}
+
+function carregar() {
+  let emb = null, ls = null;
+  try { emb = JSON.parse($('#deck-data').textContent); } catch (e) { }
+  try { ls = JSON.parse(localStorage.getItem(KEY)); } catch (e) { }
+  if (emb && (!ls || ls.id !== emb.id || (ls.salvoEm || 0) <= (emb.salvoEm || 0))) return emb;
+  return ls || deckPadrao();
+}
+function normalizar(d) {                       // garante campos novos em arquivos antigos
+  d.rodape = { mostrar: true, marca: '4juris day', texto: '', numero: false, ...(d.rodape || {}) };
+  d.accent = d.accent || '#0032D2'; d.transicao = d.transicao || 'fade'; d.logo = d.logo || ''; d.id = d.id || uid();
+  d.slides = (d.slides || []).filter(s => LAYOUTS[s.layout]);
+  if (!d.slides.length) d.slides = [novoSlide('capa')];
+  d.slides.forEach(s => { s.id = s.id || uid(); s.f = s.f || {}; s.opt = s.opt || {}; s.deco = s.deco || { t: 'nenhum', p: 'dir' }; s.k = s.k || 1; s.align = s.align || 'esq'; trocarLayout(s, s.layout); });
+  return d;
+}
+
+/* histórico + autosave */
+let tDeb;
+function snap() {
+  deck.salvoEm = Date.now();
+  const j = JSON.stringify(deck);
+  if (hist[hi] === j) return;
+  hist = hist.slice(0, hi + 1); hist.push(j); if (hist.length > 80) hist.shift(); hi = hist.length - 1;
+  if (EMB) { if (!RO) { enviar({ type: 'save', deck: JSON.parse(j) }); status('Salvo no sistema'); } }
+  else try { localStorage.setItem(KEY, j); status('Salvo automaticamente neste navegador'); }
+  catch (e) { status('Armazenamento cheio: baixe o arquivo para não perder'); }
+  $('#undo').disabled = hi <= 0; $('#redo').disabled = hi >= hist.length - 1;
+}
+const snapDeb = () => { clearTimeout(tDeb); status('Editando…'); tDeb = setTimeout(snap, 500); };
+function restaurar(i) {
+  deck = normalizar(JSON.parse(hist[i])); hi = i; cur = clamp(cur, 0, deck.slides.length - 1);
+  if (EMB) enviar({ type: 'save', deck: JSON.parse(hist[i]) }); else try { localStorage.setItem(KEY, hist[i]); } catch (e) { }
+  renderTudo(); $('#undo').disabled = hi <= 0; $('#redo').disabled = hi >= hist.length - 1;
+}
+const status = t => { $('#status').textContent = t; };
+let tToast;
+function toast(t) { const e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(tToast); tToast = setTimeout(() => e.classList.remove('on'), 2400); }
+
+/* ================================================================
+   RENDER DO EDITOR
+   ================================================================ */
+const ctxE = i => ({ deck, edit: !RO, idx: i });
+const ctxV = i => ({ deck, edit: false, idx: i });
+const sl = () => deck.slides[cur];
+
+function renderStage() {
+  const fr = $('#frame'), st = $('#stage');
+  const w = st.clientWidth - 52, h = st.clientHeight - 52, k = Math.max(.1, Math.min(w / 1920, h / 1080));
+  fr.style.width = 1920 * k + 'px'; fr.style.height = 1080 * k + 'px';
+  fr.innerHTML = slideHTML(sl(), ctxE(cur));
+  const el = fr.firstElementChild; el.style.transform = `scale(${k})`;
+  $('#pos').textContent = `${cur + 1} / ${deck.slides.length}`;
+}
+function renderThumbs() {
+  $('#cnt').textContent = deck.slides.length;
+  $('#thumbs').innerHTML = deck.slides.map((s, i) => `<div class="th${i === cur ? ' on' : ''}" draggable="true" data-i="${i}"><span class="n">${i + 1}</span><div class="tw">${slideHTML(s, ctxV(i))}</div><div class="acts"><button data-a="dup" title="Duplicar" aria-label="Duplicar slide"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></button><button data-a="del" title="Excluir" aria-label="Excluir slide"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button></div></div>`).join('');
+}
+function updThumb(i) {
+  const tw = $$('#thumbs .th')[i]?.querySelector('.tw'); if (tw) tw.innerHTML = slideHTML(deck.slides[i], ctxV(i));
+}
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+function renderTudo() { $('#titulo').value = deck.titulo; renderThumbs(); renderStage(); renderInsp(); }
+function ir(i) {
+  cur = clamp(i, 0, deck.slides.length - 1);
+  $$('#thumbs .th').forEach((t, j) => t.classList.toggle('on', j === cur));
+  $$('#thumbs .th')[cur]?.scrollIntoView({ block: 'nearest' });
+  renderStage(); renderInsp();
+}
+
+/* ---------- inspetor ---------- */
+const IC = {
+  up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>',
+  dn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  img: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>',
+};
+const seg = (name, val, opts) => `<div class="seg" data-seg="${name}">${opts.map(([v, n]) => `<button data-v="${v}" class="${v === val ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+const sws = (name, val, list) => `<div class="sws" data-sws="${name}">${list.map(o => `<button class="sw${o.c.toLowerCase() === (val || '').toLowerCase() ? ' on' : ''}" data-v="${o.c}" title="${o.n}" aria-label="${o.n}" style="background:${o.c}"></button>`).join('')}<label class="sw cus${list.some(o => o.c.toLowerCase() === (val || '').toLowerCase()) ? '' : ' on'}" title="Cor personalizada"><input type="color" value="${val}" data-cus="${name}"></label></div>`;
+
+function renderInsp() {
+  $('#tab-s').classList.toggle('on', aba === 's'); $('#tab-d').classList.toggle('on', aba === 'd');
+  const b = $('#ibody');
+  if (aba === 'd') {
+    b.innerHTML = `
+    <div class="sec"><h4>Identidade</h4>
+      <div class="field"><label>Cor de destaque</label>${sws('accent', deck.accent, ACCENTS)}<p class="hint">Usada nas palavras destacadas, números, fitas e na marca "4". O contraste com o fundo é ajustado sozinho.</p></div>
+      <div class="field"><label>Logo no rodapé</label><div class="acts2"><button class="btn sm" data-act="logo">${IC.img} Enviar logo</button>${deck.logo ? '<button class="btn sm danger" data-act="logo-x">Remover</button>' : ''}</div><p class="hint">Sem logo, o rodapé mostra o texto da marca abaixo (ex.: <b style="color:#fff">4juris day</b>).</p></div>
+    </div>
+    <div class="sec"><h4>Rodapé</h4>
+      <label class="chk"><input type="checkbox" data-d="rodape.mostrar" ${deck.rodape.mostrar ? 'checked' : ''}> Mostrar rodapé nos slides</label>
+      <label class="chk"><input type="checkbox" data-d="rodape.numero" ${deck.rodape.numero ? 'checked' : ''}> Mostrar número do slide</label>
+      <div class="field" style="margin-top:10px"><label>Texto da marca</label><input class="inp" data-d="rodape.marca" value="${esc(deck.rodape.marca)}" maxlength="40"></div>
+      <div class="field"><label>Texto à direita (data, edição…)</label><input class="inp" data-d="rodape.texto" value="${esc(deck.rodape.texto)}" maxlength="50"></div>
+    </div>
+    <div class="sec"><h4>Apresentação</h4>
+      <div class="field"><label>Transição entre slides</label>${seg('transicao', deck.transicao, [['fade', 'Suave'], ['none', 'Nenhuma']])}</div>
+    </div>
+    <div class="sec"><h4>Arquivo</h4>
+      <div class="acts2"><button class="btn sm" data-act="json-save">Salvar .json</button><button class="btn sm" data-act="json-open">Abrir .json</button><button class="btn sm danger" data-act="novo">Recomeçar</button></div>
+      <p class="hint">O .json é o formato para integrar ao sistema. "Baixar .html" (topo) gera um arquivo que já abre essa apresentação, editável.</p></div>`;
+    return;
+  }
+  const s = sl(), l = LAYOUTS[s.layout], d = s.deco;
+  const layOpts = LAYOUT_ORDER.map(id => `<option value="${id}" ${id === s.layout ? 'selected' : ''}>${LAYOUTS[id].nome}</option>`).join('');
+  b.innerHTML = `
+  <div class="sec"><h4>Layout</h4><select class="sel" data-s="layout" aria-label="Layout do slide">${layOpts}</select><p class="hint">${l.desc}. Trocar o layout mantém os textos que coincidem.</p></div>
+  <div class="sec"><h4>Fundo</h4>${sws('bg', s.bg, BGS)}
+    ${lum(s.bg) < .25 ? `<label class="chk" style="margin-top:12px"><input type="checkbox" data-s="glow" ${s.glow !== false ? 'checked' : ''}> Brilho azul no fundo</label>` : ''}</div>
+  <div class="sec"><h4>Decoração</h4>
+    <div class="field"><label>Elemento</label>${seg('deco.t', d.t, [['quatro', '“4” grande'], ['barra', 'Faixas'], ['nenhum', 'Nenhum']])}</div>
+    ${d.t !== 'nenhum' ? `<div class="field"><label>Posição</label>${seg('deco.p', d.p, [['esq', 'Esquerda'], ['centro', 'Centro'], ['dir', 'Direita']])}</div>` : ''}
+  </div>
+  <div class="sec"><h4>Texto</h4>
+    ${l.alinhavel || s.layout === 'pessoas' ? `<div class="field"><label>Alinhamento</label>${seg('align', s.align, [['esq', 'Esquerda'], ['centro', 'Centralizado']])}</div>` : ''}
+    <div class="field"><label>Tamanho dos títulos · ${Math.round((s.k || 1) * 100)}%</label><input class="rg" type="range" min="60" max="130" step="5" value="${Math.round((s.k || 1) * 100)}" data-s="k"></div>
+    ${(l.opts || []).map(o => `<div class="field"><label>${o.n}</label>${seg('opt.' + o.k, s.opt[o.k], o.o)}</div>`).join('')}
+    <label class="chk"><input type="checkbox" data-s="rodape" ${!s.semRodape ? 'checked' : ''}> Mostrar rodapé neste slide</label>
+  </div>
+  ${l.list ? `<div class="sec"><h4>${l.list.n}s (${s.items.length}/${l.list.max})</h4>${s.items.map((it, i) => `<div class="lrow"><span class="i">${i + 1}</span><span class="t">${esc(l.list.resumo(it)) || '—'}</span>${'foto' in it ? `<button data-li="foto" data-i="${i}" title="Escolher foto" aria-label="Escolher foto">${IC.img}</button>` : ''}<button data-li="up" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Subir">${IC.up}</button><button data-li="dn" data-i="${i}" ${i === s.items.length - 1 ? 'disabled' : ''} aria-label="Descer">${IC.dn}</button><button data-li="rm" data-i="${i}" ${s.items.length <= l.list.min ? 'disabled' : ''} aria-label="Remover">${IC.x}</button></div>`).join('')}
+    <button class="btn sm" data-li="add" ${s.items.length >= l.list.max ? 'disabled' : ''}>+ Adicionar ${l.list.n.toLowerCase()}</button><p class="hint">Edite o texto direto no slide.${'foto' in s.items[0] ? ' Clique no círculo para enviar a foto.' : ''}</p></div>` : ''}
+  <div class="sec"><h4>Notas do apresentador</h4><textarea class="inp" data-s="notas" placeholder="Visíveis só no modo apresentação (tecla N)">${esc(s.notas)}</textarea></div>
+  <div class="sec"><h4>Slide</h4><div class="acts2"><button class="btn sm" data-act="dup">Duplicar</button><button class="btn sm" data-act="mv-" ${cur === 0 ? 'disabled' : ''}>◀ Mover</button><button class="btn sm" data-act="mv+" ${cur === deck.slides.length - 1 ? 'disabled' : ''}>Mover ▶</button><button class="btn sm danger" data-act="del" ${deck.slides.length <= 1 ? 'disabled' : ''}>Excluir</button></div></div>`;
+}
+
+/* ================================================================
+   AÇÕES
+   ================================================================ */
+function commit(estrutural = true) { snap(); updThumb(cur); renderStage(); if (estrutural) renderInsp(); }
+function addSlide(id) {
+  deck.slides.splice(cur + 1, 0, novoSlide(id)); cur++;
+  snap(); renderThumbs(); renderStage(); renderInsp(); fechar();
+  $$('#thumbs .th')[cur]?.scrollIntoView({ block: 'nearest' });
+}
+function dupSlide(i = cur) {
+  const c = JSON.parse(JSON.stringify(deck.slides[i])); c.id = uid(); deck.slides.splice(i + 1, 0, c); cur = i + 1; snap(); renderThumbs(); renderStage(); renderInsp();
+}
+function delSlide(i = cur) {
+  if (deck.slides.length <= 1) return toast('A apresentação precisa ter ao menos um slide.');
+  deck.slides.splice(i, 1); cur = clamp(cur > i ? cur - 1 : cur, 0, deck.slides.length - 1); snap(); renderThumbs(); renderStage(); renderInsp();
+}
+function mover(i, j) {
+  if (j < 0 || j >= deck.slides.length || i === j) return;
+  const [s] = deck.slides.splice(i, 1); deck.slides.splice(j, 0, s); cur = j; snap(); renderThumbs(); renderStage(); renderInsp();
+}
+function setPath(o, path, v) { const p = path.split('.'); let x = o; while (p.length > 1) x = x[p.shift()]; x[p[0]] = v; }
+
+/* ---------- imagens (redimensiona antes de guardar) ---------- */
+let alvoImg = null;
+function pedirImagem(alvo) { alvoImg = alvo; const f = $('#file'); f.value = ''; f.click(); }
+function lerImagem(file, quad, max) {
+  return new Promise((ok, no) => {
+    if (!file || !file.type.startsWith('image/')) return no();
+    const r = new FileReader();
+    r.onload = () => { const im = new Image(); im.onload = () => {
+      let sw = im.width, sh = im.height, sx = 0, sy = 0, w, h;
+      if (quad) { const m = Math.min(sw, sh); sx = (sw - m) / 2; sy = (sh - m) / 2; sw = sh = m; w = h = Math.min(max, m); }
+      else { const k = Math.min(1, max / sw); w = Math.round(sw * k); h = Math.round(sh * k); }
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(im, sx, sy, sw, sh, 0, 0, w, h);
+      ok(file.type === 'image/png' && quad === 'png' ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', .86));
+    }; im.onerror = no; im.src = r.result; };
+    r.onerror = no; r.readAsDataURL(file);
+  });
+}
+async function aplicarImagem(alvo, file) {
+  try {
+    const s = sl(), [t, a, b] = alvo.split(':');
+    if (t === 'item') { s.items[+a][b] = await lerImagem(file, true, 520); }
+    else if (t === 'f') { s.f[a] = await lerImagem(file, false, 1500); }
+    else if (t === 'logo') { deck.logo = await lerImagem(file, false, 500); }
+    commit();
+  } catch (e) { toast('Não consegui ler essa imagem.'); }
+}
+
+/* ---------- arquivos ---------- */
+function baixar(nome, texto, tipo) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([texto], { type: tipo })); a.download = nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+const nomeArq = () => (deck.titulo || 'apresentacao').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'apresentacao';
+function baixarHTML() {
+  snap();
+  const json = JSON.stringify(deck).replace(/</g, '\\u003c');
+  const html = SRC.replace(/(<script type="application\/json" id="deck-data">)[\s\S]*?(<\/script>)/, (m, a, b) => a + json + b);
+  baixar(nomeArq() + '.html', html, 'text/html'); toast('Arquivo .html baixado — abre direto com a apresentação.');
+}
+function salvarJSON() { snap(); baixar(nomeArq() + '.json', JSON.stringify(deck, null, 2), 'application/json'); }
+
+/* ---------- PDF ---------- */
+function pdf() {
+  $('#print').innerHTML = deck.slides.map((s, i) => `<div class="pp">${slideHTML(s, ctxV(i))}</div>`).join('');
+  toast('No diálogo: destino "Salvar como PDF" e marque "Gráficos de segundo plano".');
+  setTimeout(() => window.print(), 350);
+}
+
+/* ---------- modal de layouts ---------- */
+function abrirLayouts() {
+  $('#mbody').innerHTML = LAYOUT_ORDER.map(id => `<button class="lay" data-lay="${id}"><div class="pv"><div class="pvi"></div></div><b>${LAYOUTS[id].nome}</b><span>${LAYOUTS[id].desc}</span></button>`).join('');
+  $('#ovl').classList.add('on');
+  $$('#mbody .lay').forEach(b => {
+    const pv = b.querySelector('.pv'), w = pv.clientWidth, k = w / 1920;
+    const demo = { ...novoSlide(b.dataset.lay) };
+    pv.innerHTML = slideHTML(demo, { deck, edit: false, idx: 0 }); pv.firstElementChild.style.transform = `scale(${k})`;
+  });
+}
+const fechar = () => $('#ovl').classList.remove('on');
+
+/* ================================================================
+   MODO APRESENTAÇÃO
+   ================================================================ */
+let show = { on: false, i: 0, t: 0 };
+function renderShow(anim) {
+  const box = $('#sbox'), k = Math.min(innerWidth / 1920, innerHeight / 1080);
+  box.style.width = 1920 * k + 'px'; box.style.height = 1080 * k + 'px';
+  box.className = 'box' + (anim && deck.transicao === 'fade' ? ' fade' : '');
+  box.innerHTML = slideHTML(deck.slides[show.i], ctxV(show.i)); box.firstElementChild.style.transform = `scale(${k})`;
+  $('#sn').textContent = `${show.i + 1} / ${deck.slides.length}`;
+  $('#sbar').style.width = ((show.i + 1) / deck.slides.length * 100) + '%';
+  const n = $('#snotes'); n.textContent = deck.slides[show.i].notas || '(sem notas neste slide)';
+}
+function abrirShow(i) {
+  show = { on: true, i: clamp(i, 0, deck.slides.length - 1) };
+  $('#show').classList.add('on'); renderShow(false); document.documentElement.requestFullscreen?.().catch(() => { });
+  idle();
+}
+function sairShow() {
+  if (!show.on) return; show.on = false; $('#show').classList.remove('on');
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => { });
+  ir(show.i);
+}
+const passo = d => { const j = clamp(show.i + d, 0, deck.slides.length - 1); if (j !== show.i) { show.i = j; renderShow(true); } };
+function idle() { const e = $('#show'); e.classList.remove('idle'); clearTimeout(show.t); show.t = setTimeout(() => e.classList.add('idle'), 2200); }
+
+/* ================================================================
+   EVENTOS
+   ================================================================ */
+const stage = $('#stage');
+stage.addEventListener('input', e => {
+  const el = e.target.closest('[data-f]'); if (!el) return;
+  const s = sl(), v = limpar(el.innerHTML), i = el.dataset.i;
+  if (i !== undefined) s.items[+i][el.dataset.f] = v; else s.f[el.dataset.f] = v;
+  updThumb(cur); snapDeb();
+});
+stage.addEventListener('focusout', e => { const el = e.target.closest('[data-f]'); if (el) { clearTimeout(tDeb); snap(); } });
+stage.addEventListener('keydown', e => {
+  if (e.target.closest('[contenteditable]')) {
+    if (e.key === 'Enter') { e.preventDefault(); document.execCommand('insertLineBreak'); }
+    if (e.key === 'Escape') e.target.blur();
+  }
+});
+stage.addEventListener('paste', e => {
+  if (!e.target.closest('[contenteditable]')) return;
+  e.preventDefault(); document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+});
+stage.addEventListener('click', e => {
+  const t = e.target.closest('[data-img]'); if (t && !e.target.closest('[contenteditable]')) pedirImagem(t.dataset.img);
+});
+stage.addEventListener('dragover', e => { if (e.target.closest('[data-img]')) e.preventDefault(); });
+stage.addEventListener('drop', e => {
+  const t = e.target.closest('[data-img]'); if (!t) return;
+  e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) aplicarImagem(t.dataset.img, f);
+});
+$('#file').addEventListener('change', e => { const f = e.target.files[0]; if (f && alvoImg) aplicarImagem(alvoImg, f); });
+
+/* barra flutuante de formatação */
+document.addEventListener('selectionchange', () => {
+  const sel = getSelection(), tb = $('#ftb');
+  if (!sel.rangeCount || sel.isCollapsed) return tb.classList.remove('on');
+  const n = sel.anchorNode && (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement);
+  if (!n || !n.closest('#frame [contenteditable]')) return tb.classList.remove('on');
+  const r = sel.getRangeAt(0).getBoundingClientRect();
+  tb.classList.add('on'); tb.style.left = Math.max(8, r.left + r.width / 2 - tb.offsetWidth / 2) + 'px'; tb.style.top = Math.max(8, r.top - tb.offsetHeight - 10) + 'px';
+});
+$('#ftb').addEventListener('mousedown', e => e.preventDefault());
+$('#ftb').addEventListener('click', e => {
+  const c = e.target.closest('button')?.dataset.c; if (!c) return;
+  const el = (getSelection().anchorNode?.nodeType === 1 ? getSelection().anchorNode : getSelection().anchorNode?.parentElement)?.closest('[contenteditable]');
+  if (c === 'bold') document.execCommand('bold'); else if (c === 'italic') document.execCommand('italic');
+  else if (el) { el.innerHTML = limpar(el.innerHTML).replace(/<\/?[bi]>/g, ''); }
+  el && el.dispatchEvent(new Event('input', { bubbles: true }));
+});
+
+/* miniaturas: selecionar, ações, arrastar para reordenar */
+const thumbs = $('#thumbs');
+thumbs.addEventListener('click', e => {
+  const th = e.target.closest('.th'); if (!th) return; const i = +th.dataset.i, a = e.target.closest('[data-a]')?.dataset.a;
+  if (a === 'dup') return dupSlide(i); if (a === 'del') return delSlide(i); ir(i);
+});
+let drag = -1;
+thumbs.addEventListener('dragstart', e => { const th = e.target.closest('.th'); if (!th || RO) return e.preventDefault(); drag = +th.dataset.i; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(drag)); });
+thumbs.addEventListener('dragover', e => { const th = e.target.closest('.th'); if (!th || drag < 0) return; e.preventDefault(); $$('.th.over').forEach(x => x.classList.remove('over')); th.classList.add('over'); });
+thumbs.addEventListener('drop', e => { const th = e.target.closest('.th'); if (!th || drag < 0) return; e.preventDefault(); mover(drag, +th.dataset.i); drag = -1; });
+thumbs.addEventListener('dragend', () => { drag = -1; $$('.th.over').forEach(x => x.classList.remove('over')); });
+
+/* inspetor (delegação) */
+const ib = $('#ibody');
+ib.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.act) return acao(t.dataset.act);
+  if (t.dataset.li) return lista(t.dataset.li, +t.dataset.i);
+  const sg = t.closest('[data-seg]');
+  if (sg) { const n = sg.dataset.seg, v = t.dataset.v; if (n === 'transicao') deck.transicao = v; else if (n === 'align') sl().align = v; else setPath(sl(), n, v); return commit(); }
+  const sw = t.closest('[data-sws]');
+  if (sw) { setCor(sw.dataset.sws, t.dataset.v); }
+});
+ib.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.cus) return setCor(t.dataset.cus, t.value, false);
+  if (t.dataset.d) { setPath(deck, t.dataset.d, t.type === 'checkbox' ? t.checked : t.value); renderThumbs(); renderStage(); snapDeb(); return; }
+  if (t.dataset.s === 'k') { sl().k = +t.value / 100; t.previousElementSibling.textContent = `Tamanho dos títulos · ${t.value}%`; updThumb(cur); renderStage(); snapDeb(); return; }
+  if (t.dataset.s === 'notas') { sl().notas = t.value; snapDeb(); }
+});
+ib.addEventListener('change', e => {
+  const t = e.target, s = sl();
+  if (t.dataset.s === 'layout') { trocarLayout(s, t.value); commit(); }
+  else if (t.dataset.s === 'glow') { s.glow = t.checked; commit(false); }
+  else if (t.dataset.s === 'rodape') { s.semRodape = !t.checked; commit(false); }
+  else if (t.dataset.d) { commit(false); }
+});
+function setCor(nome, cor, estrutural = true) {
+  if (nome === 'bg') sl().bg = cor; else if (nome === 'accent') deck.accent = cor;
+  renderThumbs(); renderStage(); snapDeb(); if (estrutural) renderInsp();
+}
+function lista(a, i) {
+  const s = sl(), l = LAYOUTS[s.layout].list;
+  if (a === 'add' && s.items.length < l.max) s.items.push(l.novo());
+  else if (a === 'rm' && s.items.length > l.min) s.items.splice(i, 1);
+  else if (a === 'up' && i > 0) [s.items[i - 1], s.items[i]] = [s.items[i], s.items[i - 1]];
+  else if (a === 'dn' && i < s.items.length - 1) [s.items[i + 1], s.items[i]] = [s.items[i], s.items[i + 1]];
+  else if (a === 'foto') return pedirImagem(`item:${i}:foto`);
+  commit();
+}
+function acao(a) {
+  if (a === 'dup') dupSlide(); else if (a === 'del') delSlide(); else if (a === 'mv-') mover(cur, cur - 1); else if (a === 'mv+') mover(cur, cur + 1);
+  else if (a === 'logo') pedirImagem('logo:x'); else if (a === 'logo-x') { deck.logo = ''; commit(); }
+  else if (a === 'json-save') salvarJSON(); else if (a === 'json-open') { $('#jfile').value = ''; $('#jfile').click(); }
+  else if (a === 'novo') { if (confirm('Recomeçar com o modelo padrão? A apresentação atual será substituída (use "Desfazer" para voltar).')) { deck = normalizar(deckPadrao()); cur = 0; snap(); renderTudo(); } }
+}
+$('#jfile').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try { const d = JSON.parse(await f.text()); if (!d || !Array.isArray(d.slides)) throw 0; deck = normalizar(d); cur = 0; snap(); renderTudo(); toast('Apresentação aberta.'); }
+  catch (x) { toast('Esse arquivo não parece uma apresentação 4JURIS.'); }
+});
+
+/* topo + abas */
+$('#titulo').addEventListener('input', e => { deck.titulo = e.target.value; snapDeb(); document.title = (deck.titulo || 'Apresentação') + ' · 4JURIS Day'; });
+$('#undo').onclick = () => hi > 0 && restaurar(hi - 1);
+$('#redo').onclick = () => hi < hist.length - 1 && restaurar(hi + 1);
+$('#play').onclick = () => abrirShow(cur);
+$('#pdf').onclick = pdf; $('#dlhtml').onclick = baixarHTML;
+$('#addbtn').onclick = abrirLayouts; $('#mclose').onclick = fechar;
+$('#ovl').addEventListener('click', e => { if (e.target.id === 'ovl') fechar(); const b = e.target.closest('[data-lay]'); if (b) addSlide(b.dataset.lay); });
+$('#prev').onclick = () => ir(cur - 1); $('#next').onclick = () => ir(cur + 1);
+$('#tab-s').onclick = () => { aba = 's'; renderInsp(); }; $('#tab-d').onclick = () => { aba = 'd'; renderInsp(); };
+
+/* teclado global */
+document.addEventListener('keydown', e => {
+  if (!deck) return;
+  if (show.on) {
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); passo(1); }
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); passo(-1); }
+    else if (e.key === 'Home') { show.i = 0; renderShow(true); } else if (e.key === 'End') { show.i = deck.slides.length - 1; renderShow(true); }
+    else if (e.key === 'n' || e.key === 'N') $('#snotes').classList.toggle('on');
+    else if (e.key === 'Escape') sairShow();
+    return idle();
+  }
+  const editando = e.target.closest && e.target.closest('input,textarea,select,[contenteditable]');
+  if ((e.ctrlKey || e.metaKey) && !editando) {
+    if (e.key === 'z') { e.preventDefault(); hi > 0 && restaurar(hi - 1); } else if (e.key === 'y' || (e.shiftKey && e.key === 'Z')) { e.preventDefault(); hi < hist.length - 1 && restaurar(hi + 1); }
+    else if (e.key === 'd') { e.preventDefault(); dupSlide(); }
+  }
+  if (editando) return;
+  if (RO && (e.key === 'Delete' || (e.ctrlKey || e.metaKey))) return;
+  if (e.key === 'ArrowDown' || e.key === 'PageDown') { e.preventDefault(); ir(cur + 1); }
+  else if (e.key === 'ArrowUp' || e.key === 'PageUp') { e.preventDefault(); ir(cur - 1); }
+  else if (e.key === 'Delete') delSlide();
+  else if (e.key === 'F5') { e.preventDefault(); abrirShow(0); }
+  else if (e.key === 'Escape') fechar();
+});
+$('#show').addEventListener('mousemove', idle);
+$('#show').addEventListener('click', e => { if (e.target.closest('.ctl')) return; passo(e.clientX < innerWidth / 3 ? -1 : 1); });
+$('#sp').onclick = () => passo(-1); $('#sx').onclick = () => passo(1); $('#sq').onclick = sairShow; $('#snb').onclick = () => $('#snotes').classList.toggle('on');
+document.addEventListener('fullscreenchange', () => { if (show.on && !document.fullscreenElement) sairShow(); });
+addEventListener('resize', () => { if (!deck) return; if (show.on) renderShow(false); else renderStage(); });
+addEventListener('beforeunload', () => { if (!deck || RO) return; clearTimeout(tDeb); snap(); });
+
+/* ================================================================
+   INÍCIO
+   ================================================================ */
+function iniciar(d, titulo) {
+  if (deck) return;
+  deck = normalizar(d || deckPadrao());
+  if (!d && titulo) { deck.titulo = titulo; deck.rodape.texto = deck.rodape.texto; const c = deck.slides[0]; if (c && c.layout === 'capa') c.f.titulo = esc(titulo); }
+  hist = [JSON.stringify(deck)]; hi = 0;
+  document.title = (deck.titulo || 'Apresentação') + ' · 4JURIS Day';
+  $('#undo').disabled = true; $('#redo').disabled = true;
+  document.body.classList.toggle('ro', RO);
+  $('#titulo').readOnly = RO;
+  renderTudo();
+  (document.fonts && document.fonts.ready || Promise.resolve()).then(renderStage);
+}
+if (EMB) {
+  addEventListener('message', e => {
+    const m = e.data;
+    if (e.origin !== location.origin || e.source !== parent || !m || m.src !== '4j-deck' || m.type !== 'load') return;
+    RO = !!m.readonly; iniciar(m.deck, m.titulo);
+  });
+  enviar({ type: 'ready' });
+  setTimeout(() => iniciar(null), 3000);        // aberto fora do sistema: segue com o modelo padrão
+} else iniciar(carregar());
+</script>
+</body>
+</html>

@@ -11,15 +11,15 @@ function StatusSelect({ value, onChange, className }: { value: StatusSolicitacao
   const tone = STATUS_SOLIC[value]?.tone ?? 'neutral'
   const toneCls: Record<string, string> = {
     neutral: 'bg-winter text-ink-2 border-line', brand: 'bg-brand-50 text-brand-700 border-brand-200',
-    success: 'bg-success-soft text-success border-[#bfe6d5]', warning: 'bg-warning-soft text-warning border-[#ecd9a8]',
-    danger: 'bg-danger-soft text-danger border-[#f0c0bd]',
+    success: 'bg-success-soft text-success border-success-line', warning: 'bg-warning-soft text-warning border-warning-line',
+    danger: 'bg-danger-soft text-danger border-danger-line',
   }
   return (
     <div className={cn('relative', className)}>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as StatusSolicitacao)}
-        className={cn('appearance-none w-full h-9 pl-3 pr-8 rounded-lg border text-[12.5px] font-semibold cursor-pointer outline-none transition focus:ring-4 focus:ring-brand-100', toneCls[tone])}
+        className={cn('appearance-none w-full h-9 pl-3 pr-8 rounded-lg border text-[12.5px] font-semibold cursor-pointer outline-none transition focus:ring-1 focus:ring-brand', toneCls[tone])}
       >
         {STATUS_OPCOES.map((st) => <option key={st} value={st}>{STATUS_SOLIC[st].label}</option>)}
       </select>
@@ -89,7 +89,7 @@ export default function ReembolsosAdmin({ onVerColaborador }: { onVerColaborador
                     onDragOver={(e) => { e.preventDefault(); setOver(col.key) }}
                     onDragLeave={() => setOver((o) => (o === col.key ? null : o))}
                     onDrop={() => { setOver(null); if (drag) { mudar(drag, col.key as StatusSolicitacao); setDrag(null) } }}
-                    className={cn('flex-1 min-w-[200px] rounded-2xl border bg-surface-2 transition', over === col.key ? 'border-brand ring-4 ring-brand-100' : 'border-line')}
+                    className={cn('flex-1 min-w-[200px] rounded-2xl border bg-surface-2 transition', over === col.key ? 'border-brand bg-brand-50' : 'border-line')}
                   >
                     <div className="flex items-center gap-2 px-3.5 py-3 border-b border-line">
                       <Icon name={col.icon} className="h-[17px] w-[17px] text-muted" />

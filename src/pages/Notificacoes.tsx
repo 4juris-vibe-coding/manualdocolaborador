@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '@/lib/store'
 import { PageHeader, Card, Icon, Button, EmptyState } from '@/components/ui'
@@ -11,11 +12,14 @@ const notifIcon: Record<string, { icon: string; tone: string }> = {
   evento: { icon: 'CalendarHeart', tone: 'bg-brand-50 text-brand' },
   gamificacao: { icon: 'Trophy', tone: 'bg-gold-soft text-gold' },
   pendencia: { icon: 'AlertTriangle', tone: 'bg-warning-soft text-warning' },
+  disponibilidade: { icon: 'Palmtree', tone: 'bg-brand-50 text-brand' },
 }
 
 export default function Notificacoes() {
   const navigate = useNavigate()
-  const notifs = useStore((s) => s.notificacoes)
+  const todas = useStore((s) => s.notificacoes)
+  const meId = useStore((s) => s.realUser().id)
+  const notifs = useMemo(() => todas.filter((n) => n.colaboradorId === meId).sort((a, b) => b.data.localeCompare(a.data)), [todas, meId])
   const marcar = useStore((s) => s.marcarNotifLida)
   const marcarTodas = useStore((s) => s.marcarTodasLidas)
 
@@ -24,7 +28,7 @@ export default function Notificacoes() {
       <PageHeader title="Notificações" subtitle="Tudo o que aconteceu recentemente."
         actions={<Button variant="ghost" icon="CheckCheck" onClick={marcarTodas}>Marcar todas como lidas</Button>} />
       <Card>
-        {notifs.length === 0 ? <EmptyState icon="BellOff" title="Sem notificações" /> : (
+        {notifs.length === 0 ? <EmptyState icon="BellOff" title="Sem notificações" desc="Avisos sobre comunicados, eventos, reconhecimentos e solicitações aparecem aqui." /> : (
           <div className="divide-y divide-line">
             {notifs.map((n) => {
               const cfg = notifIcon[n.tipo] ?? { icon: 'Bell', tone: 'bg-winter text-ink' }

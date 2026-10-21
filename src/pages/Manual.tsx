@@ -73,11 +73,11 @@ const SECOES: Secao[] = [
     ],
   },
   {
-    id: 'horarios', icon: 'Clock', titulo: 'Horários e reuniões',
+    id: 'horarios', icon: 'Clock', titulo: 'Agendas e reuniões',
     blocos: [
-      { tipo: 'p', texto: 'Trabalhamos com foco em resultados e autonomia. Combine com seu gestor a disponibilidade e os horários de maior sobreposição com a equipe.' },
+      { tipo: 'p', texto: 'Trabalhamos com foco em resultados e autonomia, conforme o escopo de cada contrato. Combine com a área do projeto os momentos de alinhamento e as janelas de sobreposição que fazem sentido para as entregas.' },
       { tipo: 'lista', itens: [
-        'Esteja disponível nos horários combinados com o time.',
+        'Respeite as janelas de alinhamento combinadas para cada projeto.',
         'Chegue às reuniões no horário e com o material preparado.',
         'Reuniões devem ter objetivo e, sempre que possível, ata ou próximos passos registrados.',
       ] },
@@ -89,8 +89,8 @@ const SECOES: Secao[] = [
       { tipo: 'lista', itens: [
         'Emissão de nota fiscal: emita e envie a NF mensal pela Central de Notas Fiscais dentro do prazo.',
         'Reembolsos: solicite pela Central de Reembolsos, sempre com comprovante anexado.',
-        'Recesso e folgas: solicite com antecedência e aguarde a aprovação do gestor.',
-        'Equipamentos e acessos: são de responsabilidade do colaborador enquanto ativos.',
+        'Disponibilidade: registre com antecedência os períodos em que não estará disponível, para a área reorganizar as entregas.',
+        'Equipamentos e acessos cedidos: siga o que está previsto no seu contrato e devolva ao encerrar a parceria.',
         'Proteção de dados: siga as diretrizes de LGPD em todos os processos.',
       ] },
     ],
@@ -136,7 +136,7 @@ export default function Manual() {
 
   return (
     <>
-      <PageHeader title="Manual do Colaborador" subtitle="Cultura, conduta e tudo o que você precisa saber sobre a 4JURIS." />
+      <PageHeader title="Manual de convivência" subtitle="Cultura, comunicação e boas práticas da comunidade 4JURIS." />
 
       {/* Busca */}
       <div className="relative mb-6 max-w-md">

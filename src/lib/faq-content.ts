@@ -168,12 +168,12 @@ export const ARTIGOS: Record<string, Artigo> = {
 }
 
 export const FAQ_GROUPS: { title: string; items: string[] }[] = [
-  { title: 'Benefícios & Bem-estar', items: ['wellhub', 'avus', 'starbem'] },
+  { title: 'Parcerias & bem-estar (adesão opcional)', items: ['wellhub', 'avus', 'starbem'] },
   { title: 'Administrativo', items: ['cadastro_facial', 'nota_fiscal'] },
 ]
 
 export const FAQ_SOON: { icon: string; title: string }[] = [
-  { icon: 'Plane', title: 'Solicitação de Férias' },
+  { icon: 'Palmtree', title: 'Disponibilidade e descanso combinado' },
   { icon: 'Wallet', title: 'Reembolso' },
   { icon: 'ShieldCheck', title: 'Políticas Internas' },
   { icon: 'Settings2', title: 'Sistemas & Acessos' },
