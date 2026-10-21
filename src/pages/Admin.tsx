@@ -8,7 +8,9 @@ import { feedback, toast } from '@/components/toast'
 import { STATUS_COLAB, cn } from '@/lib/utils'
 import { MATRIZ, PAPEL_DESC, PAPEL_LABEL, type Capacidade } from '@/domain/permissions'
 import { MODO_DEMO, MODO_API } from '@/data/config'
-import { listarAcessos, salvarAcesso, type AcessoUsuario } from '@/data/sync'
+import { listarAcessos, salvarAcesso, salvarAgora, type AcessoUsuario } from '@/data/sync'
+import { gerarSenha } from '@/components/AcessoPortal'
+import { hojeISO } from '@/domain/datas'
 
 const CAP_LABEL: Partial<Record<Capacidade, string>> = {
   'portal:usar': 'Área pessoal', 'lideranca:painel': 'Painel da liderança', 'lideranca:ver_disponibilidade_equipe': 'Ver disponibilidade da equipe',
@@ -20,13 +22,6 @@ const CAP_LABEL: Partial<Record<Capacidade, string>> = {
   'relatorios:exportar': 'Exportar relatórios', 'admin:usuarios': 'Usuários e papéis', 'admin:auditoria': 'Auditoria', 'admin:privacidade': 'Anonimização (LGPD)', 'admin:dados_demo': 'Dados de demonstração',
 }
 const PAPEIS: Papel[] = ['colaborador', 'gestor', 'rh', 'diretoria', 'admin']
-
-/** Senha aleatória de 14 caracteres (sem símbolos ambíguos), gerada no navegador. */
-function gerarSenha(): string {
-  const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#$%'
-  const bytes = crypto.getRandomValues(new Uint8Array(14))
-  return Array.from(bytes, (b) => alfabeto[b % alfabeto.length]).join('')
-}
 
 export default function Admin() {
   const s = useStore()
@@ -42,6 +37,23 @@ export default function Admin() {
   const [salvando, setSalvando] = useState(false)
   const recarregarAcessos = () => listarAcessos().then((l) => setAcessos(Object.fromEntries(l.map((a) => [a.colaboradorId, a]))))
   useEffect(() => { if (MODO_API && tab === 'usuarios') void recarregarAcessos() }, [tab])
+  const [novo, setNovo] = useState<{ nome: string; email: string; papel: Papel; setorId: string; senha: string } | null>(null)
+  const [verNovaSenha, setVerNovaSenha] = useState(false)
+  /** Cria o cadastro mínimo da pessoa + o login. O restante (contrato, CNPJ, dados pessoais) é completado depois em Pessoas. */
+  const criarNovoAcesso = async () => {
+    if (!novo) return
+    if (novo.senha.length < 10) { toast('A senha precisa ter ao menos 10 caracteres.', 'danger'); return }
+    setSalvando(true)
+    const r = s.salvarPessoa({ nome: novo.nome, email: novo.email, papel: novo.papel, setorId: novo.setorId, status: 'ativo', dataEntrada: hojeISO(), regime: 'autonomo' })
+    if (!r.ok) { setSalvando(false); toast(r.erro ?? 'Não foi possível cadastrar a pessoa.', 'danger'); return }
+    if (!(await salvarAgora())) { setSalvando(false); toast('Não foi possível salvar o cadastro no servidor. Tente de novo.', 'danger'); return }
+    const falha = await salvarAcesso(r.id ?? '', { senha: novo.senha, ativo: true })
+    setSalvando(false)
+    if (falha) { toast(`Cadastro criado, mas o acesso não: ${falha}`, 'danger'); void recarregarAcessos(); return }
+    toast('Acesso criado. Complete o cadastro em Pessoas & contratos.')
+    setNovo(null)
+    void recarregarAcessos()
+  }
   const pessoaAlvo = s.colaboradores.find((c) => c.id === alvo)
   const abrirAcesso = (id: string) => { setAlvo(id); setSenha(''); setVerSenha(false) }
   const gravarSenha = async () => {
@@ -70,7 +82,8 @@ export default function Admin() {
 
   return (
     <>
-      <PageHeader title="Usuários & acessos" subtitle="Papéis, permissões e dados da plataforma." />
+      <PageHeader title="Usuários & acessos" subtitle="Papéis, permissões e dados da plataforma."
+        actions={MODO_API ? <Button icon="UserPlus" onClick={() => { setNovo({ nome: '', email: '', papel: 'colaborador', setorId: s.setores[0]?.id ?? '', senha: '' }); setVerNovaSenha(false) }}>Criar acesso</Button> : undefined} />
       <Tabs tabs={[{ key: 'usuarios', label: 'Usuários e papéis' }, { key: 'matriz', label: 'Matriz de permissões' }, { key: 'dados', label: 'Dados da demonstração' }]} active={tab} onChange={setTab} />
 
       {tab === 'usuarios' && (
@@ -162,6 +175,31 @@ export default function Admin() {
           </div>
         </Card>
       )}
+
+      <Modal open={!!novo} onClose={() => setNovo(null)} title="Criar acesso" subtitle="Cadastro mínimo e login. Depois complete os dados em Pessoas & contratos."
+        footer={<><Button variant="ghost" onClick={() => setNovo(null)}>Cancelar</Button><Button icon="Check" disabled={salvando || !novo || novo.senha.length < 10 || !novo.nome.trim() || !novo.email.trim()} onClick={() => void criarNovoAcesso()}>{salvando ? 'Criando…' : 'Criar acesso'}</Button></>}>
+        {novo && (
+          <div className="space-y-3">
+            <div><label className="label" htmlFor="novo-nome">Nome completo</label><input id="novo-nome" className="input" value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} /></div>
+            <div><label className="label" htmlFor="novo-email">E-mail (será o login)</label><input id="novo-email" className="input" type="email" value={novo.email} onChange={(e) => setNovo({ ...novo, email: e.target.value })} autoComplete="off" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <Select label="Papel" value={novo.papel} onChange={(v) => setNovo({ ...novo, papel: v as Papel })}>{PAPEIS.map((p) => <option key={p} value={p}>{PAPEL_LABEL[p]}</option>)}</Select>
+              <Select label="Área" value={novo.setorId} onChange={(v) => setNovo({ ...novo, setorId: v })}>{s.setores.map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}</Select>
+            </div>
+            <div>
+              <label className="label" htmlFor="novo-senha">Senha (mínimo 10 caracteres)</label>
+              <div className="flex gap-2">
+                <input id="novo-senha" className="input" type={verNovaSenha ? 'text' : 'password'} value={novo.senha} onChange={(e) => setNovo({ ...novo, senha: e.target.value })} autoComplete="new-password" />
+                <Button variant="soft" onClick={() => { setNovo({ ...novo, senha: gerarSenha() }); setVerNovaSenha(true) }}>Gerar</Button>
+              </div>
+              <div className="flex items-center gap-4 mt-2 text-[12.5px]">
+                <button type="button" className="text-brand font-semibold hover:underline" onClick={() => setVerNovaSenha((v) => !v)}>{verNovaSenha ? 'Ocultar' : 'Mostrar'}</button>
+                <button type="button" disabled={!novo.senha} className="text-brand font-semibold hover:underline disabled:opacity-50" onClick={() => { void navigator.clipboard?.writeText(novo.senha); toast('Senha copiada.') }}>Copiar</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal open={!!alvo} onClose={() => setAlvo(null)} title={alvo && acessos[alvo] ? 'Nova senha de acesso' : 'Criar acesso ao portal'}
         subtitle={pessoaAlvo ? `${pessoaAlvo.nome} · ${pessoaAlvo.email}` : undefined}

@@ -91,6 +91,10 @@ export default function PessoaDetalhe() {
 
       {tab === 'dados' && (
         <div className="grid lg:grid-cols-3 gap-6">
+          {s.pode('pessoas:gerenciar') && (
+            <AcessoPortal pessoa={p} ehVoce={p.id === s.realUser().id}
+              pode={s.pode('admin:usuarios') || p.papel === 'colaborador' || p.papel === 'gestor'} />
+          )}
           <Card className="px-5 py-2"><dl>
             <Row label="E-mail" value={p.email} /><Row label="Telefone" value={p.telefone} /><Row label="Cidade / UF" value={p.cidade ? `${p.cidade} / ${p.uf}` : ''} />
             <Row label="Nascimento" value={p.nascimento ? fmtDate(p.nascimento) : 'Não informado'} /><Row label="Nome social" value={p.nomeSocial} />
@@ -117,10 +121,6 @@ export default function PessoaDetalhe() {
             <Row label="Matrícula / código externo" value={[p.matricula, p.codigoExterno].filter(Boolean).join(' · ')} />
             <Row label="Fuso · camiseta" value={[p.fusoHorario, p.tamanhoCamisa].filter(Boolean).join(' · ')} />
           </dl></Card>
-          {s.pode('pessoas:gerenciar') && (
-            <AcessoPortal pessoa={p} ehVoce={p.id === s.realUser().id}
-              pode={s.pode('admin:usuarios') || p.papel === 'colaborador' || p.papel === 'gestor'} />
-          )}
         </div>
       )}
       {tab === 'feedbacks' && <FeedbacksTab pessoaId={id} />}

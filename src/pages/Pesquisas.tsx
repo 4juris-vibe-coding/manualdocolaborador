@@ -7,6 +7,7 @@ import { feedback } from '@/components/toast'
 import { cn, fmtDate } from '@/lib/utils'
 import { hojeISO } from '@/domain/datas'
 import { pesquisaAbertaPara, validarRespostas } from '@/domain/pesquisas'
+import { ConvitesPendentes } from '@/components/v2/pesquisas/ConvitesPendentes'
 
 export default function Pesquisas() {
   const s = useStore()
@@ -24,6 +25,8 @@ export default function Pesquisas() {
         <b>Suas respostas são anônimas.</b> Guardamos apenas que você participou (para não pedir de novo) e, separadamente, as respostas sem identificação.
         Resultados só aparecem de forma agregada e grupos com poucas respostas são ocultados.
       </Callout>
+
+      <ConvitesPendentes />
 
       <h2 className="text-[13px] font-bold uppercase tracking-wide text-muted mb-3">Abertas para você</h2>
       {disponiveis.length === 0 ? <Card className="mb-8"><EmptyState icon="MessagesSquare" title="Nenhuma pesquisa aberta" desc="Quando houver uma nova pesquisa, ela aparece aqui e nas suas pendências." /></Card> : (

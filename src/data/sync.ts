@@ -113,6 +113,18 @@ export async function entrarComSenha(email: string, senha: string): Promise<stri
   } catch { return 'Servidor indisponível. Tente novamente.' }
 }
 
+/** Envia já o que estiver pendente na store e espera confirmar (para ações que dependem do cadastro estar no servidor). */
+export async function salvarAgora(): Promise<boolean> {
+  for (let i = 0; i < 20; i++) {
+    clearTimeout(timer)
+    if (emVoo) { await new Promise((r) => setTimeout(r, 250)); continue }
+    await enviar()
+    const atual = fotografar()
+    if (DB_KEYS.every((k) => atual[k] === enviado[k])) return true
+  }
+  return false
+}
+
 /* ---------- acessos (logins) — somente administração ---------- */
 export interface AcessoUsuario { colaboradorId: string; ativo: boolean; ultimoAcesso: string | null }
 

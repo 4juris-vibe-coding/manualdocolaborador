@@ -165,6 +165,7 @@ const CAMPOS_REMUNERACAO = ['salarioMin', 'salarioMax', 'variavel']
 function serializar(row: Record<string, any>, u: Usuario, org: Org) {
   const o = camel(row) as Record<string, any>
   for (const k of ['nCand', 'nAtivas', 'nContr', 'ultima']) delete o[k]
+  for (const k of ['dataAbertura', 'prazoPreenchimento', 'dataInicioPrevista', 'publicarEm', 'encerraCandidaturasEm']) o[k] = dataStr(o[k])
   if (!u.caps.has('vagas:ver_remuneracao')) for (const k of CAMPOS_REMUNERACAO) delete o[k]
   if (!u.caps.has('ats:notas_rh')) delete o.observacoesRh
   const hoje = hojeISO()
