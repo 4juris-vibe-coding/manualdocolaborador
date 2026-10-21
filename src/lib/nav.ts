@@ -42,6 +42,7 @@ export const NAV: NavGroup[] = [
     items: [
       { to: '/comunicados', label: 'Comunicados', icon: 'Megaphone', desc: 'Avisos e novidades da empresa.' },
       { to: '/eventos', label: 'Agenda & eventos', icon: 'CalendarHeart', desc: 'Calendário de eventos e encontros.' },
+      { to: '/organograma', label: 'Organograma', icon: 'Network', desc: 'Quem é quem: equipes, lideranças e funções.', cap: 'org:ver' },
       { to: '/aniversarios', label: 'Celebrações', icon: 'Cake', desc: 'Aniversários e marcos de parceria.' },
       { to: '/gamificacao', label: 'Reconhecimento', icon: 'Trophy', desc: 'Reconhecimentos, desafios e iniciativas.' },
       { to: '/pesquisas', label: 'Pesquisas', icon: 'MessagesSquare', desc: 'Pesquisas voluntárias e anônimas.' },
@@ -67,12 +68,43 @@ export const NAV: NavGroup[] = [
     items: [
       { to: '/lideranca', label: 'Painel da liderança', icon: 'UserCog', desc: 'Equipe, disponibilidade, objetivos e integração.', cap: 'lideranca:painel' },
       { to: '/rh/feedbacks', label: 'Feedbacks', icon: 'MessageSquareText', desc: 'Feedbacks de alinhamento sobre as entregas.', cap: 'feedbacks:registrar' },
+      { to: '/recrutamento/vagas', label: 'Vagas da minha área', icon: 'BadgePlus', desc: 'Solicite vagas e acompanhe aprovações e candidatos.', cap: 'vagas:solicitar' },
     ],
   },
   {
     title: 'Visão geral', area: 'rh',
     items: [
       { to: '/rh', label: 'Indicadores', icon: 'BarChart3', desc: 'Indicadores com definição, fonte e período.', cap: 'rh:painel' },
+      { to: '/rh/analytics', label: 'People Analytics', icon: 'LineChart', desc: 'Recrutamento, pesquisas e estrutura em um só painel.', cap: 'analytics:ver' },
+    ],
+  },
+  {
+    title: 'Recrutamento', area: 'rh',
+    items: [
+      { to: '/recrutamento', label: 'Painel de vagas', icon: 'LayoutDashboard', desc: 'Visão executiva e operacional do recrutamento.', cap: 'vagas:gerenciar' },
+      { to: '/recrutamento/vagas', label: 'Vagas', icon: 'BriefcaseBusiness', desc: 'Criação, aprovação, publicação e encerramento de vagas.', cap: 'vagas:gerenciar' },
+      { to: '/recrutamento/candidatos', label: 'Candidatos (ATS)', icon: 'KanbanSquare', desc: 'Pipeline seletivo, perfis e avaliações.', cap: 'ats:ver' },
+      { to: '/recrutamento/entrevistas', label: 'Entrevistas', icon: 'CalendarClock', desc: 'Agenda de entrevistas e pareceres pendentes.', cap: 'ats:ver' },
+      { to: '/recrutamento/talentos', label: 'Banco de talentos', icon: 'Contact', desc: 'Pessoas para processos futuros, com autorização.', cap: 'ats:gerenciar' },
+      { to: '/recrutamento/comunicacao', label: 'Comunicação', icon: 'MailCheck', desc: 'Mensagens a candidatos e modelos.', cap: 'ats:gerenciar' },
+      { to: '/recrutamento/config', label: 'Configurar recrutamento', icon: 'Settings', desc: 'Fluxos de aprovação, etapas padrão e canais.', cap: 'vagas:config' },
+    ],
+  },
+  {
+    title: 'Central de pesquisas', area: 'rh',
+    items: [
+      { to: '/pesquisas-rh', label: 'Painel de pesquisas', icon: 'LayoutDashboard', desc: 'Participação, prazos e resultados.', cap: 'pesq:gerenciar' },
+      { to: '/pesquisas-rh/lista', label: 'Pesquisas', icon: 'ClipboardList', desc: 'Criar, distribuir e acompanhar pesquisas.', cap: 'pesq:gerenciar' },
+      { to: '/pesquisas-rh/modelos', label: 'Biblioteca de modelos', icon: 'LibraryBig', desc: 'eNPS, clima, liderança, onboarding e mais.', cap: 'pesq:gerenciar' },
+    ],
+  },
+  {
+    title: 'Arquitetura de cargos', area: 'rh',
+    items: [
+      { to: '/cargos', label: 'Catálogo de cargos', icon: 'Layers3', desc: 'Fichas oficiais, famílias, trilhas e níveis.', cap: 'cargos:ver' },
+      { to: '/cargos/matriz', label: 'Matriz de competências', icon: 'Grid3x3', desc: 'Competências esperadas por cargo e nível.', cap: 'cargos:ver' },
+      { to: '/cargos/faixas', label: 'Faixas salariais', icon: 'Coins', desc: 'Faixas por cargo, com vigência e histórico.', cap: 'cargos:ver_faixas' },
+      { to: '/cargos/governanca', label: 'Governança de cargos', icon: 'ShieldCheck', desc: 'Aprovações, versões e duplicidades.', cap: 'cargos:gerenciar' },
     ],
   },
   {
@@ -121,6 +153,7 @@ export const NAV: NavGroup[] = [
     title: 'Configurações', area: 'admin',
     items: [
       { to: '/admin', label: 'Usuários & acessos', icon: 'ShieldCheck', desc: 'Papéis, permissões e dados de demonstração.', cap: 'admin:usuarios' },
+      { to: '/admin/funcoes', label: 'Funções adicionais', icon: 'UserCheck', desc: 'Recrutadores, analistas de RH e responsáveis por pesquisas.', cap: 'admin:usuarios' },
       { to: '/admin/configuracoes', label: 'Configurações gerais', icon: 'Settings2', desc: 'Empresa, tomador das notas e contatos.', cap: 'config:geral' },
       { to: '/seguranca', label: 'Privacidade & auditoria', icon: 'ScrollText', desc: 'Histórico de ações e direitos do titular (LGPD).', cap: 'admin:auditoria' },
     ],

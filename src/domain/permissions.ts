@@ -40,6 +40,31 @@ export type Capacidade =
   | 'perfis:consultar'
   | 'config:geral'
   | 'sugestoes:moderar'
+  // Recrutamento (v2) — verificadas também no servidor (api/_v2)
+  | 'vagas:solicitar'          // gestor: pede abertura de vaga da própria área
+  | 'vagas:ver'                // ver vagas (gestor: só as da própria área/solicitadas por ele)
+  | 'vagas:gerenciar'          // criar/editar/publicar/encerrar qualquer vaga
+  | 'vagas:ver_remuneracao'    // faixa salarial da vaga e proposta
+  | 'vagas:config'             // fluxos de aprovação, etapas padrão, canais
+  | 'ats:ver'                  // candidaturas das vagas que pode acompanhar
+  | 'ats:gerenciar'            // mover candidatos, comunicar, propostas
+  | 'ats:avaliar'              // registrar avaliações das entrevistas em que participa
+  | 'ats:notas_rh'             // notas internas restritas ao RH
+  | 'ats:exportar'
+  // Pesquisas (v2)
+  | 'pesq:gerenciar'
+  | 'pesq:resultados'
+  | 'pesq:exportar'
+  // Engenharia de cargos (v2)
+  | 'cargos:ver'
+  | 'cargos:gerenciar'
+  | 'cargos:aprovar'
+  | 'cargos:ver_faixas'
+  // Organograma e analytics (v2)
+  | 'org:ver'
+  | 'org:ver_contato'
+  | 'org:editar'
+  | 'analytics:ver'
   // Administração da plataforma
   | 'admin:usuarios'
   | 'admin:auditoria'
@@ -47,12 +72,23 @@ export type Capacidade =
   | 'admin:dados_demo'
 
 const LIDERANCA: Capacidade[] = [
+  'vagas:solicitar', 'vagas:ver', 'ats:ver', 'ats:avaliar', 'org:ver', 'cargos:ver',
   'lideranca:painel', 'lideranca:ver_disponibilidade_equipe', 'eventos:gerenciar_area',
   'iniciativas:gerenciar', 'reembolsos:aprovar_area', 'comunicados:publicar', 'feedbacks:registrar',
 ]
 
+/** Recrutamento/pesquisas/cargos: o que o RH completo faz. */
+const RH_V2: Capacidade[] = [
+  'vagas:solicitar', 'vagas:ver', 'vagas:gerenciar', 'vagas:ver_remuneracao', 'vagas:config',
+  'ats:ver', 'ats:gerenciar', 'ats:avaliar', 'ats:notas_rh', 'ats:exportar',
+  'pesq:gerenciar', 'pesq:resultados', 'pesq:exportar',
+  'cargos:ver', 'cargos:gerenciar', 'cargos:aprovar', 'cargos:ver_faixas',
+  'org:ver', 'org:ver_contato', 'org:editar', 'analytics:ver',
+]
+
 const RH: Capacidade[] = [
   ...LIDERANCA,
+  ...RH_V2,
   'rh:painel', 'pessoas:gerenciar', 'pessoas:ver_contratos', 'documentos:gerenciar',
   'estrutura:gerenciar', 'onboarding:gerenciar', 'eventos:gerenciar', 'gamificacao:configurar',
   'pesquisas:gerenciar', 'disponibilidade:configurar', 'financeiro:gerenciar', 'relatorios:exportar',
@@ -61,11 +97,12 @@ const RH: Capacidade[] = [
 
 /** Matriz papel → capacidades. Ajuste aqui (e só aqui) as permissões. */
 export const MATRIZ: Record<Papel, Capacidade[]> = {
-  colaborador: ['portal:usar'],
+  colaborador: ['portal:usar', 'org:ver'],
   gestor: ['portal:usar', ...LIDERANCA],
   rh: ['portal:usar', ...RH],
   // Diretoria: visão executiva (indicadores agregados), sem editar cadastros.
-  diretoria: ['portal:usar', 'lideranca:painel', 'lideranca:ver_disponibilidade_equipe', 'rh:painel', 'relatorios:exportar', 'comunicados:publicar', 'eventos:gerenciar'],
+  diretoria: ['portal:usar', 'lideranca:painel', 'lideranca:ver_disponibilidade_equipe', 'rh:painel', 'relatorios:exportar', 'comunicados:publicar', 'eventos:gerenciar',
+    'vagas:ver', 'ats:ver', 'pesq:resultados', 'cargos:ver', 'org:ver', 'analytics:ver'],
   admin: ['portal:usar', ...RH, 'admin:usuarios', 'admin:auditoria', 'admin:privacidade', 'admin:dados_demo', 'config:geral'],
 }
 
@@ -85,8 +122,36 @@ export const PAPEL_DESC: Record<Papel, string> = {
   admin: 'Tudo do RH, mais usuários e papéis, auditoria, privacidade e dados de demonstração.',
 }
 
+/** Funções adicionais (além do papel), concedidas pelo RH. Tabela acl_funcoes. */
+export type FuncaoAdicional = 'recrutador' | 'analista_rh' | 'resp_pesquisas' | 'aprovador_financeiro'
+
+export const FUNCAO_LABEL: Record<FuncaoAdicional, string> = {
+  recrutador: 'Recrutador(a)',
+  analista_rh: 'Analista de RH',
+  resp_pesquisas: 'Responsável por pesquisas',
+  aprovador_financeiro: 'Aprovação financeira de vagas',
+}
+
+const FUNCOES_CAPS: Record<FuncaoAdicional, Capacidade[]> = {
+  recrutador: ['vagas:ver', 'vagas:gerenciar', 'ats:ver', 'ats:gerenciar', 'ats:avaliar', 'ats:notas_rh', 'ats:exportar', 'org:ver', 'cargos:ver'],
+  analista_rh: ['vagas:ver', 'ats:ver', 'cargos:ver', 'cargos:ver_faixas', 'org:ver', 'org:ver_contato', 'analytics:ver', 'pesq:resultados'],
+  resp_pesquisas: ['pesq:gerenciar', 'pesq:resultados', 'pesq:exportar'],
+  aprovador_financeiro: ['vagas:ver', 'vagas:ver_remuneracao'],
+}
+
+/** Capacidades efetivas: as do papel mais as das funções adicionais. Usada no servidor e no cliente. */
+export function capacidadesDe(papel: Papel, funcoes: FuncaoAdicional[] = []): Set<Capacidade> {
+  const s = new Set<Capacidade>(MATRIZ[papel] ?? [])
+  for (const f of funcoes) for (const c of FUNCOES_CAPS[f] ?? []) s.add(c)
+  return s
+}
+
+/** Capacidades extras da pessoa em sessão (carregadas de /api/v2/eu). Só afetam a interface; o servidor decide de verdade. */
+let extrasDaSessao: Set<Capacidade> = new Set()
+export function definirExtrasDaSessao(caps: Capacidade[]) { extrasDaSessao = new Set(caps) }
+
 export function can(papel: Papel, cap: Capacidade): boolean {
-  return MATRIZ[papel]?.includes(cap) ?? false
+  return (MATRIZ[papel]?.includes(cap) ?? false) || extrasDaSessao.has(cap)
 }
 
 export function canAny(papel: Papel, caps: Capacidade[]): boolean {

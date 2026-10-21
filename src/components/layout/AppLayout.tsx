@@ -7,6 +7,7 @@ import { itemDaRota } from '@/lib/nav'
 import { can } from '@/domain/permissions'
 import { MODO_DEMO, MODO_API } from '@/data/config'
 import { useSync, sairCompleto } from '@/data/sync'
+import { useAcesso } from '@/data/v2/acesso'
 import { Eye, FlaskConical, AlertTriangle } from 'lucide-react'
 import { CaixaSugestoes } from '@/components/CaixaSugestoes'
 
@@ -20,6 +21,7 @@ export function AppLayout() {
 
   const real = useStore((s) => s.realUser())
   const sessaoApi = useSync((s) => s.sessao)
+  const acessoCarregado = useAcesso((s) => s.carregado)
   const erroSync = useSync((s) => s.erro)
   // Parceria encerrada (ou cadastro removido) perde o acesso.
   const sessaoInvalida = !!sessaoId && (real.id !== sessaoId || real.status === 'encerrado')
@@ -34,7 +36,10 @@ export function AppLayout() {
 
   // Guarda de rota: sem a capacidade exigida, volta ao início.
   const item = itemDaRota(pathname)
-  const bloqueado = !!item?.cap && !can(papel, item.cap)
+  const semCapacidade = !!item?.cap && !can(papel, item.cap)
+  // Capacidades vindas do servidor (funções adicionais) chegam logo após o login: não expulse antes disso.
+  const aguardandoAcesso = semCapacidade && MODO_API && !acessoCarregado
+  const bloqueado = semCapacidade && !aguardandoAcesso
 
   return (
     <div className="flex min-h-screen">
@@ -67,7 +72,7 @@ export function AppLayout() {
         )}
         <main id="conteudo" className="flex-1 px-4 pt-5 pb-24 sm:px-7 sm:pt-7 sm:pb-24" tabIndex={-1}>
           <div className="mx-auto max-w-[1240px] animate-fade-in" key={pathname + (preview ? '-p' : '')}>
-            {bloqueado ? <Navigate to="/" replace /> : <Outlet />}
+            {bloqueado ? <Navigate to="/" replace /> : aguardandoAcesso ? <div className="text-muted text-[14px]" aria-busy="true">Carregando…</div> : <Outlet />}
           </div>
         </main>
       </div>

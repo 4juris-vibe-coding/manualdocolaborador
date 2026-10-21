@@ -2,6 +2,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { carregarEstado, confereSenha, cookieLimpo, db, emitirCookie, enviarEmailRedefinicao, gravarColecoes, hashSenha, hashToken, lerSessao, urlPortal } from './_lib.js'
 import { randomBytes } from 'node:crypto'
+import { validarEscritaLegada } from './_v2/guarda.js'
 
 type Req = IncomingMessage & { query?: Record<string, string | string[] | undefined>; body?: unknown }
 
@@ -94,6 +95,12 @@ export default async function handler(req: Req, res: ServerResponse) {
     if (acao === 'estado' && req.method === 'PUT') {
       const { mudancas } = await corpoJSON(req) as { mudancas?: Record<string, unknown> }
       if (!mudancas || typeof mudancas !== 'object') return json(res, 400, { erro: 'Corpo inválido.' })
+      // O servidor confere o que a pessoa pode alterar (o papel vem do cadastro, não do cliente).
+      const atuais = await carregarEstado()
+      const eu = (atuais.colaboradores as { id: string; papel: string }[]).find((c) => c.id === sessao.colaboradorId)
+      if (!eu) return json(res, 403, { erro: 'Cadastro não encontrado.' })
+      const recusa = validarEscritaLegada(mudancas, atuais as { colaboradores: Record<string, unknown>[] }, { colaboradorId: eu.id, papel: eu.papel })
+      if (recusa) return json(res, 403, { erro: recusa })
       return json(res, 200, { gravadas: await gravarColecoes(mudancas) })
     }
 

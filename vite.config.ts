@@ -10,7 +10,17 @@ function apiDev(): Plugin {
     configureServer(server) {
       Object.assign(process.env, { ...loadEnv('development', process.cwd(), ''), ...process.env })
       server.middlewares.use(async (req, res, next) => {
-        const m = req.url?.match(/^\/api\/([a-z]+)(\?.*)?$/)
+        if (req.url?.startsWith('/api/v2/')) {
+          try {
+            const { default: handlerV2 } = await server.ssrLoadModule('/api/v2/[...rota].ts')
+            await handlerV2(req, res)
+          } catch (e) {
+            console.error('[api-dev v2]', e)
+            res.statusCode = 500; res.end('{"erro":"Erro interno do servidor."}')
+          }
+          return
+        }
+        const m = req.url?.match(/^\/api\/([a-z-]+)(\?.*)?$/)
         if (!m) return next()
         try {
           const { default: handler } = await server.ssrLoadModule('/api/[acao].ts')

@@ -9,6 +9,7 @@ import { create } from 'zustand'
 import { CONFIG, MODO_API } from './config'
 import { useStore, DB_KEYS } from '@/lib/store'
 import { toast } from '@/components/toast'
+import { carregarAcesso, limparAcesso } from './v2/acesso'
 
 const base = CONFIG.apiUrl.replace(/\/$/, '')
 
@@ -89,6 +90,7 @@ async function hidratar(): Promise<boolean> {
   enviado = fotografar()
   sujo = false
   ligarSync()
+  void carregarAcesso()
   return true
 }
 
@@ -130,6 +132,7 @@ export async function sairDoServidor(): Promise<void> {
   clearTimeout(timer)
   if (ativo && !emVoo) await enviar()
   ativo = false
+  limparAcesso()
   useSync.setState({ sessao: 'anonimo' })
   await chamar('logout', { method: 'POST' }).catch(() => undefined)
 }

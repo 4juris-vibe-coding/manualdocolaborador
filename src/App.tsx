@@ -61,6 +61,37 @@ const Admin = lazy(() => import('@/pages/Admin'))
 const Seguranca = lazy(() => import('@/pages/Seguranca'))
 const NaoEncontrada = lazy(() => import('@/pages/NaoEncontrada'))
 
+// ---- Módulos v2: recrutamento, pesquisas, cargos, organograma, analytics ----
+const PainelVagas = lazy(() => import('@/pages/v2/vagas/PainelVagas'))
+const ListaVagas = lazy(() => import('@/pages/v2/vagas/ListaVagas'))
+const VagaForm = lazy(() => import('@/pages/v2/vagas/VagaForm'))
+const VagaDetalhe = lazy(() => import('@/pages/v2/vagas/VagaDetalhe'))
+const ConfigRecrutamento = lazy(() => import('@/pages/v2/vagas/ConfigRecrutamento'))
+const Pipeline = lazy(() => import('@/pages/v2/ats/Pipeline'))
+const CandidatoPerfil = lazy(() => import('@/pages/v2/ats/CandidatoPerfil'))
+const Talentos = lazy(() => import('@/pages/v2/ats/Talentos'))
+const EntrevistasAts = lazy(() => import('@/pages/v2/ats/Entrevistas'))
+const ComunicacaoAts = lazy(() => import('@/pages/v2/ats/Comunicacao'))
+const Carreiras = lazy(() => import('@/pages/v2/carreiras/Carreiras'))
+const VagaPublica = lazy(() => import('@/pages/v2/carreiras/VagaPublica'))
+const Candidatar = lazy(() => import('@/pages/v2/carreiras/Candidatar'))
+const AcompanharCandidatura = lazy(() => import('@/pages/v2/carreiras/Acompanhar'))
+const PesqPainel = lazy(() => import('@/pages/v2/pesquisas/Painel'))
+const PesqLista = lazy(() => import('@/pages/v2/pesquisas/Lista'))
+const PesqConstrutor = lazy(() => import('@/pages/v2/pesquisas/Construtor'))
+const PesqTemplates = lazy(() => import('@/pages/v2/pesquisas/Templates'))
+const PesqResultados = lazy(() => import('@/pages/v2/pesquisas/Resultados'))
+const ResponderPesquisa = lazy(() => import('@/pages/v2/pesquisas/Responder'))
+const CargosCatalogo = lazy(() => import('@/pages/v2/cargos/Catalogo'))
+const CargoFicha = lazy(() => import('@/pages/v2/cargos/CargoFicha'))
+const CargosFamilias = lazy(() => import('@/pages/v2/cargos/Familias'))
+const CargosMatriz = lazy(() => import('@/pages/v2/cargos/Matriz'))
+const CargosFaixas = lazy(() => import('@/pages/v2/cargos/Faixas'))
+const CargosGovernanca = lazy(() => import('@/pages/v2/cargos/Governanca'))
+const OrganogramaPagina = lazy(() => import('@/pages/v2/org/Organograma'))
+const PeopleAnalytics = lazy(() => import('@/pages/v2/analytics/Analytics'))
+const FuncoesAdicionais = lazy(() => import('@/pages/v2/admin/FuncoesAdicionais'))
+
 /** Página atual com carregamento sob demanda e rede de segurança (o erro de uma página não derruba o app; trocar de rota limpa o erro). */
 function PaginaSegura() {
   const { pathname } = useLocation()
@@ -71,6 +102,12 @@ function PaginaSegura() {
 function RedirecionarCanva() {
   const { id = '' } = useParams()
   return <Navigate to={`/canva/${id}`} replace />
+}
+
+/** Layout das páginas públicas: sem menu, sem login, com rede de segurança contra erros. */
+function PublicoSeguro() {
+  const { pathname } = useLocation()
+  return <ErroPagina key={pathname}><Suspense fallback={<Carregando />}><Outlet /></Suspense></ErroPagina>
 }
 
 function Carregando() {
@@ -91,6 +128,14 @@ export function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+        {/* Páginas públicas (sem login, sem menu administrativo) */}
+        <Route element={<PublicoSeguro />}>
+          <Route path="/carreiras" element={<Carreiras />} />
+          <Route path="/carreiras/acompanhar" element={<AcompanharCandidatura />} />
+          <Route path="/carreiras/:slug" element={<VagaPublica />} />
+          <Route path="/carreiras/:slug/candidatar" element={<Candidatar />} />
+          <Route path="/responder/:token" element={<ResponderPesquisa />} />
+        </Route>
         <Route element={<AppLayout />}>
           <Route element={<PaginaSegura />}>
             <Route path="/" element={<Dashboard />} />
@@ -147,6 +192,36 @@ export function App() {
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/configuracoes" element={<AdminConfig />} />
             <Route path="/seguranca" element={<Seguranca />} />
+            {/* v2 · Recrutamento */}
+            <Route path="/recrutamento" element={<PainelVagas />} />
+            <Route path="/recrutamento/vagas" element={<ListaVagas />} />
+            <Route path="/recrutamento/vagas/nova" element={<VagaForm />} />
+            <Route path="/recrutamento/vagas/:id" element={<VagaDetalhe />} />
+            <Route path="/recrutamento/vagas/:id/editar" element={<VagaForm />} />
+            <Route path="/recrutamento/candidatos" element={<Pipeline />} />
+            <Route path="/recrutamento/candidatos/:candidaturaId" element={<CandidatoPerfil />} />
+            <Route path="/recrutamento/entrevistas" element={<EntrevistasAts />} />
+            <Route path="/recrutamento/talentos" element={<Talentos />} />
+            <Route path="/recrutamento/comunicacao" element={<ComunicacaoAts />} />
+            <Route path="/recrutamento/config" element={<ConfigRecrutamento />} />
+            {/* v2 · Central de pesquisas */}
+            <Route path="/pesquisas-rh" element={<PesqPainel />} />
+            <Route path="/pesquisas-rh/lista" element={<PesqLista />} />
+            <Route path="/pesquisas-rh/modelos" element={<PesqTemplates />} />
+            <Route path="/pesquisas-rh/nova" element={<PesqConstrutor />} />
+            <Route path="/pesquisas-rh/:id" element={<PesqConstrutor />} />
+            <Route path="/pesquisas-rh/:id/resultados" element={<PesqResultados />} />
+            {/* v2 · Arquitetura de cargos */}
+            <Route path="/cargos" element={<CargosCatalogo />} />
+            <Route path="/cargos/familias" element={<CargosFamilias />} />
+            <Route path="/cargos/matriz" element={<CargosMatriz />} />
+            <Route path="/cargos/faixas" element={<CargosFaixas />} />
+            <Route path="/cargos/governanca" element={<CargosGovernanca />} />
+            <Route path="/cargos/:cargoId" element={<CargoFicha />} />
+            {/* v2 · Organograma, analytics, administração */}
+            <Route path="/organograma" element={<OrganogramaPagina />} />
+            <Route path="/rh/analytics" element={<PeopleAnalytics />} />
+            <Route path="/admin/funcoes" element={<FuncoesAdicionais />} />
             {/* Rotas antigas → novos módulos */}
             <Route path="/recesso" element={<Navigate to="/disponibilidade" replace />} />
             <Route path="/folgas" element={<Navigate to="/disponibilidade" replace />} />

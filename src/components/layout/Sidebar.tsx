@@ -5,6 +5,7 @@ import { useStore } from '@/lib/store'
 import { Icon, Logo } from '@/components/ui'
 import { cn, podeVerReembolsosView } from '@/lib/utils'
 import { can } from '@/domain/permissions'
+import { useAcesso } from '@/data/v2/acesso'
 import { ChevronDown, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
 
 const AREA_ROTULO: Record<string, string> = { lideranca: 'Liderança', rh: 'Administração de pessoas', admin: 'Plataforma' }
@@ -21,6 +22,7 @@ export function Sidebar({ aberto, onFechar }: { aberto: boolean; onFechar: () =>
   const setores = useStore((s) => s.setores)
   const preview = useStore((s) => s.previewColaborador)
   const verReemb = podeVerReembolsosView(user, setores, preview)
+  useAcesso((s) => s.carregado) // re-renderiza o menu quando as capacidades do servidor chegam
   const collapsed = collapsedPref && !aberto
   const [fechados, setFechados] = useState<string[]>(lerFechados)
 

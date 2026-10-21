@@ -5,7 +5,7 @@ export default mergeConfig(viteConfig, defineConfig({
   test: {
     environment: 'node',
     env: { VITE_DATA_SOURCE: 'demo' },
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'api/**/*.test.ts'],
     setupFiles: ['src/test/setup.ts'],
   },
 }))
