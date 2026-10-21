@@ -33,3 +33,7 @@ Sistema de RH anterior (Next.js + Supabase), mantido como referência. Suas func
 - Configure em `.env.local` (e nas variáveis do deploy): `DATABASE_URL` (senha com `@` vira `%40`) e `SESSION_SECRET` (≥ 32 caracteres). Veja `.env.example`.
 - `npm run db:setup` cria as tabelas (`db/schema.sql`), grava a estrutura padrão uma única vez e garante o usuário admin `social@4jurismarketing.com.br` (a senha é gerada e mostrada uma vez). Para trocar a senha: `ADMIN_SENHA='nova-senha-forte' npm run db:setup -- --senha`.
 - As funções do servidor ficam em `api/` (Vercel) e rodam no `npm run dev` pelo plugin do `vite.config.ts`.
+
+## Módulos v2 (recrutamento, pesquisas, cargos, organograma, analytics)
+
+Veja `docs/V2.md`. Para ativar no banco: `npm run db:setup` (aplica `db/v2/*.sql`, aditivo e idempotente). Depois, em **Administração > Funções adicionais**, conceda recrutador / analista de RH / responsável por pesquisas. E-mails reais exigem `RESEND_API_KEY`; sem ela as mensagens ficam como "não configurado".
