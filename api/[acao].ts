@@ -52,6 +52,14 @@ export default async function handler(req: Req, res: ServerResponse) {
       return json(res, 200, { colaboradorId: u.colaborador_id }, { 'Set-Cookie': emitirCookie({ uid: u.id, colaboradorId: u.colaborador_id }, seguro) })
     }
 
+    if (acao === 'esqueci-senha' && req.method === 'POST') {
+      const { email } = await corpoJSON(req) as { email?: string }
+      if (typeof email !== 'string' || !email.trim()) return json(res, 400, { erro: 'Informe o e-mail.' })
+      // TODO(Resend): gerar token de redefinição e enviar o e-mail aqui.
+      // Resposta sempre igual, exista ou não o e-mail, para não revelar quem tem conta.
+      return json(res, 200, { ok: true })
+    }
+
     if (acao === 'logout' && req.method === 'POST') return json(res, 200, { ok: true }, { 'Set-Cookie': cookieLimpo(seguro) })
 
     const sessao = lerSessao(req.headers.cookie)

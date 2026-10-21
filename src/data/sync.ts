@@ -111,6 +111,13 @@ export async function entrarComSenha(email: string, senha: string): Promise<stri
   } catch { return 'Servidor indisponível. Tente novamente.' }
 }
 
+export async function pedirRedefinicaoSenha(email: string): Promise<string | null> {
+  try {
+    const r = await chamar('esqueci-senha', { method: 'POST', body: JSON.stringify({ email }) })
+    return r.ok ? null : r.dados.erro ?? 'Não foi possível enviar o pedido.'
+  } catch { return 'Servidor indisponível. Tente novamente.' }
+}
+
 export async function sairDoServidor(): Promise<void> {
   if (!MODO_API) return
   clearTimeout(timer)

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import gsap from 'gsap'
-import { ArrowRight, ShieldCheck, Sparkles, Layers, Fingerprint, FlaskConical } from 'lucide-react'
+import { ArrowRight, ArrowLeft, ShieldCheck, Sparkles, Layers, Fingerprint, FlaskConical, Mail, Lock, Eye, EyeOff, MailCheck } from 'lucide-react'
 import { Logo } from '@/components/ui'
 import { toast } from '@/components/toast'
 import { useStore } from '@/lib/store'
 import { CONFIG, MODO_API } from '@/data/config'
-import { entrarComSenha, useSync } from '@/data/sync'
+import { entrarComSenha, pedirRedefinicaoSenha, useSync } from '@/data/sync'
 
 /* ------------------------------------------------------------------
    Fundo tecnológico: rede de partículas reativa ao mouse (canvas)
@@ -116,6 +116,8 @@ export default function Login() {
   const sessao = useSync((s) => s.sessao)
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
+  const [verSenha, setVerSenha] = useState(false)
+  const [modo, setModo] = useState<'entrar' | 'recuperar' | 'enviado'>('entrar')
   const destino = (location.state as { de?: string } | null)?.de ?? '/'
 
   useParticleNetwork(canvasRef)
@@ -151,6 +153,18 @@ export default function Login() {
 
   // Já existe sessão válida (cookie): vai direto ao portal.
   useEffect(() => { if (MODO_API && sessao === 'ok') navigate(destino === '/login' ? '/' : destino, { replace: true }) }, [sessao, destino, navigate])
+
+  const trocarModo = (m: 'entrar' | 'recuperar') => { setModo(m); setErro(''); setSenha(''); setVerSenha(false) }
+
+  const recuperar = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email.trim()) { setErro('Informe o e-mail.'); return }
+    setLoading(true)
+    const falha = MODO_API ? await pedirRedefinicaoSenha(email.trim()) : null
+    setLoading(false)
+    if (falha) { setErro(falha); toast(falha, 'danger'); return }
+    setModo('enviado')
+  }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -218,7 +232,7 @@ export default function Login() {
 
       {/* -------- Formulário -------- */}
       <div ref={formRef} className="flex items-center justify-center p-6 sm:p-10 bg-surface">
-        <form onSubmit={submit} className="gsap-form w-full max-w-[380px]">
+        <form onSubmit={modo === 'recuperar' ? recuperar : submit} className="gsap-form w-full max-w-[380px]">
           <div className="flex lg:hidden items-center gap-3 mb-8">
             <Logo size={42} />
             <div className="leading-none">
@@ -227,35 +241,81 @@ export default function Login() {
             </div>
           </div>
 
-          <h2 className="text-[25px] font-bold text-ink">Acesse sua conta</h2>
-          <p className="text-muted text-[14px] mt-2 mb-6">Bem-vindo(a) de volta.</p>
-
-          {!MODO_API && (
-            <div className="mb-6 text-[12.5px] text-warning-ink bg-gold-soft border border-warning-line rounded-xl px-3.5 py-3 leading-relaxed flex gap-2.5">
-              <FlaskConical className="h-4 w-4 shrink-0 mt-0.5" />
-              <span><b>Ambiente de demonstração.</b> Não há senha nem servidor: informe o e-mail de um dos dados fictícios.</span>
+          {modo === 'enviado' ? (
+            <div className="text-center">
+              <span className="mx-auto mb-5 h-14 w-14 rounded-2xl bg-brand/10 text-brand flex items-center justify-center"><MailCheck className="h-7 w-7" /></span>
+              <h2 className="text-[25px] font-bold text-ink">Verifique seu e-mail</h2>
+              <p className="text-muted text-[14px] mt-2 leading-relaxed">
+                Se <b className="text-ink">{email.trim()}</b> estiver cadastrado, enviaremos as instruções para redefinir a senha.
+              </p>
+              <button type="button" onClick={() => trocarModo('entrar')} className="mt-6 w-full h-12 rounded-xl border border-line text-ink font-semibold text-[14.5px] hover:bg-black/[.03] transition flex items-center justify-center gap-2">
+                <ArrowLeft className="h-[18px] w-[18px]" /> Voltar ao login
+              </button>
             </div>
-          )}
-
-          <label className="label" htmlFor="login-email">E-mail</label>
-          <input id="login-email" className="input" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErro('') }}
-            autoComplete="username" placeholder="seu@email.com.br" aria-invalid={!!erro} aria-describedby={erro ? 'login-erro' : undefined} />
-          {MODO_API && (
+          ) : modo === 'recuperar' ? (
             <>
-              <label className="label mt-4" htmlFor="login-senha">Senha</label>
-              <input id="login-senha" className="input" type="password" value={senha} onChange={(e) => { setSenha(e.target.value); setErro('') }}
-                autoComplete="current-password" aria-invalid={!!erro} aria-describedby={erro ? 'login-erro' : undefined} />
+              <h2 className="text-[25px] font-bold text-ink">Esqueceu a senha?</h2>
+              <p className="text-muted text-[14px] mt-2 mb-6">Informe seu e-mail e enviaremos um link para criar uma nova senha.</p>
+              <label className="label" htmlFor="login-email">E-mail</label>
+              <div className="relative">
+                <Mail className="h-4 w-4 text-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input id="login-email" className="input pl-10" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErro('') }}
+                  autoComplete="username" placeholder="seu@email.com.br" aria-invalid={!!erro} aria-describedby={erro ? 'login-erro' : undefined} />
+              </div>
+              {erro && <p id="login-erro" role="alert" className="text-[12px] text-danger font-medium mt-1.5">{erro}</p>}
+              <button type="submit" disabled={loading} className="mt-5 w-full h-12 rounded-xl bg-brand text-white font-semibold text-[14.5px] hover:bg-brand-600 transition flex items-center justify-center gap-2 active:translate-y-px disabled:opacity-70">
+                {loading ? 'Enviando...' : <>Enviar link <ArrowRight className="h-[18px] w-[18px]" /></>}
+              </button>
+              <button type="button" onClick={() => trocarModo('entrar')} className="mt-3 w-full h-11 rounded-xl text-muted font-semibold text-[13.5px] hover:text-ink transition flex items-center justify-center gap-2">
+                <ArrowLeft className="h-4 w-4" /> Voltar ao login
+              </button>
+            </>
+          ) : (
+            <>
+              <h2 className="text-[25px] font-bold text-ink">Acesse sua conta</h2>
+              <p className="text-muted text-[14px] mt-2 mb-6">Bem-vindo(a) de volta.</p>
+
+              {!MODO_API && (
+                <div className="mb-6 text-[12.5px] text-warning-ink bg-gold-soft border border-warning-line rounded-xl px-3.5 py-3 leading-relaxed flex gap-2.5">
+                  <FlaskConical className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span><b>Ambiente de demonstração.</b> Não há senha nem servidor: informe o e-mail de um dos dados fictícios.</span>
+                </div>
+              )}
+
+              <label className="label" htmlFor="login-email">E-mail</label>
+              <div className="relative">
+                <Mail className="h-4 w-4 text-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input id="login-email" className="input pl-10" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErro('') }}
+                  autoComplete="username" placeholder="seu@email.com.br" aria-invalid={!!erro} aria-describedby={erro ? 'login-erro' : undefined} />
+              </div>
+              {MODO_API && (
+                <>
+                  <div className="flex items-center justify-between mt-4">
+                    <label className="label !mb-0" htmlFor="login-senha">Senha</label>
+                    <button type="button" onClick={() => trocarModo('recuperar')} className="text-[12.5px] text-brand font-semibold hover:underline">Esqueceu a senha?</button>
+                  </div>
+                  <div className="relative mt-1.5">
+                    <Lock className="h-4 w-4 text-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input id="login-senha" className="input pl-10 pr-11" type={verSenha ? 'text' : 'password'} value={senha} onChange={(e) => { setSenha(e.target.value); setErro('') }}
+                      autoComplete="current-password" placeholder="Sua senha" aria-invalid={!!erro} aria-describedby={erro ? 'login-erro' : undefined} />
+                    <button type="button" onClick={() => setVerSenha((v) => !v)} aria-label={verSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-lg text-muted hover:text-ink flex items-center justify-center">
+                      {verSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </>
+              )}
+              {erro && <p id="login-erro" role="alert" className="text-[12px] text-danger font-medium mt-1.5">{erro}</p>}
+
+              <button type="submit" disabled={loading} className="mt-5 w-full h-12 rounded-xl bg-brand text-white font-semibold text-[14.5px] hover:bg-brand-600 transition flex items-center justify-center gap-2 active:translate-y-px disabled:opacity-70">
+                {loading ? 'Entrando...' : <>Entrar <ArrowRight className="h-[18px] w-[18px]" /></>}
+              </button>
+
+              <p className="mt-6 text-center text-[12.5px] text-muted">
+                Problemas para acessar? Fale com o <a href={`mailto:${CONFIG.emailRH}`} className="text-brand font-semibold">RH da 4JURIS</a>.
+              </p>
             </>
           )}
-          {erro && <p id="login-erro" role="alert" className="text-[12px] text-danger font-medium mt-1.5">{erro}</p>}
-
-          <button type="submit" disabled={loading} className="mt-5 w-full h-12 rounded-xl bg-brand text-white font-semibold text-[14.5px] hover:bg-brand-600 transition flex items-center justify-center gap-2 active:translate-y-px">
-            {loading ? 'Entrando...' : <>Entrar <ArrowRight className="h-[18px] w-[18px]" /></>}
-          </button>
-
-          <p className="mt-6 text-center text-[12.5px] text-muted">
-            Problemas para acessar? Fale com o <a href={`mailto:${CONFIG.emailRH}`} className="text-brand font-semibold">RH da 4JURIS</a>.
-          </p>
         </form>
       </div>
     </div>
