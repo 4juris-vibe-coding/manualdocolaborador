@@ -53,7 +53,7 @@ export function qs(p: Record<string, string | number | boolean | undefined | nul
   return s ? `?${s}` : ''
 }
 
-export interface Remoto<T> { dados: T | undefined; carregando: boolean; erro?: ErroApi; recarregar: () => void }
+export interface Remoto<T> { dados?: T; carregando: boolean; erro?: ErroApi; recarregar: () => void }
 
 /** Carrega `rota` (GET) e recarrega quando a rota mudar. `null` = não carregar. Ignora respostas atrasadas. */
 export function useApi<T = any>(rota: string | null): Remoto<T> {

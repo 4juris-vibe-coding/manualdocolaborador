@@ -5,7 +5,7 @@
      ADMIN_SENHA='...' npm run db:setup -- --senha   # define/troca a senha do admin
    Lê DATABASE_URL de .env.local (ou do ambiente).
    ============================================================ */
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { randomBytes } from 'node:crypto'
 import { carregaEnv } from './env'
 import { db, gravarColecoes, hashSenha } from '../api/_lib'
@@ -17,6 +17,11 @@ async function main() {
   const p = db()
   await p.query(readFileSync(new URL('../db/schema.sql', import.meta.url), 'utf8'))
   console.log('✔ tabelas criadas/verificadas')
+  // Módulos v2 (recrutamento, pesquisas, cargos…): migrações aditivas e idempotentes, em ordem.
+  for (const f of readdirSync(new URL('../db/v2/', import.meta.url)).filter((n) => n.endsWith('.sql')).sort()) {
+    await p.query(readFileSync(new URL(`../db/v2/${f}`, import.meta.url), 'utf8'))
+    console.log(`✔ db/v2/${f}`)
+  }
 
   const jaIniciou = await p.query("select 1 from app_meta where chave = 'inicializado'")
   if (!jaIniciou.rowCount) {

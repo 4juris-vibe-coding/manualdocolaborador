@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["node"], "noEmit": true },
+  "include": ["api", "src/domain", "src/lib/types.ts", "src/vite-env.d.ts"],
+  "exclude": ["api/**/*.test.ts"]
+}

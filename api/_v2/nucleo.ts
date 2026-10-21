@@ -291,3 +291,24 @@ export async function despachar(dep: Dependencias, req: Req): Promise<Res> {
     return { status: 500, corpo: { erro: 'Erro interno do servidor.' } }
   }
 }
+
+/* ---------- convenções de saída ---------- */
+const paraCamelChave = (k: string) => k.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase())
+/** snake_case → camelCase nas chaves de primeiro nível (jsonb interno fica como está). A API v2 responde sempre em camelCase. */
+export const camel = <T extends Record<string, unknown>>(linha: T): Record<string, unknown> =>
+  Object.fromEntries(Object.entries(linha).map(([k, v]) => [paraCamelChave(k), v]))
+
+/**
+ * Escopo de vagas por registro. RH e recrutadores (`vagas:gerenciar`) veem todas; gestores veem
+ * as que solicitaram/lideram/criaram ou da(s) própria(s) área(s). `alias` = alias de rec_vagas na consulta;
+ * `proximoParam` = número do próximo $n livre. Devolve o fragmento SQL e os parâmetros a anexar.
+ */
+export function escopoVagas(u: Usuario, alias = 'v', proximoParam = 1): { sql: string; params: unknown[] } {
+  if (u.caps.has('vagas:gerenciar')) return { sql: 'true', params: [] }
+  const p = proximoParam
+  const a = alias
+  return {
+    sql: `(${a}.gestor_solicitante_id = $${p} or ${a}.gestor_responsavel_id = $${p} or ${a}.gestor_imediato_id = $${p} or ${a}.criado_por = $${p} or ${a}.recrutador_id = $${p} or ${a}.setor_id = any($${p + 1}::text[]))`,
+    params: [u.colaboradorId, u.setoresLiderados],
+  }
+}

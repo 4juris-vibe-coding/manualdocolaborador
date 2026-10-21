@@ -126,9 +126,12 @@ export default function Login() {
   useEffect(() => {
     const ctx = gsap.context(() => {
       gsap.from('.gsap-hero > *', { y: 26, opacity: 0, duration: 0.7, stagger: 0.09, ease: 'power3.out', delay: 0.15 })
-      gsap.from('.gsap-form > *', { y: 18, opacity: 0, duration: 0.6, stagger: 0.07, ease: 'power3.out', delay: 0.35 })
-      gsap.from('.gsap-point', { x: -14, opacity: 0, duration: 0.5, stagger: 0.1, ease: 'power2.out', delay: 0.7 })
+      // clearProps: se a animação for interrompida (aba em segundo plano, erro), nada fica preso em opacity 0.
+      gsap.from('.gsap-form > *', { y: 18, opacity: 0, duration: 0.6, stagger: 0.07, ease: 'power3.out', delay: 0.35, clearProps: 'opacity,transform' })
+      gsap.from('.gsap-point', { x: -14, opacity: 0, duration: 0.5, stagger: 0.1, ease: 'power2.out', delay: 0.7, clearProps: 'opacity,transform' })
     })
+    // Rede de segurança: o formulário (e o botão Entrar) sempre aparece, mesmo que o GSAP não conclua.
+    const garantir = setTimeout(() => gsap.set('.gsap-form > *', { clearProps: 'opacity,transform' }), 2000)
 
     const xHero = gsap.quickTo(heroRef.current, 'x', { duration: 1, ease: 'power3' })
     const yHero = gsap.quickTo(heroRef.current, 'y', { duration: 1, ease: 'power3' })
@@ -142,7 +145,7 @@ export default function Login() {
       xHero(cx * -22); yHero(cy * -22)
     }
     window.addEventListener('mousemove', onMove)
-    return () => { window.removeEventListener('mousemove', onMove); ctx.revert() }
+    return () => { clearTimeout(garantir); window.removeEventListener('mousemove', onMove); ctx.revert() }
   }, [])
 
   const acessar = (id: string) => {
