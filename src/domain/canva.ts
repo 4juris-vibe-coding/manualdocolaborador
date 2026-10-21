@@ -8,7 +8,7 @@
    Mantenha os formatos iguais ao PRESETS do HTML da arte.
    ============================================================ */
 import type { Apresentacao } from '@/lib/types'
-import { ehEditorLivre } from './apresentacoes'
+import { ehEditorLivre } from './apresentacoes.js'
 
 export interface FormatoArte { id: string; nome: string; desc: string; w: number; h: number; icone: string }
 

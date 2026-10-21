@@ -8,7 +8,7 @@
    gest-o_rh-master/lib/turnover-calculo.ts.
    ============================================================ */
 import type { Colaborador, DB } from '@/lib/types'
-import { diasEntre, somarDias } from './datas'
+import { diasEntre, somarDias } from './datas.js'
 
 export interface Filtro {
   inicio: string

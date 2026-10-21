@@ -4,7 +4,7 @@
    políticas de acesso (RLS/consultas filtradas).
    ============================================================ */
 import type { Colaborador, Comunicado, Documento, Evento, PeriodoIndisponibilidade, Setor } from '@/lib/types'
-import { can } from './permissions'
+import { can } from './permissions.js'
 
 export function comunicadoVisivel(m: Comunicado, user: { id: string; setorId: string }): boolean {
   if (m.alvo === 'todos') return true

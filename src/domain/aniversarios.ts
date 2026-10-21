@@ -5,7 +5,7 @@
    - Marcos de parceria NÃO representam antiguidade trabalhista.
    ============================================================ */
 import type { Colaborador } from '@/lib/types'
-import { parseDia } from './datas'
+import { parseDia } from './datas.js'
 
 export interface Celebracao {
   pessoa: Colaborador

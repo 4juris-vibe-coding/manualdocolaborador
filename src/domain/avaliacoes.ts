@@ -11,7 +11,7 @@ import type {
   AvaliacaoInicio, CicloAvaliativo, Colaborador, Competencia, ConfigAvaliacaoInicio, ParticipanteCiclo,
   RespostaAvaliacao, RotuloEscala, Setor,
 } from '@/lib/types'
-import { somarDias } from './datas'
+import { somarDias } from './datas.js'
 
 export const ROTULOS_ESCALA: Record<RotuloEscala, { titulo: string; r5: string[]; r4: string[] }> = {
   concordancia: { titulo: 'Concordância', r5: ['Discordo fortemente', 'Discordo', 'Concordo parcialmente', 'Concordo', 'Concordo fortemente'], r4: ['Discordo fortemente', 'Discordo', 'Concordo', 'Concordo fortemente'] },

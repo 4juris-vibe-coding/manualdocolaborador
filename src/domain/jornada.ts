@@ -4,7 +4,7 @@
    que só guardava tópicos) + acompanhamento por pessoa.
    ============================================================ */
 import type { ChecklistModelo, ProcessoJornada, ResponsavelItem } from '@/lib/types'
-import { somarDias } from './datas'
+import { somarDias } from './datas.js'
 
 export function criarProcesso(modelo: ChecklistModelo, colaboradorId: string, inicio: string, id: string): ProcessoJornada {
   return {

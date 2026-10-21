@@ -7,7 +7,7 @@
 import {
   ehAtiva, construirHierarquia, posicoesVagas,
   type PessoaOrg, type SetorOrg, type VagaOrg, type TipoPendencia, type Pendencia,
-} from './organograma'
+} from './organograma.js'
 
 export interface CargoEstrutura { id: string; nome: string; nivel?: string }
 export interface UnidadeEstrutura { id: string; nome: string }

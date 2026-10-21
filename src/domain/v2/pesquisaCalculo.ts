@@ -9,7 +9,7 @@
    - Médias só para escalas; taxa de resposta NÃO é índice de satisfação.
    - Texto livre nunca é mostrado por segmento.
    ============================================================ */
-import { assinaturaPergunta, faixaNumerica, ROTULOS_LIKERT, tipoTexto, type PerguntaPesquisa, type Valor } from './pesquisaTipos'
+import { assinaturaPergunta, faixaNumerica, ROTULOS_LIKERT, tipoTexto, type PerguntaPesquisa, type Valor } from './pesquisaTipos.js'
 
 export interface RespostaBruta {
   id?: string

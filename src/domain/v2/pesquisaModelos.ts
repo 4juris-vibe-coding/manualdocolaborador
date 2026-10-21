@@ -3,7 +3,7 @@
    São MODELOS (estrutura de perguntas), nunca resultados. O RH
    escolhe, visualiza e personaliza uma cópia antes de publicar.
    ============================================================ */
-import { tempoEstimadoMin, type Operador, type PerguntaPesquisa } from './pesquisaTipos'
+import { tempoEstimadoMin, type Operador, type PerguntaPesquisa } from './pesquisaTipos.js'
 
 export type CategoriaModelo = 'Experiência e satisfação' | 'Liderança e gestão' | 'Desenvolvimento e carreira' | 'Rotina e ambiente de trabalho' | 'Ciclos específicos'
 export const CATEGORIAS_MODELO: CategoriaModelo[] = ['Experiência e satisfação', 'Liderança e gestão', 'Desenvolvimento e carreira', 'Rotina e ambiente de trabalho', 'Ciclos específicos']

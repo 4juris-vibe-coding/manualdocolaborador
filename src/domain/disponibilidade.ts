@@ -10,7 +10,7 @@
    antecedência SUGERIDA e alinhamento de continuidade (opcional).
    ============================================================ */
 import type { PeriodoIndisponibilidade, PoliticaDisponibilidade } from '@/lib/types'
-import { diasEntre } from './datas'
+import { diasEntre } from './datas.js'
 
 export interface EntradaPeriodo {
   inicio: string

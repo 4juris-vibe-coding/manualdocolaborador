@@ -7,8 +7,8 @@
    - "admissão/desligamento" → início/encerramento de parceria.
    ============================================================ */
 import type { Colaborador, DB, Escolaridade, Genero, RacaEtnia } from '@/lib/types'
-import { ativoEm } from './analytics'
-import { diasEntre, somarDias } from './datas'
+import { ativoEm } from './analytics.js'
+import { diasEntre, somarDias } from './datas.js'
 
 export const MIN_GRUPO = 5
 export const PALETA = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948']
