@@ -11,6 +11,7 @@
    As ações também verificam permissões (defesa em profundidade),
    mas a autorização definitiva deve existir no servidor.
    ============================================================ */
+import { validarMudancaGestor } from '@/domain/v2/organograma'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type {
@@ -374,11 +375,21 @@ export const useStore = create<AppState>()(
             // Papel só muda pela administração de usuários.
             const papel = can(eu().papel, 'admin:usuarios') ? dados.papel : atual.papel
             if (dados.responsavelId && dados.responsavelId === id) return ERRO('A pessoa não pode ser responsável por si mesma.')
+            const gestorMudou = (atual.responsavelId || '') !== (dados.responsavelId || '')
+            if (gestorMudou) {
+              // Mesma validação do organograma: sem ciclos, sem gestor inexistente ou com parceria encerrada.
+              const v = validarMudancaGestor(d.colaboradores, id, dados.responsavelId || null)
+              if (v.erros.length) return ERRO(v.erros[0])
+            }
             d.colaboradores = d.colaboradores.map((c) => (c.id === id ? { ...c, ...dados, papel } : c))
             if ((atual.cargoId || '') !== (dados.cargoId || '')) {
               d.historicoFuncao = [{ id: uid('hf'), colaboradorId: id, em: hojeISO(), porId: get().realUser().id, cargoAnteriorId: atual.cargoId || undefined, cargoNovoId: dados.cargoId || undefined }, ...d.historicoFuncao]
             }
             audit(d, 'pessoa.atualizar', 'pessoa', id, `Cadastro de ${dados.nome} atualizado`)
+            if (gestorMudou) {
+              const nomeDe = (gid?: string) => (gid ? d.colaboradores.find((c) => c.id === gid)?.nome ?? 'cadastro removido' : 'sem gestor')
+              audit(d, 'pessoa.gestor', 'pessoa', id, `Gestor imediato de ${dados.nome}: ${nomeDe(atual.responsavelId)} → ${nomeDe(dados.responsavelId)}`)
+            }
             return OK({ id })
           }
           const novo: Colaborador = {

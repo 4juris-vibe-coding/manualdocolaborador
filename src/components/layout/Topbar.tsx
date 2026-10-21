@@ -1,4 +1,5 @@
 import { sairCompleto } from '@/data/sync'
+import { useNotificacoesUnificadas, useSincronizarNotifV2 } from '@/data/v2/notificacoes'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { useStore } from '@/lib/store'
@@ -23,10 +24,9 @@ export function Topbar({ onAbrirMenu }: { onAbrirMenu: () => void }) {
   const real = useStore((s) => s.realUser())
   const preview = useStore((s) => s.previewColaborador)
   const setPreview = useStore((s) => s.setPreview)
-  const todas = useStore((s) => s.notificacoes)
   const niveis = useStore((s) => s.config.gamificacao.niveis)
-  const marcarTodasLidas = useStore((s) => s.marcarTodasLidas)
-  const marcarNotifLida = useStore((s) => s.marcarNotifLida)
+  useSincronizarNotifV2()
+  const { itens: notifs, naoLidas, marcar: marcarNotif, marcarTodas: marcarTodasLidas } = useNotificacoesUnificadas()
   const [openBell, setOpenBell] = useState(false)
   const [paleta, setPaleta] = useState(false)
   const tema = useTema((x) => x.tema)
@@ -40,8 +40,6 @@ export function Topbar({ onAbrirMenu }: { onAbrirMenu: () => void }) {
   const TemaIcon = tema === 'claro' ? Sun : tema === 'escuro' ? Moon : Monitor
   const podeAlternar = can(real.papel, 'lideranca:painel')
 
-  const notifs = useMemo(() => todas.filter((n) => n.colaboradorId === real.id).sort((a, b) => b.data.localeCompare(a.data)), [todas, real.id])
-  const naoLidas = notifs.filter((n) => !n.lida).length
   const pontos = useStore((s) => s.pontosDe(user.id))
   const nivel = nivelDe(pontos, niveis)
 
@@ -119,8 +117,8 @@ export function Topbar({ onAbrirMenu }: { onAbrirMenu: () => void }) {
                   {notifs.length === 0 && <p className="text-[13px] text-muted p-5 text-center">Nenhuma notificação por enquanto.</p>}
                   {notifs.slice(0, 6).map((n) => (
                     <button
-                      key={n.id}
-                      onClick={() => { marcarNotifLida(n.id); setOpenBell(false); if (n.href) navigate(n.href) }}
+                      key={n.origem + n.id}
+                      onClick={() => { void marcarNotif(n); setOpenBell(false); if (n.href) navigate(n.href) }}
                       className={cn('w-full text-left flex gap-3 px-4 py-3 border-b border-line/70 hover:bg-surface-2 transition', !n.lida && 'bg-brand-50/50')}
                     >
                       <div className="h-8 w-8 shrink-0 rounded-lg bg-winter flex items-center justify-center text-ink-2">

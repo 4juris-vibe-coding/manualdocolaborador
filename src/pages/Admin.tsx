@@ -1,13 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '@/lib/store'
 import type { Papel } from '@/lib/types'
 import { PageHeader, Card, CardHead, Button, Avatar, Tabs, SearchBox, Select, Badge, Callout, Icon, Tabela, TH, TD } from '@/components/ui'
-import { ConfirmModal } from '@/components/Modal'
+import { ConfirmModal, Modal } from '@/components/Modal'
 import { feedback, toast } from '@/components/toast'
 import { STATUS_COLAB, cn } from '@/lib/utils'
 import { MATRIZ, PAPEL_DESC, PAPEL_LABEL, type Capacidade } from '@/domain/permissions'
 import { MODO_DEMO, MODO_API } from '@/data/config'
+import { listarAcessos, salvarAcesso, type AcessoUsuario } from '@/data/sync'
 
 const CAP_LABEL: Partial<Record<Capacidade, string>> = {
   'portal:usar': 'Área pessoal', 'lideranca:painel': 'Painel da liderança', 'lideranca:ver_disponibilidade_equipe': 'Ver disponibilidade da equipe',
@@ -20,6 +21,13 @@ const CAP_LABEL: Partial<Record<Capacidade, string>> = {
 }
 const PAPEIS: Papel[] = ['colaborador', 'gestor', 'rh', 'diretoria', 'admin']
 
+/** Senha aleatória de 14 caracteres (sem símbolos ambíguos), gerada no navegador. */
+function gerarSenha(): string {
+  const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#$%'
+  const bytes = crypto.getRandomValues(new Uint8Array(14))
+  return Array.from(bytes, (b) => alfabeto[b % alfabeto.length]).join('')
+}
+
 export default function Admin() {
   const s = useStore()
   const me = s.realUser()
@@ -27,6 +35,32 @@ export default function Admin() {
   const [q, setQ] = useState('')
   const [papel, setPapel] = useState('todos')
   const [resetar, setResetar] = useState(false)
+  const [acessos, setAcessos] = useState<Record<string, AcessoUsuario>>({})
+  const [alvo, setAlvo] = useState<string | null>(null)
+  const [senha, setSenha] = useState('')
+  const [verSenha, setVerSenha] = useState(false)
+  const [salvando, setSalvando] = useState(false)
+  const recarregarAcessos = () => listarAcessos().then((l) => setAcessos(Object.fromEntries(l.map((a) => [a.colaboradorId, a]))))
+  useEffect(() => { if (MODO_API && tab === 'usuarios') void recarregarAcessos() }, [tab])
+  const pessoaAlvo = s.colaboradores.find((c) => c.id === alvo)
+  const abrirAcesso = (id: string) => { setAlvo(id); setSenha(''); setVerSenha(false) }
+  const gravarSenha = async () => {
+    if (!alvo) return
+    if (senha.length < 10) { toast('A senha precisa ter ao menos 10 caracteres.', 'danger'); return }
+    setSalvando(true)
+    const falha = await salvarAcesso(alvo, { senha, ativo: true })
+    setSalvando(false)
+    if (falha) { toast(falha, 'danger'); return }
+    toast(acessos[alvo] ? 'Senha redefinida.' : 'Acesso criado.')
+    setAlvo(null)
+    void recarregarAcessos()
+  }
+  const alternarAtivo = async (id: string, ativo: boolean) => {
+    const falha = await salvarAcesso(id, { ativo })
+    if (falha) { toast(falha, 'danger'); return }
+    toast(ativo ? 'Acesso reativado.' : 'Acesso desativado.')
+    void recarregarAcessos()
+  }
   const lista = useMemo(() => s.colaboradores
     .filter((c) => c.status !== 'encerrado')
     .filter((c) => papel === 'todos' || c.papel === papel)
@@ -55,7 +89,7 @@ export default function Admin() {
           </div>
           <Card>
             <Tabela minWidth={720}>
-              <thead><tr><th className={TH}>Pessoa</th><th className={TH}>Área</th><th className={TH}>Situação</th><th className={TH}>Papel de acesso</th></tr></thead>
+              <thead><tr><th className={TH}>Pessoa</th><th className={TH}>Área</th><th className={TH}>Situação</th><th className={TH}>Papel de acesso</th>{MODO_API && <th className={TH}>Acesso ao portal</th>}</tr></thead>
               <tbody>
                 {lista.map((c) => (
                   <tr key={c.id}>
@@ -69,6 +103,21 @@ export default function Admin() {
                       </select>
                       {c.id === me.id && <span className="text-[11px] text-muted ml-2">você</span>}
                     </td>
+                    {MODO_API && (
+                      <td className={TD}>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {acessos[c.id]
+                            ? <Badge tone={acessos[c.id].ativo ? 'success' : 'neutral'} dot>{acessos[c.id].ativo ? 'Com acesso' : 'Desativado'}</Badge>
+                            : <Badge tone="warning" dot>Sem acesso</Badge>}
+                          <Button size="sm" variant={acessos[c.id] ? 'soft' : 'primary'} icon={acessos[c.id] ? 'KeyRound' : 'UserPlus'} onClick={() => abrirAcesso(c.id)}>
+                            {acessos[c.id] ? 'Nova senha' : 'Criar acesso'}
+                          </Button>
+                          {acessos[c.id] && c.id !== me.id && (
+                            <Button size="sm" variant="ghost" onClick={() => void alternarAtivo(c.id, !acessos[c.id].ativo)}>{acessos[c.id].ativo ? 'Desativar' : 'Reativar'}</Button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -113,6 +162,21 @@ export default function Admin() {
           </div>
         </Card>
       )}
+
+      <Modal open={!!alvo} onClose={() => setAlvo(null)} title={alvo && acessos[alvo] ? 'Nova senha de acesso' : 'Criar acesso ao portal'}
+        subtitle={pessoaAlvo ? `${pessoaAlvo.nome} · ${pessoaAlvo.email}` : undefined}
+        footer={<><Button variant="ghost" onClick={() => setAlvo(null)}>Cancelar</Button><Button icon="Check" disabled={salvando || senha.length < 10} onClick={() => void gravarSenha()}>{salvando ? 'Salvando…' : 'Salvar'}</Button></>}>
+        <label className="label" htmlFor="acesso-senha">Senha (mínimo 10 caracteres)</label>
+        <div className="flex gap-2">
+          <input id="acesso-senha" className="input" type={verSenha ? 'text' : 'password'} value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="new-password" />
+          <Button variant="soft" onClick={() => { setSenha(gerarSenha()); setVerSenha(true) }}>Gerar</Button>
+        </div>
+        <div className="flex items-center gap-4 mt-2 text-[12.5px]">
+          <button type="button" className="text-brand font-semibold hover:underline" onClick={() => setVerSenha((v) => !v)}>{verSenha ? 'Ocultar' : 'Mostrar'}</button>
+          <button type="button" disabled={!senha} className="text-brand font-semibold hover:underline disabled:opacity-50" onClick={() => { void navigator.clipboard?.writeText(senha); toast('Senha copiada.') }}>Copiar</button>
+        </div>
+        <p className="text-[12px] text-muted mt-3">O login é o e-mail do cadastro da pessoa. Repasse a senha por um canal seguro e peça para ela trocar depois em "Esqueceu a senha?".</p>
+      </Modal>
 
       <ConfirmModal open={resetar} onClose={() => setResetar(false)} titulo="Restaurar dados de demonstração?" confirmar="Restaurar"
         texto="Todas as alterações feitas neste navegador serão descartadas e os dados fictícios originais voltarão. Você continua conectado(a)."

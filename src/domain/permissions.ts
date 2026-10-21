@@ -133,7 +133,7 @@ export const FUNCAO_LABEL: Record<FuncaoAdicional, string> = {
 }
 
 const FUNCOES_CAPS: Record<FuncaoAdicional, Capacidade[]> = {
-  recrutador: ['vagas:ver', 'vagas:gerenciar', 'ats:ver', 'ats:gerenciar', 'ats:avaliar', 'ats:notas_rh', 'ats:exportar', 'org:ver', 'cargos:ver'],
+  recrutador: ['vagas:solicitar', 'vagas:ver', 'vagas:gerenciar', 'ats:ver', 'ats:gerenciar', 'ats:avaliar', 'ats:notas_rh', 'ats:exportar', 'org:ver', 'cargos:ver'],
   analista_rh: ['vagas:ver', 'ats:ver', 'cargos:ver', 'cargos:ver_faixas', 'org:ver', 'org:ver_contato', 'analytics:ver', 'pesq:resultados'],
   resp_pesquisas: ['pesq:gerenciar', 'pesq:resultados', 'pesq:exportar'],
   aprovador_financeiro: ['vagas:ver', 'vagas:ver_remuneracao'],

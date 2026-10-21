@@ -1,6 +1,5 @@
-import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useStore } from '@/lib/store'
+import { useNotificacoesUnificadas } from '@/data/v2/notificacoes'
 import { PageHeader, Card, Icon, Button, EmptyState } from '@/components/ui'
 import { relTime, cn } from '@/lib/utils'
 
@@ -13,15 +12,17 @@ const notifIcon: Record<string, { icon: string; tone: string }> = {
   gamificacao: { icon: 'Trophy', tone: 'bg-gold-soft text-gold' },
   pendencia: { icon: 'AlertTriangle', tone: 'bg-warning-soft text-warning' },
   disponibilidade: { icon: 'Palmtree', tone: 'bg-brand-50 text-brand' },
+  vaga: { icon: 'BriefcaseBusiness', tone: 'bg-brand-50 text-brand' },
+  candidatura: { icon: 'UserPlus', tone: 'bg-brand-50 text-brand' },
+  entrevista: { icon: 'CalendarClock', tone: 'bg-warning-soft text-warning' },
+  pesquisa: { icon: 'ClipboardList', tone: 'bg-brand-50 text-brand' },
+  cargo: { icon: 'Layers3', tone: 'bg-brand-50 text-brand' },
+  organograma: { icon: 'Network', tone: 'bg-brand-50 text-brand' },
 }
 
 export default function Notificacoes() {
   const navigate = useNavigate()
-  const todas = useStore((s) => s.notificacoes)
-  const meId = useStore((s) => s.realUser().id)
-  const notifs = useMemo(() => todas.filter((n) => n.colaboradorId === meId).sort((a, b) => b.data.localeCompare(a.data)), [todas, meId])
-  const marcar = useStore((s) => s.marcarNotifLida)
-  const marcarTodas = useStore((s) => s.marcarTodasLidas)
+  const { itens: notifs, marcar, marcarTodas } = useNotificacoesUnificadas()
 
   return (
     <>
@@ -33,7 +34,7 @@ export default function Notificacoes() {
             {notifs.map((n) => {
               const cfg = notifIcon[n.tipo] ?? { icon: 'Bell', tone: 'bg-winter text-ink' }
               return (
-                <button key={n.id} onClick={() => { marcar(n.id); if (n.href) navigate(n.href) }}
+                <button key={n.origem + n.id} onClick={() => { void marcar(n); if (n.href) navigate(n.href) }}
                   className={cn('w-full text-left flex gap-3.5 p-4 hover:bg-surface-2 transition', !n.lida && 'bg-brand-50/40')}>
                   <span className={cn('h-10 w-10 rounded-xl flex items-center justify-center shrink-0', cfg.tone)}><Icon name={cfg.icon} className="h-[19px] w-[19px]" /></span>
                   <div className="flex-1 min-w-0">

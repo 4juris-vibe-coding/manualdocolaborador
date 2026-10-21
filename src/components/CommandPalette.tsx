@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { can } from '@/domain/permissions'
 import { comunicadoVisivel, eventoVisivel } from '@/domain/visibilidade'
 import { useTema } from '@/lib/tema'
+import { useAcesso } from '@/data/v2/acesso'
 
 interface Item { id: string; grupo: string; titulo: string; sub?: string; icon?: string; pessoa?: { nome: string; cor: string }; acao: () => void }
 
@@ -15,6 +16,7 @@ const norm = (t: string) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,
 
 export function CommandPalette({ aberto, onFechar }: { aberto: boolean; onFechar: () => void }) {
   const navigate = useNavigate()
+  const acessoV2 = useAcesso((x) => x.capacidades)
   const s = useStore()
   const user = s.currentUser()
   const definirTema = useTema((x) => x.definir)
@@ -43,7 +45,7 @@ export function CommandPalette({ aberto, onFechar }: { aberto: boolean; onFechar
       { id: 'a-sistema', grupo: 'Ações', titulo: 'Tema do sistema', icon: 'Monitor', acao: () => { definirTema('sistema'); onFechar() } },
     ]
     return [...acoes, ...paginas, ...pessoas, ...eventos, ...comunicados]
-  }, [s, user, navigate, onFechar, definirTema])
+  }, [s, user, navigate, onFechar, definirTema, acessoV2])
 
   const filtrados = useMemo(() => {
     const t = norm(q.trim())

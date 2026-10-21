@@ -1,4 +1,4 @@
-/* Rotas: POST /api/login · POST /api/logout · POST /api/esqueci-senha · POST /api/redefinir-senha · GET /api/sessao · GET|PUT /api/estado */
+/* Rotas: POST /api/login · POST /api/logout · POST /api/esqueci-senha · POST /api/redefinir-senha · GET /api/sessao · GET|PUT /api/estado · GET|POST /api/usuarios (admin) */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { carregarEstado, confereSenha, cookieLimpo, db, emitirCookie, enviarEmailRedefinicao, gravarColecoes, hashSenha, hashToken, lerSessao, urlPortal } from './_lib.js'
 import { randomBytes } from 'node:crypto'
@@ -89,6 +89,44 @@ export default async function handler(req: Req, res: ServerResponse) {
     if (!vivo.rowCount) return json(res, 401, { erro: 'Acesso desativado.' }, { 'Set-Cookie': cookieLimpo(seguro) })
 
     if (acao === 'sessao' && req.method === 'GET') return json(res, 200, { colaboradorId: sessao.colaboradorId })
+
+    // Acessos (logins): só a administração lista, cria, redefine senha, ativa ou desativa.
+    if (acao === 'usuarios') {
+      const quem = (await db().query("select dados->>'papel' as papel from app_colaboradores where id = $1", [sessao.colaboradorId])).rows[0]
+      if (quem?.papel !== 'admin') return json(res, 403, { erro: 'Apenas a administração gerencia acessos.' })
+
+      if (req.method === 'GET') {
+        const r = await db().query('select colaborador_id, ativo, ultimo_acesso from usuarios')
+        return json(res, 200, { acessos: r.rows.map((u) => ({ colaboradorId: u.colaborador_id, ativo: u.ativo, ultimoAcesso: u.ultimo_acesso })) })
+      }
+
+      if (req.method === 'POST') {
+        const { colaboradorId, senha, ativo } = await corpoJSON(req) as { colaboradorId?: string; senha?: string; ativo?: boolean }
+        if (typeof colaboradorId !== 'string' || !colaboradorId) return json(res, 400, { erro: 'Pessoa não informada.' })
+        if (senha !== undefined && (typeof senha !== 'string' || senha.length < 10)) return json(res, 400, { erro: 'A senha precisa ter ao menos 10 caracteres.' })
+        if (ativo !== undefined && typeof ativo !== 'boolean') return json(res, 400, { erro: 'Pedido inválido.' })
+        if (ativo === false && colaboradorId === sessao.colaboradorId) return json(res, 400, { erro: 'Você não pode desativar o próprio acesso.' })
+
+        const pessoa = (await db().query("select dados->>'email' as email, dados->>'papel' as papel, dados->>'status' as status from app_colaboradores where id = $1", [colaboradorId])).rows[0]
+        if (!pessoa?.email) return json(res, 404, { erro: 'Pessoa não encontrada.' })
+        if (pessoa.status === 'encerrado' && ativo !== false) return json(res, 400, { erro: 'Parceria encerrada — o acesso não pode ser liberado.' })
+
+        const atual = (await db().query('select id from usuarios where colaborador_id = $1', [colaboradorId])).rows[0]
+        const email = String(pessoa.email).trim()
+        const dono = (await db().query('select colaborador_id from usuarios where lower(email) = lower($1)', [email])).rows[0]
+        if (dono && dono.colaborador_id !== colaboradorId) return json(res, 409, { erro: 'Este e-mail já está em uso por outro acesso.' })
+
+        if (atual) {
+          await db().query(
+            'update usuarios set email = $2, papel = $3, senha_hash = coalesce($4, senha_hash), ativo = coalesce($5, ativo) where id = $1',
+            [atual.id, email, pessoa.papel, senha ? hashSenha(senha) : null, ativo ?? null])
+        } else {
+          if (!senha) return json(res, 400, { erro: 'Defina uma senha para criar o acesso.' })
+          await db().query('insert into usuarios (email, senha_hash, colaborador_id, papel, ativo) values ($1, $2, $3, $4, $5)', [email, hashSenha(senha), colaboradorId, pessoa.papel, ativo ?? true])
+        }
+        return json(res, 200, { ok: true, criado: !atual })
+      }
+    }
 
     if (acao === 'estado' && req.method === 'GET') return json(res, 200, { colaboradorId: sessao.colaboradorId, estado: await carregarEstado() })
 

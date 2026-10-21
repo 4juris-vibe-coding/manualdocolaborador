@@ -150,3 +150,7 @@ alter table rec_vaga_etapas enable row level security;
 alter table rec_vaga_aprovacoes enable row level security;
 alter table rec_vaga_eventos enable row level security;
 alter table rec_vaga_comentarios enable row level security;
+
+-- Acrescimos do modulo de vagas
+alter table rec_vagas add column if not exists atualizado_por text;
+create index if not exists rec_vaga_ev_tipo_idx on rec_vaga_eventos (tipo, em);

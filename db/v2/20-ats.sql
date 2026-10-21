@@ -177,6 +177,14 @@ create table if not exists rec_talentos (
   historico_contato jsonb not null default '[]'::jsonb
 );
 
+-- Acréscimos do módulo ATS (aditivos)
+alter table rec_propostas add column if not exists enviada_em timestamptz;
+alter table rec_propostas add column if not exists decidida_em timestamptz;
+alter table rec_entrevistas add column if not exists registrada_em timestamptz;
+create index if not exists rec_prop_cand_idx on rec_propostas (candidatura_id);
+create index if not exists rec_notas_cand_idx on rec_candidatura_notas (candidatura_id);
+create index if not exists rec_entrev_cand_idx on rec_entrevistas (candidatura_id);
+
 alter table rec_candidatos enable row level security;
 alter table rec_candidaturas enable row level security;
 alter table rec_candidatura_movs enable row level security;

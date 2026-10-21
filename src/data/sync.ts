@@ -113,6 +113,22 @@ export async function entrarComSenha(email: string, senha: string): Promise<stri
   } catch { return 'Servidor indisponível. Tente novamente.' }
 }
 
+/* ---------- acessos (logins) — somente administração ---------- */
+export interface AcessoUsuario { colaboradorId: string; ativo: boolean; ultimoAcesso: string | null }
+
+export async function listarAcessos(): Promise<AcessoUsuario[]> {
+  const r = await chamar<{ acessos: AcessoUsuario[] }>('usuarios')
+  return r.ok ? r.dados.acessos : []
+}
+
+/** Cria o acesso (precisa de senha), redefine a senha e/ou ativa/desativa. Devolve a mensagem de erro, ou null. */
+export async function salvarAcesso(colaboradorId: string, dados: { senha?: string; ativo?: boolean }): Promise<string | null> {
+  try {
+    const r = await chamar('usuarios', { method: 'POST', body: JSON.stringify({ colaboradorId, ...dados }) })
+    return r.ok ? null : r.dados.erro ?? 'Não foi possível salvar o acesso.'
+  } catch { return 'Servidor indisponível. Tente novamente.' }
+}
+
 export async function pedirRedefinicaoSenha(email: string): Promise<string | null> {
   try {
     const r = await chamar('esqueci-senha', { method: 'POST', body: JSON.stringify({ email }) })
