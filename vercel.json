@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/v2/:caminho(.*)", "destination": "/api/v2?__caminho=:caminho" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

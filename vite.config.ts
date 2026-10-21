@@ -12,7 +12,7 @@ function apiDev(): Plugin {
       server.middlewares.use(async (req, res, next) => {
         if (req.url?.startsWith('/api/v2/')) {
           try {
-            const { default: handlerV2 } = await server.ssrLoadModule('/api/v2/[...rota].ts')
+            const { default: handlerV2 } = await server.ssrLoadModule('/api/v2/index.ts')
             await handlerV2(req, res)
           } catch (e) {
             console.error('[api-dev v2]', e)

@@ -247,6 +247,18 @@ function casar(r: RotaCompilada, caminho: string[]): Record<string, string> | nu
   return params
 }
 
+/**
+ * Segmentos depois de /api/v2/. Usa o caminho da URL quando ele chega intacto (dev local, Vercel que preserva a URL)
+ * e, se não, o `__caminho` injetado pela reescrita do vercel.json.
+ */
+export function caminhoV2(url: URL): string[] {
+  const doPath = url.pathname.replace(/^\/api\/v2\/?/, '').split('/').filter(Boolean)
+  if (doPath.length && url.pathname.startsWith('/api/v2/')) {
+    try { return doPath.map((s) => decodeURIComponent(s)) } catch { return doPath }
+  }
+  return (url.searchParams.get('__caminho') ?? '').split('/').filter(Boolean)
+}
+
 export interface Dependencias {
   db: Db
   rotas: RotaCompilada[]

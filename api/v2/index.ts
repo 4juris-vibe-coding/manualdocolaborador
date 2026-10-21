@@ -1,7 +1,9 @@
-/* Rotas: /api/v2/* — módulos de recrutamento, pesquisas, cargos, organograma e analytics. Ver docs/V2.md */
+/* Rotas: /api/v2/* — módulos de recrutamento, pesquisas, cargos, organograma e analytics. Ver docs/V2.md
+   Na Vercel, o vercel.json reescreve /api/v2/<caminho> para esta função com ?__caminho=<caminho>
+   (catch-all em arquivo, [...x].ts, só casava um segmento e devolvia 404 para o resto). */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { db as pool, lerSessao } from '../_lib.js'
-import { dbDoPool, despachar, type Req } from '../_v2/nucleo.js'
+import { caminhoV2, dbDoPool, despachar, type Req } from '../_v2/nucleo.js'
 import { ROTAS } from '../_v2/rotas.js'
 import { garantirSchemaV2 } from '../_v2/migrar.js'
 
@@ -20,7 +22,8 @@ async function lerCorpo(req: IncomingMessage & { body?: unknown }): Promise<unkn
 
 export default async function handler(req: IncomingMessage & { body?: unknown }, res: ServerResponse) {
   const url = new URL(req.url ?? '/', 'http://x')
-  const caminho = url.pathname.replace(/^\/api\/v2\/?/, '').split('/').filter(Boolean).map((s) => decodeURIComponent(s))
+  const caminho = caminhoV2(url)
+  url.searchParams.delete('__caminho')
   const cabecalhos: Record<string, string> = {}
   for (const [k, v] of Object.entries(req.headers)) if (typeof v === 'string') cabecalhos[k] = v
   let corpo: unknown = {}
