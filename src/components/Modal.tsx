@@ -15,6 +15,11 @@ export function Modal({
 }) {
   const tituloId = useId()
   const caixa = useRef<HTMLDivElement>(null)
+  // onClose costuma vir inline (() => setX(null)) e muda a cada render da página. Se fosse dependência do efeito
+  // abaixo, cada tecla digitada num formulário controlado pela página re-rodaria o efeito e jogaria o foco de volta
+  // para o primeiro campo. Lido por ref, o efeito roda só ao abrir/fechar.
+  const fechar = useRef(onClose)
+  fechar.current = onClose
   useEffect(() => {
     if (!open) return
     const anterior = document.activeElement as HTMLElement | null
@@ -23,7 +28,7 @@ export function Modal({
       const alvo = caixa.current?.querySelector<HTMLElement>('input:not([type=hidden]):not([disabled]):not(.sr-only), select, textarea, button[data-dropdown]:not([disabled]), button[data-autofocus]')
       ;(alvo ?? caixa.current)?.focus()
     }, 30)
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && fechar.current()
     document.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
     return () => {
@@ -32,7 +37,7 @@ export function Modal({
       clearTimeout(t)
       anterior?.focus?.()
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
   return (

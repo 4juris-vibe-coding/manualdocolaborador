@@ -8,12 +8,15 @@ export function Drawer({ open, onClose, titulo, subtitulo, children, rodape, lar
 }) {
   const id = useId()
   const caixa = useRef<HTMLDivElement>(null)
+  // Por ref, como no Modal: onClose inline mudaria a cada render e o efeito roubaria o foco de quem está digitando.
+  const fechar = useRef(onClose)
+  fechar.current = onClose
   useEffect(() => {
     if (!open) return
     const anterior = document.activeElement as HTMLElement | null
     const t = setTimeout(() => caixa.current?.focus(), 30)
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') fechar.current()
       if (e.key === 'Tab' && caixa.current) {
         const f = [...caixa.current.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])')]
         if (!f.length) return
@@ -25,7 +28,7 @@ export function Drawer({ open, onClose, titulo, subtitulo, children, rodape, lar
     document.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
     return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = ''; clearTimeout(t); anterior?.focus?.() }
-  }, [open, onClose])
+  }, [open])
   if (!open) return null
   return (
     <div className="fixed inset-0 z-[180] bg-midnight/40 backdrop-blur-sm animate-fade-in" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
