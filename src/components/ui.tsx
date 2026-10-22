@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { ICONES } from './icons'
 import { Dropdown } from './Dropdown'
 import logo4juris from '@/LOGO4JURIS.jpg'
+import { useUrlFoto } from '@/data/v2/fotos'
 
 /* ---------- Ícone dinâmico por nome ---------- */
 export function Icon({ name, className, 'aria-label': rotulo }: { name: string; className?: string; 'aria-label'?: string }) {
@@ -119,10 +120,15 @@ export function corTextoSobre(hex: string): string {
   return (1.05 / (L + 0.05)) >= 4.5 ? '#ffffff' : '#122029'
 }
 
-export function Avatar({ nome, cor, size = 'md', className }: { nome: string; cor?: string; size?: keyof typeof avSizes; className?: string }) {
+export function Avatar({ nome, cor, pessoaId, size = 'md', className }: { nome: string; cor?: string; pessoaId?: string | null; size?: keyof typeof avSizes; className?: string }) {
   const p = nome.trim().split(/\s+/)
   const ini = ((p[0]?.[0] || '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase()
   const fundo = cor ?? '#0032D2'
+  const foto = useUrlFoto(pessoaId)
+  const [falhou, setFalhou] = useState<string | null>(null)
+  if (foto && falhou !== foto) {
+    return <img src={foto} alt="" aria-hidden loading="lazy" decoding="async" onError={() => setFalhou(foto)} className={cn('rounded-full object-cover shrink-0 bg-surface-2', avSizes[size], className)} />
+  }
   return (
     <div aria-hidden className={cn('flex items-center justify-center rounded-full font-bold shrink-0', avSizes[size], className)} style={{ background: fundo, color: corTextoSobre(fundo) }}>
       {ini}

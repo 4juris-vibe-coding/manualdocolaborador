@@ -51,5 +51,13 @@ export const SCHEMA_V2: { nome: string; sql: string }[] = [
   {
     "nome": "93-vagas-visualizacoes.sql",
     "sql": "-- 93 · Visualizações da página pública da vaga (contador agregado, sem dado do visitante).\n-- Base do indicador de conversão (candidaturas ÷ visualizações). Contagem aproximada: inclui acessos internos e robôs.\nalter table rec_vagas add column if not exists visualizacoes int not null default 0;\n"
+  },
+  {
+    "nome": "94-ats-etapas-cor.sql",
+    "sql": "-- 94 · Cor das colunas do kanban de candidatos (etapas da vaga). Aditiva: etapas existentes ficam sem cor (cinza).\nalter table rec_vaga_etapas add column if not exists cor text;\n"
+  },
+  {
+    "nome": "95-pessoas-fotos.sql",
+    "sql": "-- 95 · Foto de perfil das pessoas (recortada no navegador, até 512 KB). Fora das coleções legadas para não pesar\n-- o carregamento do estado: a interface busca só o mapa de versões e cada imagem por rota autenticada.\ncreate table if not exists pes_fotos (\n  colaborador_id text primary key,\n  mime text not null,\n  dados bytea not null,\n  atualizado_em timestamptz not null default now(),\n  atualizado_por text\n);\nalter table pes_fotos enable row level security;\n"
   }
 ]

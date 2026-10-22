@@ -47,7 +47,7 @@ export default function Jornadas() {
                 return (
                   <Card key={p.id} className="p-5">
                     <div className="flex items-center gap-3">
-                      <Avatar nome={c?.nome ?? '?'} cor={c?.avatarCor} size="md" />
+                      <Avatar pessoaId={c?.id} nome={c?.nome ?? '?'} cor={c?.avatarCor} size="md" />
                       <div className="flex-1 min-w-0">
                         <Link to={`/rh/pessoas/${p.colaboradorId}`} className="text-[14px] font-semibold text-ink hover:text-brand">{c?.nome ?? '—'}</Link>
                         <div className="text-[12px] text-muted">{p.tipo === 'integracao' ? 'Integração' : 'Encerramento'} · desde {fmtDate(p.iniciadoEm)}</div>

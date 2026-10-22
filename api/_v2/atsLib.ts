@@ -6,15 +6,15 @@ import { conflito, naoEncontrado, type Executor, invalido } from './nucleo.js'
 import { enviarEmail, preencherModelo } from './email.js'
 import { ETAPAS_PADRAO, PRIVACIDADE_PADRAO, TEMPLATES_PADRAO, MODELO_AVALIACAO_PADRAO } from '../../src/domain/v2/ats.js'
 
-export interface EtapaVaga { id: string; nome: string; tipo: string; ordem: number }
+export interface EtapaVaga { id: string; nome: string; tipo: string; ordem: number; cor: string | null }
 
 export async function garantirEtapas(ex: Executor, vagaId: string): Promise<EtapaVaga[]> {
-  let r = await ex.query('select id, nome, tipo, ordem from rec_vaga_etapas where vaga_id = $1 order by ordem', [vagaId])
+  let r = await ex.query('select id, nome, tipo, ordem, cor from rec_vaga_etapas where vaga_id = $1 order by ordem', [vagaId])
   if (!r.rowCount) {
     for (let i = 0; i < ETAPAS_PADRAO.length; i++) {
       await ex.query('insert into rec_vaga_etapas (vaga_id, ordem, nome, tipo) values ($1,$2,$3,$4)', [vagaId, i + 1, ETAPAS_PADRAO[i].nome, ETAPAS_PADRAO[i].tipo])
     }
-    r = await ex.query('select id, nome, tipo, ordem from rec_vaga_etapas where vaga_id = $1 order by ordem', [vagaId])
+    r = await ex.query('select id, nome, tipo, ordem, cor from rec_vaga_etapas where vaga_id = $1 order by ordem', [vagaId])
   }
   return r.rows as EtapaVaga[]
 }

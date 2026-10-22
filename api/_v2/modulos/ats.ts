@@ -18,6 +18,7 @@ import {
 import {
   ORIGENS, STATUS_CANDIDATURA, analisarCsvCandidatos, diasNaEtapa, linhaCsv, mediaPonderada, somarMeses, validarMovimento, type Criterio,
 } from '../../../src/domain/v2/ats.js'
+import { CORES_ETAPA, STATUS_FINAIS, TIPOS_ETAPA, validarEtapas, type StatusVaga } from '../../../src/domain/v2/vagas.js'
 
 const VER: ('ats:ver' | 'ats:avaliar' | 'ats:gerenciar')[] = ['ats:ver', 'ats:avaliar', 'ats:gerenciar']
 
@@ -170,10 +171,64 @@ export const rotas: Rota[] = [
       for (const c of cards) if (c.status !== 'ativa') saidas[c.status] = (saidas[c.status] ?? 0) + 1
       return ok({
         vaga: camel(vaga),
-        etapas: etapas.map((et) => ({ id: et.id, nome: et.nome, tipo: et.tipo, ordem: et.ordem, candidaturas: cards.filter((c) => c.status === 'ativa' && c.etapaId === et.id) })),
+        etapas: etapas.map((et) => ({ id: et.id, nome: et.nome, tipo: et.tipo, ordem: et.ordem, cor: et.cor, candidaturas: cards.filter((c) => c.status === 'ativa' && c.etapaId === et.id) })),
         saidas, encerradas: req.query.saidas === '1' ? cards.filter((c) => c.status !== 'ativa') : undefined,
         total: cards.length,
       })
+    },
+  },
+
+  /* ===== colunas do kanban (etapas da vaga) ===== */
+  // Recebe a lista completa, na ordem desejada. Etapas que somem e têm candidaturas exigem um destino em `realocar`
+  // ({ idRemovida: idDestino }); as ativas ganham registro de movimentação, as encerradas só trocam a referência.
+  {
+    metodo: 'PUT', padrao: 'ats/vagas/:vagaId/etapas', cap: 'ats:gerenciar',
+    h: async ({ db, usuario, params, req }) => {
+      if (!uuid(params.vagaId)) throw naoEncontrado('Vaga não encontrada.')
+      const novas = lista<Record<string, unknown>>(req.corpo?.etapas, 20).map((e) => ({
+        id: typeof e.id === 'string' && uuid(e.id) ? e.id : null,
+        nome: texto(e.nome, 'nome da coluna', { max: 80 }),
+        tipo: enumerado(e.tipo, 'tipo da coluna', TIPOS_ETAPA, 'generica'),
+        cor: e.cor ? enumerado(e.cor, 'cor da coluna', CORES_ETAPA) : null,
+      }))
+      const erro = validarEtapas(novas)
+      if (erro) throw invalido(erro, { etapas: erro })
+      const realocar = (req.corpo?.realocar && typeof req.corpo.realocar === 'object' ? req.corpo.realocar : {}) as Record<string, unknown>
+      await db.tx(async (t) => {
+        const v = (await t.query('select id, codigo, status from rec_vagas where id = $1 and not arquivada', [params.vagaId])).rows[0]
+        if (!v) throw naoEncontrado('Vaga não encontrada.')
+        if (STATUS_FINAIS.includes(v.status as StatusVaga)) throw conflito('A vaga está encerrada: as colunas não podem mais ser alteradas.')
+        const atuais = (await t.query(
+          `select e.id, e.nome, (select count(*)::int from rec_candidaturas c where c.etapa_id = e.id) as n
+           from rec_vaga_etapas e where e.vaga_id = $1`, [v.id])).rows as { id: string; nome: string; n: number }[]
+        const idsAtuais = new Set(atuais.map((a) => a.id))
+        for (const n of novas) if (n.id && !idsAtuais.has(n.id)) n.id = null
+        const mantidas = new Set(novas.map((n) => n.id).filter(Boolean) as string[])
+        for (let i = 0; i < novas.length; i++) {
+          const n = novas[i]
+          if (n.id) await t.query('update rec_vaga_etapas set ordem = $2, nome = $3, tipo = $4, cor = $5 where id = $1', [n.id, i + 1, n.nome, n.tipo, n.cor])
+          else n.id = (await t.query('insert into rec_vaga_etapas (vaga_id, ordem, nome, tipo, cor) values ($1,$2,$3,$4,$5) returning id', [v.id, i + 1, n.nome, n.tipo, n.cor])).rows[0].id
+        }
+        for (const a of atuais) {
+          if (mantidas.has(a.id)) continue
+          if (a.n > 0) {
+            const destino = realocar[a.id]
+            if (typeof destino !== 'string' || !mantidas.has(destino)) throw new ErroHttp(409, `A coluna "${a.nome}" tem candidaturas. Escolha para qual coluna elas vão antes de excluí-la.`, { realocar: a.id })
+            const ativas = (await t.query(`select id from rec_candidaturas where etapa_id = $1 and status = 'ativa'`, [a.id])).rows
+            for (const c of ativas) {
+              await t.query('insert into rec_candidatura_movs (candidatura_id, colaborador_id, de_etapa_id, para_etapa_id, de_status, para_status, motivo) values ($1,$2,$3,$4,$5,$5,$6)',
+                [c.id, usuario.colaboradorId, a.id, destino, 'ativa', `Coluna "${a.nome}" excluída`])
+            }
+            await t.query(`update rec_candidaturas set etapa_id = $2, etapa_desde = case when status = 'ativa' then now() else etapa_desde end, atualizado_em = now() where etapa_id = $1`, [a.id, destino])
+          }
+          await t.query('delete from rec_vaga_etapas where id = $1', [a.id])
+        }
+        await t.query('update rec_vagas set versao = versao + 1, atualizado_em = now(), atualizado_por = $2 where id = $1', [v.id, usuario.colaboradorId])
+        await t.query(`insert into rec_vaga_eventos (vaga_id, colaborador_id, tipo) values ($1,$2,'etapas_alteradas')`, [v.id, usuario.colaboradorId])
+        await auditar(t, usuario.colaboradorId, 'vaga', v.id, 'etapas', { codigo: v.codigo, origem: 'kanban' })
+      })
+      const etapas = await garantirEtapas(db, params.vagaId)
+      return ok({ etapas })
     },
   },
 

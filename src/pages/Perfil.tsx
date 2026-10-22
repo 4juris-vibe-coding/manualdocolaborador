@@ -13,6 +13,7 @@ import { cpfValido } from '@/domain/validacao'
 import { CLASS_FB } from './rh/Feedbacks'
 import { PageHeader, Card, CardHead, Avatar, Badge, Tabs, Button, Field, Icon, Toggle, Callout, EmptyState } from '@/components/ui'
 import { Modal } from '@/components/Modal'
+import { FotoPerfil } from '@/components/FotoPerfil'
 import { feedback, toast } from '@/components/toast'
 import { brl, fmtDate, STATUS_COLAB, REGIME_LABEL, cn } from '@/lib/utils'
 import { hojeISO, tempoParceria } from '@/domain/datas'
@@ -111,7 +112,7 @@ export default function Perfil() {
 
       <Card className="p-5 sm:p-6 mb-6">
         <div className="flex items-center gap-5 flex-wrap">
-          <Avatar nome={user.nome} cor={user.avatarCor} size="xl" />
+          <FotoPerfil pessoa={user} podeEditar />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
               <h2 className="text-[21px] font-bold text-ink">{user.nomeSocial || user.nome}</h2>

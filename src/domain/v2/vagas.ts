@@ -47,6 +47,17 @@ export const ROTULO_ETAPA: Record<TipoEtapa, string> = {
   proposta: 'Proposta', contratado: 'Contratado', generica: 'Etapa personalizada',
 }
 
+/** Cores das colunas do kanban de candidatos (chave salva no banco → tom exibido). */
+export const CORES_ETAPA = ['cinza', 'azul', 'ciano', 'verde', 'amarelo', 'laranja', 'vermelho', 'roxo', 'rosa'] as const
+export type CorEtapa = (typeof CORES_ETAPA)[number]
+export const HEX_COR_ETAPA: Record<CorEtapa, string> = {
+  cinza: '#94a3b8', azul: '#3b82f6', ciano: '#06b6d4', verde: '#22c55e', amarelo: '#eab308',
+  laranja: '#f97316', vermelho: '#ef4444', roxo: '#8b5cf6', rosa: '#ec4899',
+}
+export const ROTULO_COR_ETAPA: Record<CorEtapa, string> = {
+  cinza: 'Cinza', azul: 'Azul', ciano: 'Ciano', verde: 'Verde', amarelo: 'Amarelo', laranja: 'Laranja', vermelho: 'Vermelho', roxo: 'Roxo', rosa: 'Rosa',
+}
+
 export interface EtapaModelo { nome: string; tipo: TipoEtapa }
 export const ETAPAS_PADRAO: EtapaModelo[] = [
   { nome: 'Nova candidatura', tipo: 'nova' }, { nome: 'Triagem inicial', tipo: 'triagem' }, { nome: 'Análise curricular', tipo: 'curricular' },

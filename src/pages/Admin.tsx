@@ -284,7 +284,7 @@ export default function Admin() {
               <tbody>
                 {lista.map((c) => (
                   <tr key={c.id}>
-                    <td className={TD}><div className="flex items-center gap-3"><Avatar nome={c.nome} cor={c.avatarCor} size="sm" /><div><Link to={`/rh/pessoas/${c.id}`} className="font-semibold text-ink hover:text-brand">{c.nome}</Link><div className="text-[11.5px] text-muted">{c.email}</div></div></div></td>
+                    <td className={TD}><div className="flex items-center gap-3"><Avatar pessoaId={c.id} nome={c.nome} cor={c.avatarCor} size="sm" /><div><Link to={`/rh/pessoas/${c.id}`} className="font-semibold text-ink hover:text-brand">{c.nome}</Link><div className="text-[11.5px] text-muted">{c.email}</div></div></div></td>
                     <td className={TD}>{s.setorNome(c.setorId)}</td>
                     <td className={TD}><Badge tone={STATUS_COLAB[c.status].tone} dot>{STATUS_COLAB[c.status].label}</Badge></td>
                     <td className={TD}>

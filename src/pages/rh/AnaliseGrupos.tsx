@@ -64,7 +64,7 @@ export default function AnaliseGrupos() {
                 <ul className="divide-y divide-line">
                   {lista.map((p) => (
                     <li key={p.id} className="flex items-center gap-3 px-5 py-3">
-                      <Avatar nome={p.nome} cor={p.avatarCor} size="sm" />
+                      <Avatar pessoaId={p.id} nome={p.nome} cor={p.avatarCor} size="sm" />
                       <div className="flex-1 min-w-0"><Link to={`/rh/pessoas/${p.id}`} className="text-[13.5px] font-semibold text-ink hover:text-brand">{p.nome}</Link><div className="text-[11.5px] text-muted">{s.cargoNome(p.cargoId)} · {s.setorNome(p.setorId)}</div></div>
                       <Button size="icon-sm" variant="subtle" icon="X" aria-label={`Remover ${p.nome}`} onClick={() => feedback(s.classificarGrupo(p.id, null), 'Removido do grupo.')} />
                     </li>

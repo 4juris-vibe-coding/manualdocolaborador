@@ -4,6 +4,7 @@ import { api } from './api'
 import { MODO_API } from '../config'
 import { can, definirExtrasDaSessao, type Capacidade, type FuncaoAdicional } from '@/domain/permissions'
 import { useStore } from '@/lib/store'
+import { carregarFotos, limparFotos } from './fotos'
 
 interface Acesso {
   carregado: boolean
@@ -19,6 +20,7 @@ export async function carregarAcesso(): Promise<void> {
     const eu = await api.get<{ funcoes: FuncaoAdicional[]; capacidades: Capacidade[]; setoresLiderados: string[] }>('eu')
     definirExtrasDaSessao(eu.capacidades)
     useAcesso.setState({ carregado: true, funcoes: eu.funcoes, capacidades: eu.capacidades, setoresLiderados: eu.setoresLiderados })
+    void carregarFotos()
   } catch (e) {
     // Sem acesso v2: valem só as capacidades do papel. Marca como carregado para a guarda de rota não ficar em "Carregando…" para sempre.
     console.error('[acesso] falha ao carregar /api/v2/eu', e)
@@ -28,6 +30,7 @@ export async function carregarAcesso(): Promise<void> {
 
 export function limparAcesso() {
   definirExtrasDaSessao([])
+  limparFotos()
   useAcesso.setState({ carregado: false, funcoes: [], capacidades: [], setoresLiderados: [] })
 }
 

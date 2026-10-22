@@ -60,7 +60,7 @@ export function MapaDepartamentos({ arvore, onEditar }: { arvore: ArvoreDepartam
                     <span className="text-[13.5px] font-bold text-ink truncate">{n.nome}</span>
                   </span>
                   {n.lider ? (
-                    <span className="flex items-center gap-2 min-w-0"><Avatar nome={n.lider.nome} cor={n.lider.avatarCor ?? undefined} size="sm" /><span className="min-w-0"><span className="block text-[10.5px] uppercase tracking-wide font-bold text-muted">Líder</span><span className="block text-[12.5px] font-semibold text-ink-2 truncate">{n.lider.nome}</span></span></span>
+                    <span className="flex items-center gap-2 min-w-0"><Avatar pessoaId={n.lider.id} nome={n.lider.nome} cor={n.lider.avatarCor ?? undefined} size="sm" /><span className="min-w-0"><span className="block text-[10.5px] uppercase tracking-wide font-bold text-muted">Líder</span><span className="block text-[12.5px] font-semibold text-ink-2 truncate">{n.lider.nome}</span></span></span>
                   ) : <span className="text-[12px] text-muted italic py-1.5">Sem líder definido</span>}
                   <span className="text-[11.5px] text-muted truncate mt-auto">{plural(n.pessoasTotal, 'pessoa', 'pessoas')} · {plural(n.cargos.length, 'cargo', 'cargos')}{n.filhos.length ? ` · ${plural(n.filhos.length, 'subdepartamento', 'subdepartamentos')}` : ''}</span>
                 </button>
@@ -89,7 +89,7 @@ function Detalhes({ d, porId, onAbrir }: { d: NoDepartamento; porId: Map<string,
     <div className="space-y-6">
       <section>
         <h3 className={titulo}>Liderança</h3>
-        {d.lider ? <div className="flex items-center gap-3"><Avatar nome={d.lider.nome} cor={d.lider.avatarCor ?? undefined} size="md" /><div><div className="text-[14px] font-semibold text-ink">{d.lider.nome}</div><div className="text-[12px] text-muted">Líder do departamento · responde por quem não tem gestor imediato definido</div></div></div>
+        {d.lider ? <div className="flex items-center gap-3"><Avatar pessoaId={d.lider.id} nome={d.lider.nome} cor={d.lider.avatarCor ?? undefined} size="md" /><div><div className="text-[14px] font-semibold text-ink">{d.lider.nome}</div><div className="text-[12px] text-muted">Líder do departamento · responde por quem não tem gestor imediato definido</div></div></div>
           : <p className="text-[13px] text-muted">Sem líder definido.{d.paiId ? ' As pessoas sem gestor imediato ficam abaixo do líder do departamento pai.' : ''}</p>}
         {d.liderancas.length > 0 && <p className="text-[12.5px] text-ink-2 mt-2">Também coordenam: {d.liderancas.map((l) => l.nome).join(', ')}</p>}
       </section>

@@ -69,7 +69,7 @@ export default function Aniversarios() {
         <span className="text-[16px] font-extrabold">{c.dia}</span>
         <span className="text-[9px] font-bold uppercase">{MESES[c.mes]}</span>
       </div>
-      <Avatar nome={c.pessoa.nome} cor={c.pessoa.avatarCor} size="sm" />
+      <Avatar pessoaId={c.pessoa.id} nome={c.pessoa.nome} cor={c.pessoa.avatarCor} size="sm" />
       <div className="flex-1 min-w-0">
         <div className="text-[13.5px] font-semibold text-ink truncate">{c.pessoa.nomeSocial || c.pessoa.nome}{c.pessoa.id === me.id && <span className="text-brand"> · você</span>}</div>
         <div className="text-[12px] text-muted truncate">
@@ -158,7 +158,7 @@ export default function Aniversarios() {
                   const de = s.pessoa(p.deId)
                   return (
                     <li key={p.id} className="flex gap-3 p-4">
-                      <Avatar nome={de?.nome ?? '?'} cor={de?.avatarCor} size="sm" />
+                      <Avatar pessoaId={de?.id} nome={de?.nome ?? '?'} cor={de?.avatarCor} size="sm" />
                       <div className="min-w-0">
                         <div className="text-[12.5px] text-muted"><b className="text-ink">{de?.nome ?? 'Alguém'}</b> · {relTime(p.criadoEm)}</div>
                         <p className="text-[13.5px] text-ink-2 mt-0.5">{p.mensagem}</p>

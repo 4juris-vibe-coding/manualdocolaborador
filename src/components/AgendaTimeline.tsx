@@ -39,7 +39,7 @@ export function AgendaTimeline({ pessoas, periodos, inicio, dias = 42, vazio = '
           {linhas.map((c) => (
             <div key={c.id} className="contents">
               <div className="flex items-center gap-2 pr-2 py-1.5 min-w-0">
-                <Avatar nome={c.nome} cor={c.avatarCor} size="sm" className="!h-7 !w-7 !text-[10px]" />
+                <Avatar pessoaId={c.id} nome={c.nome} cor={c.avatarCor} size="sm" className="!h-7 !w-7 !text-[10px]" />
                 <span className="text-[12.5px] font-semibold text-ink truncate">{c.nome}</span>
               </div>
               {colunas.map((d) => {

@@ -14,6 +14,7 @@ import { PAPEL_LABEL } from '@/domain/permissions'
 import { ocultar } from '@/domain/validacao'
 import { PessoaForm } from './PessoaForm'
 import { AcessoPortal } from '@/components/AcessoPortal'
+import { FotoPerfil } from '@/components/FotoPerfil'
 import { TIPOS_DOC } from '../Perfil'
 import { STATUS_PERIODO } from '../Disponibilidade'
 import { ExigenciaForm, SITUACAO_EX, validadeEx } from './Exigencias'
@@ -78,6 +79,14 @@ export default function PessoaDetalhe() {
             : <Button variant="danger" icon="UserMinus" onClick={() => setEncerrar(true)}>Encerrar parceria</Button>}
           {podeExcluir && <Button variant="subtle" icon="Trash2" onClick={() => setExcluir(true)}>Excluir cadastro</Button>}
         </>} />
+
+      <div className="flex items-center gap-4 mb-6">
+        <FotoPerfil pessoa={p} podeEditar={s.pode('pessoas:gerenciar')} />
+        <div className="min-w-0">
+          <div className="text-[15px] font-bold text-ink truncate">{p.nomeSocial || p.nome}</div>
+          <div className="text-[12.5px] text-muted truncate">{p.email}</div>
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card className="p-4"><div className="text-[11.5px] text-muted">Parceria</div><div className="text-[17px] font-bold text-ink mt-1">{tempoParceria(p.dataEntrada, p.encerramento?.data ?? hoje)}</div><div className="text-[11.5px] text-muted">desde {fmtDate(p.dataEntrada)}</div></Card>

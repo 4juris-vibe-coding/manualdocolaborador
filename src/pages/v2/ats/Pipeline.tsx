@@ -13,12 +13,13 @@ import { cn } from '@/lib/utils'
 import { numero } from '@/lib/fmt'
 import { Dropdown } from '@/components/Dropdown'
 import { BadgeStatus } from '@/components/v2/vagas/comum'
+import { EditarColunasModal, comColunaNova, hexColuna, salvarColunas, SeletorCor } from '@/components/v2/ats/ColunasKanban'
 
 interface Cartao {
   id: string; nome: string; email: string; cidade?: string; uf?: string; etapaId: string; status: string; origem: string
   diasNaEtapa: number; temCurriculo: boolean; entrevistasAgendadas: number; mediaAvaliacoes: number | null
 }
-interface EtapaCol { id: string; nome: string; tipo: string; candidaturas: Cartao[] }
+interface EtapaCol { id: string; nome: string; tipo: string; cor: string | null; candidaturas: Cartao[] }
 interface PipelineDados { vaga: { id: string; codigo: string; titulo: string; status: string; qtdPosicoes: number; posicoesPreenchidas: number }; etapas: EtapaCol[]; saidas: Record<string, number>; encerradas?: Cartao[]; total: number }
 
 const STATUS_SAIDA = [{ v: 'reprovado', r: 'Reprovar' }, { v: 'desistiu', r: 'Registrar desistência' }, { v: 'cancelada', r: 'Cancelar candidatura' }]
@@ -76,9 +77,13 @@ function Quadro({ vagaId, vagas, aoTrocar }: { vagaId: string; vagas: any[]; aoT
   const [sobre, setSobre] = useState<string | null>(null)
   const [motivo, setMotivo] = useState<{ c: Cartao; status: string; titulo: string } | null>(null)
   const [contratar, setContratar] = useState<{ c: Cartao; etapaId: string } | null>(null)
+  const [editarColunas, setEditarColunas] = useState<{ foco: string | null } | null>(null)
+  const encerrada = r.dados ? ['encerrada', 'cancelada'].includes(r.dados.vaga.status) : false
+  const editaColunas = gerenciar && !encerrada
 
   const etapas = r.dados?.etapas ?? []
   const todos = useMemo(() => etapas.flatMap((e) => e.candidaturas), [etapas])
+  const colunas = useMemo(() => etapas.map((e) => ({ id: e.id, nome: e.nome, tipo: e.tipo, cor: e.cor, ativas: e.candidaturas.length })), [etapas])
 
   async function mover(c: Cartao, corpo: Record<string, unknown>, ok = 'Candidatura atualizada.') {
     const res = await executar(() => api.post(`ats/candidaturas/${c.id}/mover`, { deEtapaId: c.etapaId, ...corpo }), ok)
@@ -107,6 +112,7 @@ function Quadro({ vagaId, vagas, aoTrocar }: { vagaId: string; vagas: any[]; aoT
         <label className="inline-flex items-center gap-2 text-[13px] text-ink-2"><input type="checkbox" checked={saidas} onChange={(e) => setSaidas(e.target.checked)} /> Mostrar encerrados</label>
         <div className="flex gap-2 ml-auto flex-wrap">
           {podeExportar && <a className="inline-flex items-center h-9 px-3 rounded-lg border border-line text-[12.5px] font-semibold text-ink hover:bg-surface-2" href={api.url(`ats/exportar${qs({ vagaId })}`)}>Exportar CSV</a>}
+          {editaColunas && <Button size="sm" variant="ghost" icon="Settings2" onClick={() => setEditarColunas({ foco: null })}>Editar colunas</Button>}
           {gerenciar && <Button size="sm" variant="ghost" icon="Upload" onClick={() => setImportar(true)}>Importar CSV</Button>}
           {gerenciar && <Button size="sm" icon="UserPlus" onClick={() => setCadastro(true)}>Cadastrar candidato</Button>}
         </div>
@@ -129,9 +135,12 @@ function Quadro({ vagaId, vagas, aoTrocar }: { vagaId: string; vagas: any[]; aoT
                   onDragOver={(ev) => { if (arrastando && gerenciar) { ev.preventDefault(); setSobre(e.id) } }}
                   onDragLeave={() => setSobre((s) => (s === e.id ? null : s))}
                   onDrop={(ev) => { ev.preventDefault(); setSobre(null); const c = todos.find((x) => x.id === arrastando); setArrastando(null); if (c) pedirMover(c, e.id) }}
-                  className={cn('w-[272px] shrink-0 rounded-2xl bg-surface-3 border p-2.5 transition', sobre === e.id ? 'border-brand bg-brand-50' : 'border-line')}>
-                  <div className="flex items-center justify-between px-1.5 py-1.5 mb-1.5">
-                    <h3 className="text-[12.5px] font-bold text-ink truncate">{e.nome}</h3>
+                  style={{ borderTop: `3px solid ${hexColuna(e.cor)}` }}
+                  className={cn('group w-[272px] shrink-0 rounded-2xl bg-surface-3 border p-2.5 transition', sobre === e.id ? 'border-brand bg-brand-50' : 'border-line')}>
+                  <div className="flex items-center gap-1.5 px-1.5 py-1.5 mb-1.5">
+                    <span aria-hidden className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: hexColuna(e.cor) }} />
+                    <h3 className="text-[12.5px] font-bold text-ink truncate flex-1">{e.nome}</h3>
+                    {editaColunas && <Button size="icon-sm" variant="ghost" icon="Pencil" aria-label={`Editar coluna ${e.nome}`} className="sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100" onClick={() => setEditarColunas({ foco: e.id })} />}
                     <Badge tone="neutral">{e.candidaturas.length}</Badge>
                   </div>
                   <div className="space-y-2 min-h-[56px]">
@@ -143,6 +152,7 @@ function Quadro({ vagaId, vagas, aoTrocar }: { vagaId: string; vagas: any[]; aoT
                   </div>
                 </div>
               ))}
+              {editaColunas && d.etapas.length < 20 && <NovaColuna aoCriar={(nome, cor) => salvarColunas(vagaId, comColunaNova(colunas, nome, cor), {}, 'Coluna criada.').then((res) => { if (res) r.recarregar(); return !!res })} />}
             </div>
 
             {saidas && (
@@ -171,10 +181,45 @@ function Quadro({ vagaId, vagas, aoTrocar }: { vagaId: string; vagas: any[]; aoT
       <ImportarModal vagaId={vagaId} open={importar} onClose={() => setImportar(false)} onFeito={r.recarregar} />
       <MotivoModal aberto={!!motivo} titulo={motivo?.titulo ?? ''} avisarCandidato={motivo?.status === 'reprovado'} onClose={() => setMotivo(null)}
         onConfirmar={async (m, avisar) => { if (motivo) { await mover(motivo.c, { status: motivo.status, motivo: m, notificarCandidato: avisar }); setMotivo(null) } }} />
+      <EditarColunasModal vagaId={vagaId} etapas={colunas} open={!!editarColunas} focoId={editarColunas?.foco} onClose={() => setEditarColunas(null)} onFeito={r.recarregar} />
       <ContratarModal open={!!contratar} onClose={() => setContratar(null)} titulo="Concluir contratação?" pessoa={contratar?.c ?? null}
         texto={<>Isto marca <b>{contratar?.c.nome}</b> como contratado(a), conta uma posição preenchida na vaga e, se for a última, encerra a vaga. Não pode ser desfeito por aqui.</>}
         onContratar={async () => !!contratar && !!(await mover(contratar.c, { etapaId: contratar.etapaId }, 'Contratação concluída.'))} />
     </>
+  )
+}
+
+/** Coluna fantasma no fim do quadro: cria uma coluna nova (inserida antes da de contratação). */
+function NovaColuna({ aoCriar }: { aoCriar: (nome: string, cor: string | null) => Promise<boolean> }) {
+  const [aberta, setAberta] = useState(false)
+  const [nome, setNome] = useState('')
+  const [cor, setCor] = useState<string | null>(null)
+  const [salvando, setSalvando] = useState(false)
+  const fechar = () => { setAberta(false); setNome(''); setCor(null) }
+  async function criar() {
+    if (!nome.trim() || salvando) return
+    setSalvando(true)
+    const ok = await aoCriar(nome.trim(), cor)
+    setSalvando(false)
+    if (ok) fechar()
+  }
+  if (!aberta) return (
+    <button type="button" onClick={() => setAberta(true)}
+      className="w-[272px] shrink-0 rounded-2xl border-2 border-dashed border-line text-muted hover:text-brand hover:border-brand min-h-[96px] flex items-center justify-center gap-2 text-[13px] font-semibold transition outline-none focus-visible:ring-2 focus-visible:ring-brand">
+      + Nova coluna
+    </button>
+  )
+  return (
+    <form className="w-[272px] shrink-0 rounded-2xl bg-surface-3 border border-brand p-3 space-y-2.5 self-start" onSubmit={(e) => { e.preventDefault(); void criar() }}>
+      <input autoFocus aria-label="Nome da nova coluna" className="input w-full" maxLength={80} placeholder="Nome da coluna" value={nome}
+        onChange={(e) => setNome(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') fechar() }} />
+      <SeletorCor rotulo="Cor da nova coluna" valor={cor} onChange={setCor} />
+      <p className="text-[11.5px] text-muted">Entra antes da coluna de contratação. Depois você pode reordenar em “Editar colunas”.</p>
+      <div className="flex gap-2">
+        <Button size="sm" type="submit" disabled={!nome.trim() || salvando}>{salvando ? 'Criando…' : 'Criar coluna'}</Button>
+        <Button size="sm" variant="ghost" onClick={fechar}>Cancelar</Button>
+      </div>
+    </form>
   )
 }
 

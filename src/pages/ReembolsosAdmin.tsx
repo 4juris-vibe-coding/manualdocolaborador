@@ -119,7 +119,7 @@ export default function ReembolsosAdmin({ onVerColaborador }: { onVerColaborador
                             className={cn('rounded-xl border border-line bg-surface p-3 shadow-xs cursor-grab active:cursor-grabbing hover:shadow-sm transition', drag === r.id && 'opacity-40')}
                           >
                             <div className="flex items-center gap-2">
-                              <Avatar nome={c?.nome ?? '?'} cor={c?.avatarCor} size="sm" className="!h-7 !w-7 !text-[10px]" />
+                              <Avatar pessoaId={c?.id} nome={c?.nome ?? '?'} cor={c?.avatarCor} size="sm" className="!h-7 !w-7 !text-[10px]" />
                               <div className="min-w-0 flex-1">
                                 <div className="text-[12.5px] font-semibold text-ink truncate">{c?.nome}</div>
                                 <div className="text-[11px] text-muted">{r.categoria}</div>
@@ -179,7 +179,7 @@ export default function ReembolsosAdmin({ onVerColaborador }: { onVerColaborador
                         <tr key={r.id} className="border-b border-line last:border-0 hover:bg-brand-50/40 transition">
                           <td className="px-5 py-3">
                             <div className="flex items-center gap-3">
-                              <Avatar nome={c?.nome ?? '?'} cor={c?.avatarCor} size="sm" />
+                              <Avatar pessoaId={c?.id} nome={c?.nome ?? '?'} cor={c?.avatarCor} size="sm" />
                               <div><div className="font-semibold text-ink">{c?.nome}</div><div className="text-[11.5px] text-muted">{s.setorNome(c?.setorId ?? '')}</div></div>
                             </div>
                           </td>

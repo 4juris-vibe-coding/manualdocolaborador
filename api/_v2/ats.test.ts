@@ -100,6 +100,33 @@ describe('ATS · pipeline e movimentação', () => {
     expect(pipe.json.etapas.find((e: any) => e.tipo === 'curricular').candidaturas).toHaveLength(1)
   })
 
+  it('colunas do kanban: cria, renomeia, colore, reordena e exclui realocando candidaturas', async () => {
+    const v = await criarVaga(m)
+    const id = await candidatar(v)
+    await POST(m, `ats/candidaturas/${id}/mover`, m.c.rh1, { etapaId: etapa(v, 'triagem') })
+    const atual = (await GET(m, `ats/vagas/${v.id}/pipeline`, m.c.rh1)).json.etapas as any[]
+    const semTriagem = atual.filter((e) => e.tipo !== 'triagem').map((e) => ({ id: e.id, nome: e.nome, tipo: e.tipo, cor: e.cor }))
+    const novas = [...semTriagem.slice(0, -1), { nome: 'Teste prático', tipo: 'generica', cor: 'roxo' }, semTriagem.at(-1)]
+    novas[1] = { ...novas[1], nome: 'Currículo', cor: 'verde' }
+    // sem permissão de gestão do ATS
+    expect((await PUT(m, `ats/vagas/${v.id}/etapas`, m.c.ger1, { etapas: novas })).status).toBe(403)
+    // coluna com candidatura não sai sem destino
+    expect((await PUT(m, `ats/vagas/${v.id}/etapas`, m.c.rh1, { etapas: novas })).status).toBe(409)
+    // regras de estrutura e cor inválida
+    expect((await PUT(m, `ats/vagas/${v.id}/etapas`, m.c.rh1, { etapas: novas.slice(1) })).status).toBe(400)
+    expect((await PUT(m, `ats/vagas/${v.id}/etapas`, m.c.rh1, { etapas: novas.map((e, i) => (i === 1 ? { ...e, cor: 'dourado' } : e)) })).status).toBe(400)
+    const triagem = etapa(v, 'triagem')
+    const r = await PUT(m, `ats/vagas/${v.id}/etapas`, m.c.rh1, { etapas: novas, realocar: { [triagem]: novas[1].id } })
+    expect(r.status).toBe(200)
+    const pipe = (await GET(m, `ats/vagas/${v.id}/pipeline`, m.c.rh1)).json.etapas as any[]
+    expect(pipe.map((e) => e.nome)).toEqual(novas.map((e) => e.nome))
+    expect(pipe[1]).toMatchObject({ nome: 'Currículo', cor: 'verde' })
+    expect(pipe[1].candidaturas.map((c: any) => c.id)).toEqual([id])
+    expect(pipe.at(-2)).toMatchObject({ nome: 'Teste prático', tipo: 'generica', cor: 'roxo' })
+    const perfil = await GET(m, `ats/candidaturas/${id}`, m.c.rh1)
+    expect(perfil.json.movimentacoes.at(-1).motivo).toBe('Coluna "Triagem inicial" excluída')
+  })
+
   it('filtros do pipeline (busca por nome) e lista paginada', async () => {
     const v = await criarVaga(m)
     await candidatar(v, { nome: 'Zélia Buscável' })

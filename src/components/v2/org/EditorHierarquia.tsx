@@ -130,7 +130,7 @@ export function EditorHierarquia({ onSalvo }: { onSalvo: () => void }) {
             return (
               <li key={c.id} className="p-4 flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-3 min-w-[220px] flex-1">
-                  <Avatar nome={c.nome} cor={c.avatarCor} size="sm" />
+                  <Avatar pessoaId={c.id} nome={c.nome} cor={c.avatarCor} size="sm" />
                   <div className="min-w-0"><div className="font-semibold text-ink text-[14px] truncate">{c.nome}</div><div className="text-[12px] text-muted truncate">{cargoNome(c.cargoId)}</div></div>
                 </div>
                 <div className="w-full sm:w-72">

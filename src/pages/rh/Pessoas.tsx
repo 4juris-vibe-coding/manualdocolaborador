@@ -88,7 +88,7 @@ export default function Pessoas() {
                     <tr key={c.id} className="hover:bg-brand-50/40 cursor-pointer" onClick={() => navigate(`/rh/pessoas/${c.id}`)}>
                       <td className={TD}>
                         <div className="flex items-center gap-3">
-                          <Avatar nome={c.nome} cor={c.avatarCor} size="sm" />
+                          <Avatar pessoaId={c.id} nome={c.nome} cor={c.avatarCor} size="sm" />
                           <div className="min-w-0"><Link to={`/rh/pessoas/${c.id}`} onClick={(e) => e.stopPropagation()} className="font-semibold text-ink hover:text-brand">{c.nome}</Link><div className="text-[11.5px] text-muted truncate">{c.email}</div></div>
                         </div>
                       </td>

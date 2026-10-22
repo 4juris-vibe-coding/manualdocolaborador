@@ -136,7 +136,7 @@ export default function Assistente() {
               <div key={m.id} className={cn('flex gap-3', m.autor === 'user' && 'flex-row-reverse')}>
                 {m.autor === 'ia'
                   ? <span className="h-8 w-8 rounded-lg bg-brand text-white flex items-center justify-center shrink-0"><Icon name="Bot" className="h-[18px] w-[18px]" /></span>
-                  : <Avatar nome={user.nome} cor={user.avatarCor} size="sm" />}
+                  : <Avatar pessoaId={user.id} nome={user.nome} cor={user.avatarCor} size="sm" />}
                 <div className={cn('rounded-2xl px-4 py-3 text-[13.5px] leading-relaxed max-w-[80%]',
                   m.autor === 'user' ? 'bg-brand text-white rounded-tr-sm' : 'bg-surface border border-line text-ink-2 rounded-tl-sm')}>
                   {m.autor === 'ia' ? <RichText texto={m.texto} /> : m.texto}

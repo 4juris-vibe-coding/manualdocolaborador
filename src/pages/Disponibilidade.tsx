@@ -124,7 +124,7 @@ export default function Disponibilidade() {
               const c = s.pessoa(p.colaboradorId)!
               return (
                 <div key={p.id} className="flex items-start gap-2.5">
-                  <Avatar nome={c.nome} cor={c.avatarCor} size="sm" className="!h-7 !w-7 !text-[10px]" />
+                  <Avatar pessoaId={c.id} nome={c.nome} cor={c.avatarCor} size="sm" className="!h-7 !w-7 !text-[10px]" />
                   <p className="text-[12.5px] text-ink-2"><b>{c.nome.split(' ')[0]}</b> ({fmtDate(p.inicio, { day: '2-digit', month: 'short' })} → {fmtDate(p.fim, { day: '2-digit', month: 'short' })}): {p.mensagemEquipe}</p>
                 </div>
               )

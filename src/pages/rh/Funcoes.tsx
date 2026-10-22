@@ -167,7 +167,7 @@ function FuncaoDetalhe({ c, onClose, onEditar }: { c: Cargo; onClose: () => void
               const comp = c.perfilIdeal && p.perfil?.consentimento ? compatibilidadeFuncao(c.perfilIdeal, p.perfil) : null
               return (
                 <li key={p.id} className="flex items-center gap-2.5 text-[13px]">
-                  <Avatar nome={p.nome} cor={p.avatarCor} size="sm" className="!h-6 !w-6 !text-[9px]" />
+                  <Avatar pessoaId={p.id} nome={p.nome} cor={p.avatarCor} size="sm" className="!h-6 !w-6 !text-[9px]" />
                   <Link to={`/rh/pessoas/${p.id}`} className="flex-1 font-medium text-ink hover:text-brand">{p.nome}</Link>
                   {comp != null && <Badge tone={comp >= 75 ? 'success' : comp >= 55 ? 'gold' : 'neutral'} className="tabular-nums">{comp}% aderência</Badge>}
                 </li>

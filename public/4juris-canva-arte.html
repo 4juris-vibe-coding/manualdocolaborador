@@ -181,9 +181,20 @@ body.ro #app{grid-template-columns:208px 1fr}
 #ftb input[type=number]{width:54px;text-align:center}
 #ftb select:focus,#ftb input:focus{border-color:rgb(62 96 232)}
 #ftb .sz{display:flex;align-items:center;gap:2px}
-#ftb .cor{position:relative;width:30px;height:30px;border-radius:8px;border:1px solid rgb(51 65 76);overflow:hidden;cursor:pointer;display:block}
-#ftb .cor span{position:absolute;inset:6px;border-radius:50%;background:var(--c,#fff);box-shadow:0 0 0 1px rgba(255,255,255,.35)}
-#ftb .cor input{position:absolute;inset:-6px;width:44px;height:44px;opacity:0;cursor:pointer}
+#ftb .cor{width:32px;height:30px;min-width:0;padding:0;border-radius:8px;border:1px solid rgb(51 65 76);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+#ftb .cor[aria-expanded=true]{border-color:rgb(62 96 232);box-shadow:0 0 0 1px rgb(62 96 232)}
+#ftb .cor b{font-size:14px;font-weight:800;line-height:1}
+#ftb .cor span{width:18px;height:4px;border-radius:2px;background:var(--c,#fff);box-shadow:0 0 0 1px rgba(255,255,255,.35)}
+#ftPal{position:fixed;z-index:61;width:232px;background:#0a1318;border:1px solid var(--ui-line2);border-radius:12px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#ftPal[hidden],#ftPal [hidden]{display:none}
+#ftPal .pt{font-size:11px;font-weight:700;color:rgb(160 174 184);margin:0 0 6px}
+#ftPal .sw{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:10px}
+#ftPal .sw button{width:100%;aspect-ratio:1;min-width:0;padding:0;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}
+#ftPal .sw button:hover,#ftPal .sw button:focus-visible{background:var(--c);outline:2px solid #4C6FDF;outline-offset:1px}
+#ftPal .sw button[aria-pressed=true]{outline:2px solid #fff;outline-offset:1px}
+#ftPal .mais{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;cursor:pointer;padding:5px 6px;border-radius:8px}
+#ftPal .mais:hover{background:rgb(20 28 34)}
+#ftPal .mais input{width:24px;height:24px;border:0;padding:0;background:none;cursor:pointer}
 #ftb .sep{width:1px;height:20px;background:var(--ui-line2);margin:0 2px}
 
 /* checkbox no padrão da marca */
@@ -292,7 +303,7 @@ select.sel[aria-expanded=true],#ftb select[aria-expanded=true]{border-color:rgb(
 <div id="show"><div class="box" id="sbox"></div><div class="ctl"><button id="sp">◀</button><span id="sn"></span><button id="sx">▶</button><button id="sq">Sair (Esc)</button></div></div>
 <div id="print"></div>
 <div id="toast"></div>
-<div id="ftb" role="toolbar" aria-label="Formatar o texto selecionado"><select id="ftFont" aria-label="Fonte"></select><span class="sz"><button data-c="menos" aria-label="Diminuir tamanho">−</button><input id="ftSize" type="number" min="6" max="800" aria-label="Tamanho da letra"><button data-c="mais" aria-label="Aumentar tamanho">+</button></span><label class="cor" title="Cor do texto"><span></span><input type="color" id="ftCor" aria-label="Cor do texto"></label><span class="sep"></span><button data-c="bold" title="Destaca na cor da marca (Ctrl+B)">Destaque</button><button data-c="italic" title="Itálico"><i>I</i></button><button data-c="clear" title="Remove a formatação do trecho">Limpar</button></div>
+<div id="ftb" role="toolbar" aria-label="Formatar o texto selecionado"><select id="ftFont" aria-label="Fonte"></select><span class="sz"><button data-c="menos" aria-label="Diminuir tamanho">−</button><input id="ftSize" type="number" min="6" max="800" aria-label="Tamanho da letra"><button data-c="mais" aria-label="Aumentar tamanho">+</button></span><button type="button" class="cor" id="ftCorBtn" title="Cor do texto" aria-label="Cor do texto" aria-haspopup="dialog" aria-expanded="false"><b>A</b><span></span></button><div id="ftPal" role="dialog" aria-label="Cor do texto" hidden><div class="pt">Cores da marca</div><div class="sw" id="ftMarca"></div><div class="pt" id="ftUsadasT">Cores do design</div><div class="sw" id="ftUsadas"></div><label class="mais"><input type="color" id="ftCor" aria-label="Escolher outra cor"><span>Mais cores…</span></label></div><span class="sep"></span><button data-c="bold" title="Destaca na cor da marca (Ctrl+B)">Destaque</button><button data-c="italic" title="Itálico"><i>I</i></button><button data-c="clear" title="Remove a formatação do trecho">Limpar</button></div>
 <input type="file" id="file" accept="image/*" hidden>
 <input type="file" id="jfile" accept=".json,application/json" hidden>
 
@@ -983,6 +994,7 @@ function posicionarFtb() {
 }
 document.addEventListener('selectionchange', () => {
   const tb = $('#ftb'), sel = getSelection(), naBarra = document.activeElement && document.activeElement.closest && document.activeElement.closest('#ftb');
+  if (!naBarra) fecharPaleta();
   if (!sel.rangeCount || sel.isCollapsed || !editDe(sel.anchorNode)) { if (!naBarra) tb.classList.remove('on'); return; }
   rangeSel = sel.getRangeAt(0).cloneRange(); lerEstilo(); posicionarFtb();
 });
@@ -1012,7 +1024,32 @@ $('#ftb').addEventListener('click', e => {
 });
 $('#ftFont').addEventListener('change', e => comSelecao(() => aplicarCss('fontName', fonteCss(e.target.value))));
 $('#ftSize').addEventListener('change', e => comSelecao(el => aplicarTamanho(e.target.value, el)));
-$('#ftCor').addEventListener('change', e => comSelecao(() => aplicarCss('foreColor', e.target.value)));
+$('#ftCor').addEventListener('change', e => { aplicarCor(e.target.value); fecharPaleta(); });
+
+/* paleta de cor do trecho: cores da marca, cores já usadas no design e "mais cores" (seletor do sistema) */
+const PAL_MARCA = ['#ffffff', '#e9ecec', '#c0c4c7', '#4a5864', '#122029', '#0b1115', '#0032d2', '#4c6fdf',
+  '#000000', '#16a34a', '#eab308', '#f97316', '#dc2626', '#db2777', '#7c3aed', '#0891b2'];
+let coresRecentes = [];
+const hexDe = s => { const m = String(s || '').match(/[\d.]+/g); return m && m.length >= 3 ? '#' + m.slice(0, 3).map(v => Math.round(+v).toString(16).padStart(2, '0')).join('') : null; };
+const amostras = (cores, atual) => cores.map(c => `<button type="button" data-cor="${c}" style="--c:${c}" title="${c}" aria-label="Cor ${c}" aria-pressed="${c === atual}"></button>`).join('');
+function abrirPaleta() {
+  const p = $('#ftPal'), base = $(EDIT_SEL.split(' ')[0]), atual = $('#ftCor').value.toLowerCase();
+  const doDesign = $$('[style*="color"]', base || document).map(n => hexDe(n.style.color)).filter(Boolean);
+  const usadas = [...new Set([...coresRecentes, ...doDesign])].filter(c => !PAL_MARCA.includes(c)).slice(0, 16);
+  $('#ftMarca').innerHTML = amostras(PAL_MARCA, atual); $('#ftUsadas').innerHTML = amostras(usadas, atual);
+  $('#ftUsadasT').hidden = $('#ftUsadas').hidden = !usadas.length;
+  p.hidden = false; $('#ftCorBtn').setAttribute('aria-expanded', 'true');
+  const r = $('#ftCorBtn').getBoundingClientRect(), abaixo = innerHeight - r.bottom > p.offsetHeight + 12;
+  p.style.left = clamp(r.left + r.width / 2 - p.offsetWidth / 2, 8, Math.max(8, innerWidth - p.offsetWidth - 8)) + 'px';
+  p.style.top = (abaixo ? r.bottom + 6 : Math.max(8, r.top - p.offsetHeight - 6)) + 'px';
+}
+function fecharPaleta() { const p = $('#ftPal'); if (!p || p.hidden) return; p.hidden = true; $('#ftCorBtn').setAttribute('aria-expanded', 'false'); }
+function aplicarCor(c) { c = c.toLowerCase(); comSelecao(() => aplicarCss('foreColor', c)); coresRecentes = [c, ...coresRecentes.filter(x => x !== c)].slice(0, 8); }
+$('#ftb').addEventListener('click', e => {
+  if (e.target.closest('#ftCorBtn')) { if ($('#ftPal').hidden) abrirPaleta(); else fecharPaleta(); return; }
+  const b = e.target.closest('[data-cor]'); if (b) { aplicarCor(b.dataset.cor); fecharPaleta(); }
+});
+$('#ftb').addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#ftPal').hidden) { e.stopPropagation(); fecharPaleta(); } });
 $('#ftSize').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.target.dispatchEvent(new Event('change')); } });
 
 /* dropdown próprio: troca a lista nativa dos <select class="sel"> e da barra de formatação por uma lista no padrão da marca */

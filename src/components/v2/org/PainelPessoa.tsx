@@ -87,7 +87,7 @@ export function PainelPessoa({ pessoa, pessoas, filhosDe, podeEditar, podeVerPer
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Avatar nome={pessoa.nome} cor={pessoa.avatarCor ?? undefined} size="xl" />
+        <Avatar pessoaId={pessoa.id} nome={pessoa.nome} cor={pessoa.avatarCor ?? undefined} size="xl" />
         <div className="min-w-0">
           <div className="text-[18px] font-bold text-ink">{pessoa.apelido || pessoa.nome}</div>
           {pessoa.apelido && <div className="text-[12.5px] text-muted">{pessoa.nome}</div>}
@@ -115,7 +115,7 @@ export function PainelPessoa({ pessoa, pessoas, filhosDe, podeEditar, podeVerPer
           <ul className="mt-3 space-y-1">
             {equipe.map((e) => (
               <li key={e.id}><button type="button" onClick={() => onSelecionar(e.id)} className="w-full flex items-center gap-2.5 rounded-xl px-2 py-1.5 hover:bg-winter text-left">
-                <Avatar nome={e.nome} cor={e.avatarCor ?? undefined} size="sm" /><span className="text-[13px] font-medium text-ink truncate">{e.apelido || e.nome}</span>
+                <Avatar pessoaId={e.id} nome={e.nome} cor={e.avatarCor ?? undefined} size="sm" /><span className="text-[13px] font-medium text-ink truncate">{e.apelido || e.nome}</span>
                 <span className="text-[12px] text-muted truncate ml-auto">{e.cargo}</span></button></li>
             ))}
           </ul>

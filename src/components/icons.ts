@@ -39,6 +39,7 @@ import {
   CalendarPlus,
   CalendarRange,
   CalendarX2,
+  Camera,
   Check,
   CheckCheck,
   CheckCircle2,
@@ -144,6 +145,7 @@ import {
   MailCheck,
   MailWarning,
   MapPin,
+  Maximize,
   Maximize2,
   Megaphone,
   MessageCircleWarning,
@@ -183,6 +185,7 @@ import {
   RefreshCw,
   Rocket,
   RotateCcw,
+  RotateCw,
   Route,
   Save,
   Scale,
@@ -244,6 +247,8 @@ import {
   WifiOff,
   X,
   XCircle,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -286,6 +291,7 @@ export const ICONES: Record<string, LucideIcon> = {
   CalendarPlus,
   CalendarRange,
   CalendarX2,
+  Camera,
   Check,
   CheckCheck,
   CheckCircle2,
@@ -391,6 +397,7 @@ export const ICONES: Record<string, LucideIcon> = {
   MailCheck,
   MailWarning,
   MapPin,
+  Maximize,
   Maximize2,
   Megaphone,
   MessageCircleWarning,
@@ -430,6 +437,7 @@ export const ICONES: Record<string, LucideIcon> = {
   RefreshCw,
   Rocket,
   RotateCcw,
+  RotateCw,
   Route,
   Save,
   Scale,
@@ -491,4 +499,6 @@ export const ICONES: Record<string, LucideIcon> = {
   WifiOff,
   X,
   XCircle,
+  ZoomIn,
+  ZoomOut,
 }

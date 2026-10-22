@@ -129,7 +129,7 @@ function Mural({ onReconhecer }: { onReconhecer: () => void }) {
               {destaques.length === 0 && <p className="text-[13px] text-muted p-2">Ainda sem destaques neste mês.</p>}
               {destaques.map(({ p, n }) => (
                 <div key={p!.id} className="flex items-center gap-3 p-2.5">
-                  <Avatar nome={p!.nome} cor={p!.avatarCor} size="sm" />
+                  <Avatar pessoaId={p!.id} nome={p!.nome} cor={p!.avatarCor} size="sm" />
                   <div className="flex-1 min-w-0"><div className="text-[13px] font-semibold text-ink truncate">{p!.nome}</div><div className="text-[11.5px] text-muted">{s.setorNome(p!.setorId)}</div></div>
                   <Badge tone="brand"><Icon name="Heart" className="h-3 w-3" />{n}</Badge>
                 </div>
@@ -298,7 +298,7 @@ function Iniciativas() {
                       </div>
                       {t.descricao && <p className="text-[12px] text-muted mt-1.5 line-clamp-3">{t.descricao}</p>}
                       {t.prazo && <div className="text-[11.5px] text-muted mt-2"><Icon name="CalendarClock" className="h-3.5 w-3.5 inline mr-1" />Até {fmtDate(t.prazo)}</div>}
-                      {t.voluntarioId && <div className="flex items-center gap-2 mt-2.5 text-[11.5px] text-muted"><Avatar nome={s.nomeDe(t.voluntarioId)} cor={s.pessoa(t.voluntarioId)?.avatarCor} size="sm" className="!h-6 !w-6 !text-[9px]" />{mine ? 'Você' : s.nomeDe(t.voluntarioId)}</div>}
+                      {t.voluntarioId && <div className="flex items-center gap-2 mt-2.5 text-[11.5px] text-muted"><Avatar pessoaId={t.voluntarioId} nome={s.nomeDe(t.voluntarioId)} cor={s.pessoa(t.voluntarioId)?.avatarCor} size="sm" className="!h-6 !w-6 !text-[9px]" />{mine ? 'Você' : s.nomeDe(t.voluntarioId)}</div>}
                       {t.entrega && <p className="text-[11.5px] text-ink-2 mt-2 bg-surface-2 rounded-lg px-2.5 py-1.5">{t.entrega}</p>}
 
                       {col.key === 'aberta' && <Button size="sm" variant="soft" icon="Hand" className="w-full mt-3" onClick={() => feedback(s.assumirIniciativa(t.id), 'Obrigado por se voluntariar! 💪')}>Quero contribuir</Button>}

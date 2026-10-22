@@ -43,7 +43,7 @@ export default function Avaliacoes() {
             return (
               <Card key={p.id} className="p-5">
                 <div className="flex items-center gap-3">
-                  <Avatar nome={avaliado.nome} cor={avaliado.avatarCor} size="md" />
+                  <Avatar pessoaId={avaliado.id} nome={avaliado.nome} cor={avaliado.avatarCor} size="md" />
                   <div className="flex-1 min-w-0"><div className="text-[14px] font-semibold text-ink">{p.avaliadorId === p.avaliadoId ? 'Autoavaliação' : avaliado.nome}</div><div className="text-[12px] text-muted">{c.nome}</div></div>
                   <Badge tone="warning">até {fmtDate(c.encerramento, { day: '2-digit', month: 'short' })}</Badge>
                 </div>
@@ -56,7 +56,7 @@ export default function Avaliacoes() {
             return (
               <Card key={a.id} className="p-5">
                 <div className="flex items-center gap-3">
-                  <Avatar nome={avaliado.nome} cor={avaliado.avatarCor} size="md" />
+                  <Avatar pessoaId={avaliado.id} nome={avaliado.nome} cor={avaliado.avatarCor} size="md" />
                   <div className="flex-1 min-w-0"><div className="text-[14px] font-semibold text-ink">{avaliado.nome}</div><div className="text-[12px] text-muted">Início de parceria · marco de {a.marcoDias} dias</div></div>
                   <Badge tone="warning">{diasEntre(hoje, a.expiraEm)} dia(s)</Badge>
                 </div>

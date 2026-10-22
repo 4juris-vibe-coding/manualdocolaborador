@@ -237,7 +237,7 @@ function EventoDetalhe({ e, onClose, onEditar }: { e: Evento; onClose: () => voi
         <div className="mt-4">
           <div className="text-[11px] font-bold uppercase text-muted mb-2">Quem confirmou (visível para a organização)</div>
           <div className="flex flex-wrap gap-2">
-            {e.confirmados.map((id) => { const c = s.pessoa(id); return c ? <span key={id} className="inline-flex items-center gap-1.5 text-[12px] bg-surface-2 border border-line rounded-full pl-1 pr-2.5 py-0.5"><Avatar nome={c.nome} cor={c.avatarCor} size="sm" className="!h-5 !w-5 !text-[8px]" />{c.nome}</span> : null })}
+            {e.confirmados.map((id) => { const c = s.pessoa(id); return c ? <span key={id} className="inline-flex items-center gap-1.5 text-[12px] bg-surface-2 border border-line rounded-full pl-1 pr-2.5 py-0.5"><Avatar pessoaId={c.id} nome={c.nome} cor={c.avatarCor} size="sm" className="!h-5 !w-5 !text-[8px]" />{c.nome}</span> : null })}
           </div>
         </div>
       )}

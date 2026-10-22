@@ -39,7 +39,7 @@ export default function Experiencia() {
 
       <Card className="p-5 sm:p-8 mb-6 bg-midnight bg-gradient-to-br from-midnight to-midnight-soft text-white relative overflow-hidden tech-grid">
         <div className="relative flex items-center gap-5 sm:gap-6 flex-wrap">
-          <Avatar nome={user.nome} cor={user.avatarCor} size="xl"  />
+          <Avatar pessoaId={user.id} nome={user.nome} cor={user.avatarCor} size="xl"  />
           <div className="flex-1 min-w-[220px]">
             <h2 className="text-[21px] sm:text-[22px] font-bold">{user.nomeSocial || user.nome}</h2>
             <p className="text-[#b5c0c9] text-[13.5px]">Parceria há {tempoParceria(user.dataEntrada, hoje)} · desde {fmtDate(user.dataEntrada)}</p>
@@ -96,7 +96,7 @@ export default function Experiencia() {
                   const de = s.pessoa(r.deId)
                   return (
                     <li key={r.id} className="flex gap-3 p-4">
-                      <Avatar nome={de?.nome ?? '?'} cor={de?.avatarCor} size="sm" />
+                      <Avatar pessoaId={de?.id} nome={de?.nome ?? '?'} cor={de?.avatarCor} size="sm" />
                       <div className="min-w-0">
                         <div className="text-[12.5px] text-muted"><b className="text-ink">{de?.nome}</b> · {r.valor} · {relTime(r.criadoEm)}</div>
                         <p className="text-[13.5px] text-ink-2 mt-0.5">“{r.mensagem}”</p>

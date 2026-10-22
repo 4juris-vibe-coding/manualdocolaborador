@@ -198,7 +198,7 @@ function RodapeConta() {
   return (
     <div className="lg:hidden shrink-0 border-t border-white/[.08] p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] space-y-2.5">
       <Link to="/perfil" replace className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-white/[.06]">
-        <Avatar nome={user.nome} cor={user.avatarCor} size="sm" />
+        <Avatar pessoaId={user.id} nome={user.nome} cor={user.avatarCor} size="sm" />
         <span className="min-w-0 leading-tight">
           <span className="block text-[13.5px] font-bold text-white truncate">{user.nome}</span>
           <span className="block text-[11.5px] text-[#8b98a2]">{PAPEL_LABEL[user.papel]} · Meu perfil</span>

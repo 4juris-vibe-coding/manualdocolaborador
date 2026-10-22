@@ -82,7 +82,7 @@ export function AcessosEquipe({ areas, equipe }: { areas: Setor[]; equipe: Colab
             const gerir = podeGerir(c)
             return (
               <li key={c.id} className="flex items-center gap-3 sm:gap-4 p-4 flex-wrap sm:flex-nowrap">
-                <Avatar nome={c.nome} cor={c.avatarCor} size="md" />
+                <Avatar pessoaId={c.id} nome={c.nome} cor={c.avatarCor} size="md" />
                 <div className="flex-1 min-w-[180px]">
                   <div className="text-[14px] font-semibold text-ink">{c.nome}</div>
                   <div className="text-[12px] text-muted">{c.email} · {s.setorNome(c.setorId)}</div>

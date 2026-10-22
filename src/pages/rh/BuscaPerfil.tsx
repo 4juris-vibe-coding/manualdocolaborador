@@ -72,7 +72,7 @@ export default function BuscaPerfil() {
               {resultado.map(({ pessoa: p, aderencia }, i) => (
                 <li key={p.id} className="flex items-center gap-3 px-5 py-3">
                   <span className="w-6 text-[13px] font-bold text-muted">{i + 1}</span>
-                  <Avatar nome={p.nome} cor={p.avatarCor} size="sm" />
+                  <Avatar pessoaId={p.id} nome={p.nome} cor={p.avatarCor} size="sm" />
                   <div className="flex-1 min-w-0"><Link to={`/rh/pessoas/${p.id}`} className="text-[13.5px] font-semibold text-ink hover:text-brand">{p.nome}</Link><div className="text-[11.5px] text-muted">{s.cargoNome(p.cargoId)} · {s.setorNome(p.setorId)}</div></div>
                   <div className="w-36 hidden sm:block"><Progress value={aderencia} color={aderencia >= 75 ? '#0f9d6b' : aderencia >= 55 ? '#c98a12' : undefined} /></div>
                   <Badge tone={aderencia >= 75 ? 'success' : aderencia >= 55 ? 'gold' : 'neutral'} className="tabular-nums">{aderencia}{modo === 'prontos' && pronto === 'grupo' ? '' : '%'}</Badge>

@@ -239,7 +239,7 @@ function PainelCiclo({ c, onVoltar }: { c: CicloAvaliativo; onVoltar: () => void
                 const ok = meus.filter((p) => respondido(p.id)).length
                 return (
                   <li key={a} className="flex items-center gap-3 p-3.5">
-                    <Avatar nome={s.nomeDe(a)} cor={s.pessoa(a)?.avatarCor} size="sm" />
+                    <Avatar pessoaId={a} nome={s.nomeDe(a)} cor={s.pessoa(a)?.avatarCor} size="sm" />
                     <span className="flex-1 text-[13px] font-semibold text-ink">{s.nomeDe(a)}</span>
                     <div className="w-32"><Progress value={(ok / meus.length) * 100} color={ok === meus.length ? '#0f9d6b' : undefined} /></div>
                     <span className="text-[12px] text-muted w-14 text-right tabular-nums">{ok}/{meus.length}</span>
@@ -312,7 +312,7 @@ export function ResultadoIndividualCard({ c, avaliadoId }: { c: CicloAvaliativo;
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
       <Card className="p-5 self-start">
-        <div className="flex items-center gap-3 mb-4"><Avatar nome={p.nome} cor={p.avatarCor} size="md" /><div><Link to={`/rh/pessoas/${p.id}`} className="font-semibold text-ink hover:text-brand">{p.nome}</Link><div className="text-[12px] text-muted">{s.cargoNome(p.cargoId)}</div></div></div>
+        <div className="flex items-center gap-3 mb-4"><Avatar pessoaId={p.id} nome={p.nome} cor={p.avatarCor} size="md" /><div><Link to={`/rh/pessoas/${p.id}`} className="font-semibold text-ink hover:text-brand">{p.nome}</Link><div className="text-[12px] text-muted">{s.cargoNome(p.cargoId)}</div></div></div>
         <RadialGauge valor={r.nota} rotulo="Nota geral (0–100)" tamanho={140} />
         <div className="text-[12px] text-muted text-center mt-2">{r.respondidas} de {r.total} avaliações respondidas</div>
         <ul className="mt-4 space-y-1.5">{r.porRelacao.filter((x) => x.n).map((x) => <li key={x.relacao} className="flex justify-between text-[12.5px]"><span className="text-ink-2">{REL[x.relacao]} ({x.n})</span><b className="tabular-nums">{x.nota ?? '—'}</b></li>)}</ul>

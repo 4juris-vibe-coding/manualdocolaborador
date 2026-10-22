@@ -72,7 +72,7 @@ export const MapaOrg = forwardRef<MapaHandle, Props>(function MapaOrg({ visiveis
                     selecionado === c.id ? 'border-brand ring-2 ring-brand/30' : 'border-line', c.contexto && 'opacity-60 border-dashed')}
                   style={{ borderLeft: `4px solid ${c.setorCor ?? 'rgb(var(--c-line-strong))'}` }}
                 >
-                  <Avatar nome={c.nome} cor={c.avatarCor ?? undefined} size="md" />
+                  <Avatar pessoaId={c.id} nome={c.nome} cor={c.avatarCor ?? undefined} size="md" />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[13px] font-bold text-ink truncate">{c.apelido || c.nome}</span>
                     <span className="block text-[11.5px] text-ink-2 truncate">{c.cargo ?? 'Função não definida'}</span>

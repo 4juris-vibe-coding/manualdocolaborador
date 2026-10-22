@@ -189,7 +189,7 @@ export default function Dashboard() {
                 const c = s.pessoa(p.colaboradorId)!
                 return (
                   <div key={p.id} className="flex items-center gap-3">
-                    <Avatar nome={c.nome} cor={c.avatarCor} size="sm" />
+                    <Avatar pessoaId={c.id} nome={c.nome} cor={c.avatarCor} size="sm" />
                     <div className="flex-1 min-w-0">
                       <div className="text-[13px] font-semibold text-ink truncate">{c.nome}</div>
                       <div className="text-[11.5px] text-muted">{fmtDate(p.inicio, { day: '2-digit', month: 'short' })} → {fmtDate(p.fim, { day: '2-digit', month: 'short' })}</div>

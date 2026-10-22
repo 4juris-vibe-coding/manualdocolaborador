@@ -12,7 +12,7 @@ import { useTema } from '@/lib/tema'
 import { useAcesso } from '@/data/v2/acesso'
 import { travarRolagem, useFecharPeloFundo } from '@/lib/rolagem'
 
-interface Item { id: string; grupo: string; titulo: string; sub?: string; icon?: string; pessoa?: { nome: string; cor: string }; acao: () => void }
+interface Item { id: string; grupo: string; titulo: string; sub?: string; icon?: string; pessoa?: { id: string; nome: string; cor: string }; acao: () => void }
 
 const norm = (t: string) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 
@@ -36,7 +36,7 @@ export function CommandPalette({ aberto, onFechar }: { aberto: boolean; onFechar
     const paginas: Item[] = flatNav().filter((i) => !i.oculto && permitido(user.papel, i)).filter((i, n, arr) => arr.findIndex((x) => x.to === i.to) === n).map((i) => ({ id: 'p' + i.to, grupo: 'Páginas', titulo: i.label, sub: i.desc, icon: i.icon, acao: ir(i.to) }))
     const verPessoas = can(user.papel, 'pessoas:gerenciar')
     const pessoas: Item[] = s.colaboradores.filter((c) => c.status !== 'encerrado' || verPessoas).map((c) => ({
-      id: 'c' + c.id, grupo: 'Pessoas', titulo: c.nomeSocial || c.nome, sub: `${s.cargoNome(c.cargoId)} · ${s.setorNome(c.setorId)}`, pessoa: { nome: c.nome, cor: c.avatarCor },
+      id: 'c' + c.id, grupo: 'Pessoas', titulo: c.nomeSocial || c.nome, sub: `${s.cargoNome(c.cargoId)} · ${s.setorNome(c.setorId)}`, pessoa: { id: c.id, nome: c.nome, cor: c.avatarCor },
       acao: verPessoas ? ir(`/rh/pessoas/${c.id}`) : ir('/gamificacao'),
     }))
     const eventos: Item[] = s.eventos.filter((e) => eventoVisivel(e, user)).map((e) => ({ id: 'e' + e.id, grupo: 'Eventos', titulo: e.titulo, sub: `${e.inicio.slice(0, 10).split('-').reverse().join('/')} · ${e.local}`, icon: 'CalendarHeart', acao: ir('/eventos') }))
@@ -93,7 +93,7 @@ export function CommandPalette({ aberto, onFechar }: { aberto: boolean; onFechar
                 {cabecalho && <div className="px-4 pt-2 pb-1 text-[10.5px] font-bold uppercase tracking-wider text-muted">{it.grupo}</div>}
                 <button type="button" data-i={i} onMouseEnter={() => setSel(i)} onClick={it.acao}
                   className={cn('w-full flex items-center gap-3 px-4 py-2.5 min-h-[48px] sm:min-h-0 text-left', i === sel ? 'bg-brand-50' : '')}>
-                  {it.pessoa ? <Avatar nome={it.pessoa.nome} cor={it.pessoa.cor} size="sm" className="!h-7 !w-7 !text-[10px]" />
+                  {it.pessoa ? <Avatar pessoaId={it.pessoa.id} nome={it.pessoa.nome} cor={it.pessoa.cor} size="sm" className="!h-7 !w-7 !text-[10px]" />
                     : <span className="h-7 w-7 rounded-lg bg-winter text-ink-2 flex items-center justify-center shrink-0"><Icon name={it.icon ?? 'Circle'} className="h-4 w-4" /></span>}
                   <span className="min-w-0 flex-1">
                     <span className="block text-[13.5px] font-semibold text-ink truncate">{it.titulo}</span>

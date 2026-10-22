@@ -67,7 +67,7 @@ export default function Feedbacks() {
             return (
               <li key={f.id}><Card className="p-4 sm:p-5">
                 <div className="flex items-start gap-3">
-                  <Avatar nome={p?.nome ?? '?'} cor={p?.avatarCor} size="md" />
+                  <Avatar pessoaId={p?.id} nome={p?.nome ?? '?'} cor={p?.avatarCor} size="md" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap"><b className="text-[14px] text-ink">{p?.nome}</b><Badge tone={CLASS_FB[f.classificacao].tone} dot>{CLASS_FB[f.classificacao].label}</Badge>{!f.visivelParaPessoa && <Badge tone="neutral">Interno</Badge>}</div>
                     <p className="text-[13.5px] text-ink-2 mt-1.5 leading-relaxed">{f.comentario}</p>

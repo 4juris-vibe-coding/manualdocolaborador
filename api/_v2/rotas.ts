@@ -9,5 +9,6 @@ import { rotas as cargos } from './modulos/cargos.js'
 import { rotas as organograma } from './modulos/organograma.js'
 import { rotas as analytics } from './modulos/analytics.js'
 import { rotas as financeiro } from './modulos/financeiro/index.js'
+import { rotas as fotos } from './modulos/fotos.js'
 
-export const ROTAS = compilar([...base, ...vagas, ...ats, ...publico, ...pesquisas, ...cargos, ...organograma, ...analytics, ...financeiro])
+export const ROTAS = compilar([...base, ...vagas, ...ats, ...publico, ...pesquisas, ...cargos, ...organograma, ...analytics, ...financeiro, ...fotos])

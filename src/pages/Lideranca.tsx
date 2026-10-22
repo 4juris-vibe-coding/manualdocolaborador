@@ -89,7 +89,7 @@ export default function Lideranca() {
                   const st = STATUS_PERIODO[p.status]
                   return (
                     <li key={p.id} className="p-4 flex gap-3 flex-wrap sm:flex-nowrap">
-                      <Avatar nome={c.nome} cor={c.avatarCor} size="sm" />
+                      <Avatar pessoaId={c.id} nome={c.nome} cor={c.avatarCor} size="sm" />
                       <div className="flex-1 min-w-[220px]">
                         <div className="text-[13.5px] font-semibold text-ink">{c.nome} <span className="text-muted font-normal">· {s.setorNome(c.setorId)}</span></div>
                         <div className="text-[12.5px] text-ink-2">{fmtDate(p.inicio)} → {fmtDate(p.fim)} · {diasEntre(p.inicio, p.fim) + 1} dia(s)</div>
@@ -124,7 +124,7 @@ export default function Lideranca() {
                 const fora = s.periodos.find((p) => p.colaboradorId === c.id && p.status !== 'cancelado' && p.inicio <= hoje && hoje <= p.fim)
                 return (
                   <li key={c.id} className="flex items-center gap-3 sm:gap-4 p-4 flex-wrap sm:flex-nowrap">
-                    <Avatar nome={c.nome} cor={c.avatarCor} size="md" />
+                    <Avatar pessoaId={c.id} nome={c.nome} cor={c.avatarCor} size="md" />
                     <div className="flex-1 min-w-[180px]">
                       <div className="text-[14px] font-semibold text-ink">{c.nome}</div>
                       <div className="text-[12px] text-muted">{s.cargoNome(c.cargoId)} · {s.setorNome(c.setorId)} · parceria há {tempoParceria(c.dataEntrada, hoje)}</div>
@@ -153,7 +153,7 @@ export default function Lideranca() {
                 return (
                   <li key={p.id} className="p-4">
                     <div className="flex items-center gap-3 mb-3">
-                      <Avatar nome={c.nome} cor={c.avatarCor} size="sm" />
+                      <Avatar pessoaId={c.id} nome={c.nome} cor={c.avatarCor} size="sm" />
                       <div className="flex-1 min-w-0"><div className="text-[13.5px] font-semibold text-ink">{c.nome}</div><div className="text-[12px] text-muted">{p.tipo === 'integracao' ? 'Integração' : 'Encerramento'} desde {fmtDate(p.iniciadoEm)}</div></div>
                       <span className="text-[13px] font-bold text-ink">{pr.percentual}%</span>
                     </div>
@@ -184,7 +184,7 @@ export default function Lideranca() {
               <ul className="divide-y divide-line">
                 {reembPend.map((r) => (
                   <li key={r.id} className="flex items-center gap-3 sm:gap-4 p-4 flex-wrap sm:flex-nowrap">
-                    <Avatar nome={s.nomeDe(r.colaboradorId)} cor={s.pessoa(r.colaboradorId)?.avatarCor} size="sm" />
+                    <Avatar pessoaId={r.colaboradorId} nome={s.nomeDe(r.colaboradorId)} cor={s.pessoa(r.colaboradorId)?.avatarCor} size="sm" />
                     <div className="flex-1 min-w-[180px]"><div className="text-[13.5px] font-semibold text-ink">{r.descricao}</div><div className="text-[12px] text-muted">{s.nomeDe(r.colaboradorId)} · {r.categoria} · {fmtDate(r.data)}</div></div>
                     <span className="text-[14px] font-bold text-ink">{brl(r.valor)}</span>
                     <div className="flex gap-2">

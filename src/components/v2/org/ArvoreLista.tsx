@@ -76,7 +76,7 @@ export function ArvoreLista({ visiveis, expandidos, carregandoRamo, faltaCarrega
             ) : <span className="w-8 shrink-0" />}
             {pessoa ? (
               <button type="button" tabIndex={-1} onClick={() => onSelecionar(pessoa.id)} className={cn('flex items-center gap-3 min-w-0 flex-1 text-left', pessoa.contexto && 'opacity-60')}>
-                <Avatar nome={pessoa.nome} cor={pessoa.avatarCor ?? undefined} size="sm" />
+                <Avatar pessoaId={pessoa.id} nome={pessoa.nome} cor={pessoa.avatarCor ?? undefined} size="sm" />
                 <span className="min-w-0">
                   <span className="block text-[13.5px] font-semibold text-ink truncate">{pessoa.apelido || pessoa.nome}</span>
                   <span className="block text-[12px] text-muted truncate">{[pessoa.cargo, pessoa.setor].filter(Boolean).join(' · ') || 'Função e área não definidas'}</span>

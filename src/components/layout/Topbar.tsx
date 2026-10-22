@@ -166,7 +166,7 @@ export function Topbar({ onAbrirMenu, entrada }: { onAbrirMenu: () => void; entr
         </div>
 
         <Link to="/perfil" className="flex items-center gap-2.5 pl-1 pr-1 sm:pr-3 h-10 rounded-xl hover:bg-winter transition" aria-label="Meu perfil">
-          <Avatar nome={user.nome} cor={user.avatarCor} size="sm" />
+          <Avatar pessoaId={user.id} nome={user.nome} cor={user.avatarCor} size="sm" />
           <div className="hidden xl:block leading-tight whitespace-nowrap">
             <div className="text-[12.5px] font-bold text-ink">{user.nome.split(' ')[0]}</div>
             <div className="text-[10.5px] text-muted">{PAPEL_LABEL[user.papel]}</div>

@@ -69,7 +69,7 @@ export function SeletorPessoas({ pessoas, selecionadas, onChange, altura = 'max-
           return (
             <label key={c.id} className={cn('flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 cursor-pointer', on ? 'bg-brand-50' : 'hover:bg-surface-2')}>
               <input type="checkbox" className="h-4 w-4 accent-brand" checked={on} onChange={() => onChange(on ? selecionadas.filter((x) => x !== c.id) : [...selecionadas, c.id])} />
-              <Avatar nome={c.nome} cor={c.avatarCor} size="sm" className="!h-6 !w-6 !text-[9px]" />
+              <Avatar pessoaId={c.id} nome={c.nome} cor={c.avatarCor} size="sm" className="!h-6 !w-6 !text-[9px]" />
               <span className="text-[13px] text-ink flex-1 truncate">{c.nome}</span>
               {extra?.(c)}
             </label>
