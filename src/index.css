@@ -38,6 +38,52 @@
   * {
     @apply border-line;
   }
+
+  /* Checkbox e radio no estilo 4JURIS. Continua sendo o <input> nativo (teclado, formulários, leitores de tela).
+     `:where()` zera a especificidade: tamanhos por tela (h-4 w-4…) seguem valendo; os estados (:checked…) ficam fora do :where para prevalecer. O Toggle usa role="switch" + sr-only e fica de fora. */
+  input:where([type='checkbox']:not([role='switch']):not(.sr-only)),
+  input:where([type='radio']:not(.sr-only)) {
+    appearance: none;
+    -webkit-appearance: none;
+    flex-shrink: 0;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    border: 1.5px solid rgb(var(--c-line-strong));
+    background-color: rgb(var(--c-surface));
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 78% 78%;
+    cursor: pointer;
+    vertical-align: middle;
+    transition: background-color .15s, border-color .15s, box-shadow .15s, transform .1s;
+  }
+  input:where([type='checkbox']:not([role='switch']):not(.sr-only)) { border-radius: 5px; }
+  input:where([type='radio']:not(.sr-only)) { border-radius: 9999px; }
+  input:where([type='checkbox']:not([role='switch']):not(.sr-only)):hover:not(:disabled),
+  input:where([type='radio']:not(.sr-only)):hover:not(:disabled) { border-color: rgb(var(--c-brand-400)); }
+  input:where([type='checkbox']:not([role='switch']):not(.sr-only)):active:not(:disabled),
+  input:where([type='radio']:not(.sr-only)):active:not(:disabled) { transform: scale(.92); }
+  input:where([type='checkbox']:not([role='switch']):not(.sr-only)):focus-visible,
+  input:where([type='radio']:not(.sr-only)):focus-visible { outline: none; box-shadow: 0 0 0 3px rgb(var(--c-brand) / .25); border-color: rgb(var(--c-brand)); }
+  input:where([type='checkbox']:not([role='switch']):not(.sr-only)):checked,
+  input:where([type='checkbox']:not([role='switch']):not(.sr-only)):indeterminate {
+    background-color: rgb(var(--c-brand));
+    border-color: rgb(var(--c-brand));
+  }
+  input:where([type='checkbox']:not([role='switch']):not(.sr-only)):checked {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E");
+  }
+  input:where([type='checkbox']:not([role='switch']):not(.sr-only)):indeterminate {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M4 8h8'/%3E%3C/svg%3E");
+  }
+  input:where([type='radio']:not(.sr-only)):checked {
+    border-color: rgb(var(--c-brand));
+    background-image: radial-gradient(circle, rgb(var(--c-brand)) 0 45%, transparent 48%);
+    background-size: 100% 100%;
+  }
+  input:where([type='checkbox']:not([role='switch']):not(.sr-only)):disabled,
+  input:where([type='radio']:not(.sr-only)):disabled { opacity: .5; cursor: not-allowed; }
   html {
     scroll-behavior: smooth;
   }
