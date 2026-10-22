@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.api.json",
     "test": "vitest run",
     "check": "npm run typecheck && npm run test && npm run build",
-    "db:setup": "vite-node scripts/db-setup.ts"
+    "db:setup": "vite-node scripts/db-setup.ts",
+    "importar": "vite-node scripts/importar-planilha.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",

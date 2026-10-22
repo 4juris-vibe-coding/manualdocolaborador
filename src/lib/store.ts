@@ -1149,10 +1149,11 @@ export const useStore = create<AppState>()(
           if (c.faixaValor?.min != null && c.faixaValor?.max != null && c.faixaValor.max < c.faixaValor.min) return ERRO('O valor máximo da faixa deve ser maior que o mínimo.')
           if (c.codigoCBO && !/^\d{4}-?\d{2}$/.test(c.codigoCBO.trim())) return ERRO('CBO no formato 0000-00.')
           const rec = { ...c, nome: c.nome.trim() }
+          const novoId = id ?? uid('g')
           if (id) d.cargos = d.cargos.map((x) => (x.id === id ? { ...x, ...rec } : x))
-          else d.cargos = [...d.cargos, { ...rec, id: uid('g') }]
-          audit(d, id ? 'funcao.atualizar' : 'funcao.criar', 'funcao', id ?? '-', `Função ${c.nome}`)
-          return OK({ id })
+          else d.cargos = [...d.cargos, { ...rec, id: novoId }]
+          audit(d, id ? 'funcao.atualizar' : 'funcao.criar', 'funcao', novoId, `Função ${c.nome}`)
+          return OK({ id: novoId })
         }),
 
         /* ---------- benefícios ---------- */
