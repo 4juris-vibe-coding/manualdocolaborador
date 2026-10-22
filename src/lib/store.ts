@@ -27,7 +27,7 @@ import type {
 import { seed, seedProducao } from './mock'
 import { MODO_API } from '@/data/config'
 import { uid } from './utils'
-import { can, type Capacidade } from '@/domain/permissions'
+import { can, definirVisaoColaborador, type Capacidade } from '@/domain/permissions'
 import { hojeISO, agoraISO } from '@/domain/datas'
 import { avaliarPontuacao, conquistasNovas, MOTIVO_NAO_PONTUOU, progressoDesafio, saldo, validarNiveis, type EntradaPontuacao } from '@/domain/gamificacao'
 import { validarPeriodo, sobreposicoesNaArea, type EntradaPeriodo } from '@/domain/disponibilidade'
@@ -90,12 +90,16 @@ export interface PessoaInput {
   conta?: string
   pixTipo?: Colaborador['pixTipo']
   pixChave?: string
+  emergenciaNome?: string
+  emergenciaTelefone?: string
+  emergenciaParentesco?: string
   // Ficha complementar
   endereco?: Endereco
   celular?: string
   emailPessoal?: string
   matricula?: string
   responsavelId?: string
+  topoOrganizacao?: boolean
   fusoHorario?: string
   tamanhoCamisa?: string
   escolaridade?: Escolaridade
@@ -357,10 +361,10 @@ export const useStore = create<AppState>()(
         pode: (cap) => pode(cap),
 
         /* ---------- sessão ---------- */
-        entrar: (id) => set({ sessaoId: id, previewColaborador: false }),
-        sair: () => set({ sessaoId: null, previewColaborador: false }),
+        entrar: (id) => { definirVisaoColaborador(false); set({ sessaoId: id, previewColaborador: false }) },
+        sair: () => { definirVisaoColaborador(false); set({ sessaoId: null, previewColaborador: false }) },
         toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
-        setPreview: (v) => set({ previewColaborador: v }),
+        setPreview: (v) => { definirVisaoColaborador(v); set({ previewColaborador: v }) },
 
         /* ---------- pessoas ---------- */
         salvarPessoa: (input, id) => tx((d) => {
@@ -1606,7 +1610,7 @@ export const useStore = create<AppState>()(
           d.colaboradores = d.colaboradores.map((c) => (c.id === id ? { ...c, papel } : c))
           audit(d, 'acesso.papel', 'pessoa', id, `Papel de ${alvo?.nome} alterado para ${papel}`)
         }),
-        reset: () => set({ ...(MODO_API ? seedProducao() : seed()), sessaoId: get().sessaoId, sidebarCollapsed: get().sidebarCollapsed, previewColaborador: false }),
+        reset: () => { definirVisaoColaborador(false); set({ ...(MODO_API ? seedProducao() : seed()), sessaoId: get().sessaoId, sidebarCollapsed: get().sidebarCollapsed, previewColaborador: false }) },
       }
     },
     {

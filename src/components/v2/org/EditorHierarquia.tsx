@@ -4,6 +4,8 @@
    - A sugestão usa SÓ a liderança cadastrada da área (gestor da área) e o topo
      escolhido; é um ponto de partida que você revisa, nunca uma dedução silenciosa.
    - Cada troca passa pela mesma validação do servidor (sem ciclos, sem gestor inativo).
+   - O topo (CEO) é gravado no cadastro: fica sem superior e não é encaixado
+     abaixo do líder da própria área.
    ============================================================ */
 import { useMemo, useState } from 'react'
 import { Avatar, Button, Callout, Card, CardHead, SearchBox, Select } from '@/components/ui'
@@ -29,12 +31,13 @@ export function EditorHierarquia({ onSalvo }: { onSalvo: () => void }) {
   const salvarPessoa = useStore((s) => s.salvarPessoa)
   const ativos = useMemo(() => colaboradores.filter((c) => c.status !== 'encerrado'), [colaboradores])
   const [mudancas, setMudancas] = useState<Record<string, string>>({}) // id → gestorId ('' = sem gestor / topo)
-  const [topo, setTopo] = useState('')
+  const topoSalvo = useMemo(() => colaboradores.find((c) => c.topoOrganizacao && c.status !== 'encerrado')?.id ?? '', [colaboradores])
+  const [topo, setTopo] = useState(topoSalvo)
   const [busca, setBusca] = useState('')
   const [salvando, setSalvando] = useState(false)
 
-  const atual = (id: string) => (id in mudancas ? mudancas[id] : colaboradores.find((c) => c.id === id)?.responsavelId ?? '')
-  const efetivas = useMemo(() => colaboradores.map((c) => ({ id: c.id, nome: c.nome, status: c.status, responsavelId: atual(c.id) || null, setorId: c.setorId })), [colaboradores, mudancas]) // eslint-disable-line react-hooks/exhaustive-deps
+  const atual = (id: string) => (id === topo ? '' : id in mudancas ? mudancas[id] : colaboradores.find((c) => c.id === id)?.responsavelId ?? '')
+  const efetivas = useMemo(() => colaboradores.map((c) => ({ id: c.id, nome: c.nome, status: c.status, responsavelId: atual(c.id) || null, setorId: c.setorId })), [colaboradores, mudancas, topo]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const erroDe = (id: string): string | null => {
     const g = atual(id)
@@ -43,7 +46,8 @@ export function EditorHierarquia({ onSalvo }: { onSalvo: () => void }) {
     return v.erros[0] ?? null
   }
   const erros = ativos.filter((c) => erroDe(c.id)).length
-  const pendentesTotal = Object.keys(mudancas).filter((id) => (mudancas[id] || '') !== (colaboradores.find((c) => c.id === id)?.responsavelId ?? '')).length
+  const topoMudou = topo !== topoSalvo
+  const pendentesTotal = Object.keys(mudancas).filter((id) => id !== topo && (mudancas[id] || '') !== (colaboradores.find((c) => c.id === id)?.responsavelId ?? '')).length + (topoMudou ? 1 : 0)
   const semGestor = ativos.filter((c) => !atual(c.id)).length
 
   const definir = (id: string, g: string) => setMudancas((m) => ({ ...m, [id]: g }))
@@ -73,17 +77,21 @@ export function EditorHierarquia({ onSalvo }: { onSalvo: () => void }) {
     try {
       // Aplica em ordem que nunca cria ciclo: valida cada passo contra o estado já aplicado.
       let aplicadas = 0
-      const fila = Object.entries(mudancas).filter(([id, g]) => g !== (colaboradores.find((c) => c.id === id)?.responsavelId ?? ''))
-      // O topo escolhido fica sem gestor.
-      if (topo && !fila.some(([id]) => id === topo) && (colaboradores.find((c) => c.id === topo)?.responsavelId ?? '')) fila.push([topo, ''])
-      for (const [id, g] of fila) {
+      const gravar = (id: string, patch: { responsavelId?: string; topoOrganizacao?: boolean }) => {
         const atualStore = useStore.getState().pessoa(id)
-        if (!atualStore) continue
+        if (!atualStore) return
         const { id: _id, ...resto } = atualStore
-        const r = salvarPessoa({ ...resto, responsavelId: g || undefined }, id)
-        if (!r.ok) { toast(`${atualStore.nome}: ${r.erro}`, 'danger'); continue }
+        const r = salvarPessoa({ ...resto, ...patch }, id)
+        if (!r.ok) { toast(`${atualStore.nome}: ${r.erro}`, 'danger'); return }
         aplicadas++
       }
+      // Primeiro o topo: sai de baixo de qualquer gestor, para as demais trocas não formarem ciclo com ele.
+      if (topoMudou || (topo && useStore.getState().pessoa(topo)?.responsavelId)) {
+        for (const c of colaboradores) if (c.topoOrganizacao && c.id !== topo) gravar(c.id, { topoOrganizacao: false })
+        if (topo) gravar(topo, { topoOrganizacao: true, responsavelId: undefined })
+      }
+      const fila = Object.entries(mudancas).filter(([id, g]) => id !== topo && g !== (colaboradores.find((c) => c.id === id)?.responsavelId ?? ''))
+      for (const [id, g] of fila) gravar(id, { responsavelId: g || undefined })
       const gravou = await aguardarGravacao()
       toast(gravou ? `Hierarquia salva (${aplicadas} alterações).` : 'Alterado na tela, mas ainda não gravado no servidor. Mantenha a página aberta.', gravou ? 'success' : 'info')
       setMudancas({})
@@ -126,8 +134,8 @@ export function EditorHierarquia({ onSalvo }: { onSalvo: () => void }) {
                   <div className="min-w-0"><div className="font-semibold text-ink text-[14px] truncate">{c.nome}</div><div className="text-[12px] text-muted truncate">{cargoNome(c.cargoId)}</div></div>
                 </div>
                 <div className="w-full sm:w-72">
-                  <Select label={`Gestor imediato de ${c.nome}`} value={atual(c.id)} onChange={(v) => definir(c.id, v)} className="w-full">
-                    <option value="">{c.id === topo ? 'Topo da organização' : 'Ninguém (sem gestor definido)'}</option>
+                  <Select label={`Gestor imediato de ${c.nome}`} value={atual(c.id)} onChange={(v) => definir(c.id, v)} className="w-full" disabled={c.id === topo}>
+                    <option value="">{c.id === topo ? 'Topo da organização (CEO)' : 'Ninguém (sem gestor definido)'}</option>
                     {ativos.filter((g) => g.id !== c.id).map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
                   </Select>
                   {e && <p role="alert" className="text-[11.5px] text-danger mt-1">{e}</p>}
@@ -142,8 +150,8 @@ export function EditorHierarquia({ onSalvo }: { onSalvo: () => void }) {
       <div className="sticky bottom-4 flex justify-end">
         <div className="card px-4 py-3 flex items-center gap-3 shadow-md">
           <span className="text-[12.5px] text-muted">{pendentesTotal ? `${pendentesTotal} alteração(ões) não salvas` : 'Sem alterações'}</span>
-          <Button variant="ghost" disabled={!pendentesTotal || salvando} onClick={() => setMudancas({})}>Descartar</Button>
-          <Button icon="Save" disabled={(!pendentesTotal && !topo) || salvando || erros > 0} onClick={() => void salvar()}>{salvando ? 'Salvando…' : 'Salvar hierarquia'}</Button>
+          <Button variant="ghost" disabled={!pendentesTotal || salvando} onClick={() => { setMudancas({}); setTopo(topoSalvo) }}>Descartar</Button>
+          <Button icon="Save" disabled={!pendentesTotal || salvando || erros > 0} onClick={() => void salvar()}>{salvando ? 'Salvando…' : 'Salvar hierarquia'}</Button>
         </div>
       </div>
     </div>

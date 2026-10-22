@@ -55,7 +55,7 @@ export async function enviarEmail(para: string, assunto: string, html: string, l
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${chave}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: process.env.RESEND_FROM || '4JURIS <nao-responda@somos4juris.com.br>', to: [para], subject: assunto, html }),
+    body: JSON.stringify({ from: process.env.RESEND_FROM || '4JURIS <nao-responda@4jurismarketing.com.br>', to: [para], subject: assunto, html }),
   })
   if (!r.ok) console.error('[e-mail] Resend respondeu', r.status, await r.text())
 }

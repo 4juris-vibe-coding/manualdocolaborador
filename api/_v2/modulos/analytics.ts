@@ -379,7 +379,7 @@ async function blocoPesquisas(c: Ctx, f: Filtros) {
    ============================================================ */
 async function dadosEstrutura(c: Ctx, f: Filtros, podeVerVagas: boolean) {
   const [legado, sets, cgs, uns] = await Promise.all([pessoas(c.db), setores(c.db), cargos(c.db), unidades(c.db)])
-  const pessoasH: PessoaHier[] = legado.map((x) => ({ id: x.id, nome: x.nome, setorId: x.setorId, cargoId: x.cargoId, unidadeId: x.unidadeId, status: x.status, responsavelId: x.responsavelId ?? null }))
+  const pessoasH: PessoaHier[] = legado.map((x) => ({ id: x.id, nome: x.nome, setorId: x.setorId, cargoId: x.cargoId, unidadeId: x.unidadeId, status: x.status, responsavelId: x.responsavelId ?? null, topo: !!x.topoOrganizacao }))
   const rv = (await c.db.query(
     `select id, titulo, status, setor_id, cargo_id, gestor_imediato_id, unidade_id, qtd_posicoes, posicoes_preenchidas from rec_vagas
      where not arquivada and status in ('aprovada','publicada','pausada') ${podeVerVagas ? '' : "and status = 'publicada'"}`)).rows

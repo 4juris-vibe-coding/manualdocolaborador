@@ -1,0 +1,1 @@
+import{j as o}from"./index-DTzvOWDM.js";import{DocumentosRepo as t}from"./Outros-Cxt4yoSA.js";import"./estados-nlVWUSXS.js";import"./comum-BHwE3OeQ.js";import"./StatusBadge-C7n91TCo.js";import"./fmt-CpDo0FKt.js";import"./Documentos-CQQaUQOD.js";function u(){return o.jsx(t,{})}export{u as default};

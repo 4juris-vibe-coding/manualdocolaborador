@@ -10,7 +10,7 @@ import { ImagemVaga } from '@/components/v2/vagas/ImagemVaga'
 import { ErroApi, api, executar, lerBase64, useApi } from '@/data/v2/api'
 import { useTem } from '@/data/v2/acesso'
 import { toast } from '@/components/toast'
-import { REGIMES_CONTRATACAO, ROTULO_REGIME_CONTRATACAO,
+import { REGIMES_CONTRATACAO, ROTULO_REGIME_CONTRATACAO, SOBRE_4JURIS_PADRAO,
   MODALIDADES_VAGA, MOEDAS, MOTIVOS_VAGA, PRIORIDADES_VAGA, ROTULO_ETAPA, ROTULO_MODALIDADE, ROTULO_MOTIVO, ROTULO_PRIORIDADE, ROTULO_REMUNERACAO, TIPOS_ETAPA, TIPOS_REMUNERACAO, camposFaltantes,
 } from '@/domain/v2/vagas'
 import { hojeISO } from '@/lib/fmt'
@@ -25,7 +25,7 @@ const CHAVE_LOCAL = 'vaga_rascunho_nao_salvo_v1'
 type Form = Record<string, any>
 const LISTAS = ['beneficios', 'requisitosObrigatorios', 'requisitosDesejaveis', 'competenciasTecnicas', 'competenciasComportamentais', 'idiomas', 'certificacoes', 'criteriosAvaliacao', 'documentosNecessarios', 'canais']
 const TEXTOS = ['titulo', 'resumo', 'objetivo', 'tipo', 'regimeContratacao', 'motivo', 'prioridade', 'setorId', 'unidadeId', 'cargoId', 'senioridade', 'equipe', 'gestorSolicitanteId', 'gestorResponsavelId', 'gestorImediatoId', 'recrutadorId',
-  'pais', 'estado', 'cidade', 'modalidade', 'viagens', 'moeda', 'tipoRemuneracao', 'variavel', 'responsabilidades', 'atividades', 'formacao', 'experiencia', 'textoPublico', 'mensagemConfirmacao', 'criteriosEncerramento',
+  'pais', 'estado', 'cidade', 'endereco', 'modalidade', 'viagens', 'moeda', 'tipoRemuneracao', 'variavel', 'responsabilidades', 'atividades', 'formacao', 'experiencia', 'sobreEmpresa', 'textoPublico', 'mensagemConfirmacao', 'criteriosEncerramento',
   'dataAbertura', 'prazoPreenchimento', 'dataInicioPrevista', 'publicarEm', 'encerraCandidaturasEm', 'observacoesRh']
 const NUMEROS = ['salarioMin', 'salarioMax']
 
@@ -40,7 +40,7 @@ const formDaVaga = (v: Form): Form => {
   return f
 }
 const FORM_NOVO: Form = {
-  ...formDaVaga({}), tipo: 'efetivo', regimeContratacao: 'pj', motivo: 'expansao', prioridade: 'normal', modalidade: 'presencial', moeda: 'BRL', tipoRemuneracao: 'mensal', pais: 'Brasil', dataAbertura: hojeISO(), canais: ['portal'],
+  ...formDaVaga({}), tipo: 'efetivo', regimeContratacao: 'pj', motivo: 'expansao', prioridade: 'normal', modalidade: 'presencial', moeda: 'BRL', tipoRemuneracao: 'mensal', pais: 'Brasil', dataAbertura: hojeISO(), canais: ['portal'], sobreEmpresa: SOBRE_4JURIS_PADRAO,
 }
 function payload(f: Form, verRem: boolean): Form {
   const p: Form = {}
@@ -238,7 +238,8 @@ export default function VagaForm() {
     </div>,
     /* 2 */ <div key="2">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5">
-        {txt('pais', 'País', { max: 80 })}{txt('estado', 'Estado', { max: 80, placeholder: 'SP' })}{txt('cidade', 'Cidade', { max: 120 })}
+        {txt('pais', 'País', { max: 80 })}{txt('estado', 'Estado', { max: 80, placeholder: 'CE' })}{txt('cidade', 'Cidade', { max: 120 })}
+        <div className="md:col-span-2">{txt('endereco', 'Endereço do local de trabalho', { max: 300, placeholder: 'Ex.: ITC Central Park - R. Ary Barroso, 70 - Papicu, Fortaleza - CE', hint: 'Aparece em "Localização" na página pública da vaga.' })}</div>
         {sel('modalidade', 'Modalidade', MODALIDADES_VAGA.map((m) => ({ v: m, n: ROTULO_MODALIDADE[m] })), { required: true })}
         <div className="md:col-span-2">{txt('viagens', 'Disponibilidade para viagens / requisitos de localização', { max: 300 })}</div>
       </div>
@@ -253,7 +254,7 @@ export default function VagaForm() {
           <div className="md:col-span-2 mb-4"><Toggle checked={!!form.divulgarSalario} onChange={(v) => set('divulgarSalario', v)} disabled={!editavel} label="Divulgar a faixa salarial no portal de carreiras" /></div>
         </div>
       ) : <Callout tone="neutral" icon="Lock" className="mb-4">A remuneração é definida pelo RH, que tem permissão para ver e editar a faixa salarial da vaga.</Callout>}
-      <div className="md:col-span-2">{tags('beneficios', 'Benefícios', 'Ex.: Vale-refeição')}</div>
+      <div className="md:col-span-2">{tags('beneficios', 'Benefícios e vantagens', 'Ex.: Wellhub (Gympass)')}</div>
     </div>,
     /* 3 */ <div key="3" className="grid grid-cols-1 md:grid-cols-2 gap-x-5">
       <div className="md:col-span-2">{txt('responsabilidades', 'Principais responsabilidades', { area: true, rows: 5, max: 6000, required: true })}</div>
@@ -279,7 +280,8 @@ export default function VagaForm() {
         {txt('publicarEm', 'Publicação agendada para', { type: 'date', hint: 'Só publica se a vaga já estiver aprovada e completa.' })}
         {txt('encerraCandidaturasEm', 'Encerramento das candidaturas', { type: 'date', required: true })}
         <div className="md:col-span-2">{id ? <ImagemVaga vagaId={id} editavel={editavel} temInicial={!!(detalhe.dados as any)?.vaga?.temImagem} /> : <Callout tone="neutral" icon="Info">Depois que o rascunho for salvo (ao preencher o título), você poderá enviar uma imagem de capa.</Callout>}</div>
-        <div className="md:col-span-2">{txt('textoPublico', 'Texto público da vaga', { area: true, rows: 6, max: 8000, hint: 'É o que a pessoa candidata lê no portal. Não inclua dados internos nem sigilosos.' })}</div>
+        <div className="md:col-span-2">{txt('sobreEmpresa', 'Sobre a empresa', { area: true, rows: 5, max: 4000, hint: 'Aparece no topo da página pública da vaga, em "Sobre a 4JURIS".' })}</div>
+        <div className="md:col-span-2">{txt('textoPublico', 'Sobre a oportunidade (texto público)', { area: true, rows: 6, max: 8000, hint: 'É o que a pessoa candidata lê no portal. Não inclua dados internos nem sigilosos.' })}</div>
         <div className="md:col-span-2">{txt('mensagemConfirmacao', 'Mensagem de confirmação da candidatura', { area: true, rows: 2, max: 1000 })}</div>
         <div className="md:col-span-2">{txt('criteriosEncerramento', 'Critérios de encerramento e preenchimento', { area: true, rows: 2, max: 1000 })}</div>
         {notasRh && <div className="md:col-span-2">{txt('observacoesRh', 'Observações restritas ao RH', { area: true, rows: 3, max: 4000, hint: 'Visíveis só para quem trabalha com recrutamento.' })}</div>}

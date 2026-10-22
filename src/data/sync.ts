@@ -113,7 +113,8 @@ async function hidratar(): Promise<boolean> {
   if (!r.ok) return false
   const { estado, colaboradorId, segredoAnonimo } = r.dados
   definirSegredoAnonimo(segredoAnonimo ?? '')
-  useStore.setState({ ...estado, sessaoId: colaboradorId, previewColaborador: false })
+  useStore.getState().setPreview(false)
+  useStore.setState({ ...estado, sessaoId: colaboradorId })
   enviado = fotografar()
   sujo = false
   ligarSync()

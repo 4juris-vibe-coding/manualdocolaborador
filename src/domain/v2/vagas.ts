@@ -19,6 +19,9 @@ export const MAPA_STATUS_VAGA: Record<StatusVaga, { rotulo: string; tom: TomVaga
   cancelada: { rotulo: 'Cancelada', tom: 'danger' },
 }
 
+/** Texto padrão de "Sobre a empresa" nas vagas novas (editável em cada vaga). */
+export const SOBRE_4JURIS_PADRAO = 'A 4juris é uma empresa de marketing jurídico que une estratégia, tecnologia e performance para impulsionar escritórios de advocacia em todo o Brasil. Oferecemos soluções inovadoras e de alto valor agregado, que ajudam nossos clientes a conquistar mais visibilidade, atrair oportunidades e potencializar seus resultados.\nAqui, você terá a oportunidade de trabalhar com produtos que geram valor real para os clientes, em um mercado com grande potencial de crescimento. Buscamos pessoas ambiciosas, que gostam de vender, encaram desafios e querem crescer junto com o negócio.'
+
 export const TIPOS_VAGA = ['efetivo', 'temporario', 'estagio', 'aprendiz', 'contrato', 'outro'] as const
 /** Forma de contratação (vínculo). PJ/MEI/autônomo são contratos comerciais; CLT e estágio têm regras próprias, fora deste portal. */
 export const REGIMES_CONTRATACAO = ['pj', 'mei', 'autonomo', 'clt', 'estagio', 'temporario', 'nao_informado'] as const

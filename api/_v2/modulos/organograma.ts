@@ -29,7 +29,7 @@ interface Base {
 
 async function carregarBase(db: Executor, u: Usuario): Promise<Base> {
   const [legado, setores, cargos, unidades] = await Promise.all([lerPessoas(db), lerSetores(db), lerCargos(db), lerUnidades(db)])
-  const pessoas: PessoaOrg[] = legado.map((p) => ({ id: p.id, nome: p.nome, setorId: p.setorId, cargoId: p.cargoId, unidadeId: p.unidadeId, status: p.status, responsavelId: p.responsavelId ?? null }))
+  const pessoas: PessoaOrg[] = legado.map((p) => ({ id: p.id, nome: p.nome, setorId: p.setorId, cargoId: p.cargoId, unidadeId: p.unidadeId, status: p.status, responsavelId: p.responsavelId ?? null, topo: !!p.topoOrganizacao }))
   // Posições de vagas ainda não publicadas podem ser confidenciais (ex.: substituição): só quem vê vagas as enxerga.
   const verTodasVagas = u.caps.has('vagas:ver')
   const rv = await db.query(

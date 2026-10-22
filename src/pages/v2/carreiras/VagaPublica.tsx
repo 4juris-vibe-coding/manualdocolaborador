@@ -63,17 +63,19 @@ export default function VagaPublica() {
                 {v.salario && (v.salario.min || v.salario.max) && (
                   <Callout tone="brand" icon="Wallet" className="mb-6">Faixa informada: <b>{v.salario.min ? moeda(v.salario.min, v.salario.moeda) : ''}{v.salario.min && v.salario.max ? ' a ' : ''}{v.salario.max ? moeda(v.salario.max, v.salario.moeda) : ''}</b> ({v.salario.tipo ?? 'mensal'}).</Callout>
                 )}
-                <Bloco titulo="Sobre a vaga"><Texto t={v.descricao || v.resumo} /></Bloco>
+                <Bloco titulo="Sobre a 4JURIS"><Texto t={v.sobreEmpresa} /></Bloco>
+                <Bloco titulo="Sobre a oportunidade"><Texto t={v.descricao || v.resumo} /></Bloco>
                 <Bloco titulo="Responsabilidades"><Texto t={v.responsabilidades} /></Bloco>
                 <Bloco titulo="Atividades do dia a dia"><Texto t={v.atividades} /></Bloco>
-                <Bloco titulo="Requisitos obrigatórios"><Lista itens={v.requisitosObrigatorios} /></Bloco>
+                <Bloco titulo="Requisitos"><Lista itens={v.requisitosObrigatorios} /></Bloco>
                 <Bloco titulo="Diferenciais"><Lista itens={v.requisitosDesejaveis} /></Bloco>
                 <Bloco titulo="Formação"><Texto t={v.formacao} /></Bloco>
                 <Bloco titulo="Experiência"><Texto t={v.experiencia} /></Bloco>
                 <Bloco titulo="Idiomas"><Lista itens={v.idiomas} /></Bloco>
                 <Bloco titulo="Certificações"><Lista itens={v.certificacoes} /></Bloco>
-                <Bloco titulo="Benefícios"><Lista itens={v.beneficios} /></Bloco>
+                <Bloco titulo="Vantagens"><Lista itens={v.beneficios} /></Bloco>
                 <Bloco titulo="Viagens"><Texto t={v.viagens} /></Bloco>
+                <Bloco titulo="Localização"><Texto t={v.endereco} /></Bloco>
                 <Bloco titulo="Documentos que poderemos pedir"><Lista itens={v.documentosNecessarios} /></Bloco>
                 <div className="pt-4 border-t border-line">
                   <Link to={`/carreiras/${v.slug}/candidatar${window.location.search}`}><Button size="lg" icon="Send">Candidatar-me a esta vaga</Button></Link>

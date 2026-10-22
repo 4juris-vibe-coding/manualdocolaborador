@@ -524,3 +524,18 @@ describe('vagas · prazo de preenchimento', () => {
     expect(ids.get(b)).toBe('proxima')
   })
 })
+
+describe('vagas · sobre a empresa e endereço', () => {
+  it('salva, duplica e mostra na página pública', async () => {
+    const id = await criarAprovada({ titulo: 'SDR Pleno', modalidade: 'presencial', regimeContratacao: 'pj', cidade: 'Fortaleza', estado: 'CE',
+      sobreEmpresa: 'A 4juris é uma empresa de marketing jurídico.', endereco: 'ITC Central Park - R. Ary Barroso, 70 - Papicu, Fortaleza - CE',
+      beneficios: ['Ajuda de custo de R$680,00', 'Wellhub (gympass)'] })
+    const d = await GET(m, `vagas/${id}`, m.c.rh1)
+    expect(d.json.vaga).toMatchObject({ sobreEmpresa: 'A 4juris é uma empresa de marketing jurídico.', endereco: 'ITC Central Park - R. Ary Barroso, 70 - Papicu, Fortaleza - CE' })
+    expect((await POST(m, `vagas/${id}/acoes/publicar`, m.c.rh1)).status).toBe(200)
+    const pub = await GET(m, `publico/vagas/${d.json.vaga.slug}`)
+    expect(pub.json).toMatchObject({ sobreEmpresa: 'A 4juris é uma empresa de marketing jurídico.', endereco: 'ITC Central Park - R. Ary Barroso, 70 - Papicu, Fortaleza - CE', regimeContratacao: 'pj' })
+    const copia = await POST(m, `vagas/${id}/duplicar`, m.c.rh1)
+    expect(copia.json.vaga.sobreEmpresa).toBe('A 4juris é uma empresa de marketing jurídico.')
+  })
+})

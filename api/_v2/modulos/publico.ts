@@ -67,7 +67,8 @@ export const rotas: Rota[] = [
       const hoje = hojeISO(agora)
       const r = await db.query(
         `select ${CAMPOS_PUBLICOS}, v.texto_publico, v.responsabilidades, v.atividades, v.requisitos_obrigatorios, v.requisitos_desejaveis, v.formacao, v.experiencia,
-           v.idiomas, v.certificacoes, v.beneficios, v.divulgar_salario, v.salario_min, v.salario_max, v.moeda, v.tipo_remuneracao, v.perguntas_triagem, v.documentos_necessarios, v.viagens
+           v.idiomas, v.certificacoes, v.beneficios, v.divulgar_salario, v.salario_min, v.salario_max, v.moeda, v.tipo_remuneracao, v.perguntas_triagem, v.documentos_necessarios, v.viagens,
+           v.sobre_empresa, v.endereco
          from rec_vagas v where v.slug = $2 and ${FILTRO_PUBLICADA}`, [hoje, params.slug])
       const v = r.rows[0]
       if (!v) {
@@ -83,6 +84,7 @@ export const rotas: Rota[] = [
       const priv = await obterPrivacidade(db)
       return ok({
         ...itemPublico(v, mapa),
+        sobreEmpresa: v.sobre_empresa, endereco: v.endereco,
         descricao: v.texto_publico, responsabilidades: v.responsabilidades, atividades: v.atividades,
         requisitosObrigatorios: v.requisitos_obrigatorios, requisitosDesejaveis: v.requisitos_desejaveis, formacao: v.formacao, experiencia: v.experiencia,
         idiomas: v.idiomas, certificacoes: v.certificacoes, beneficios: v.beneficios, viagens: v.viagens,

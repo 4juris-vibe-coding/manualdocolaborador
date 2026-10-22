@@ -13,6 +13,16 @@ const semLider: SetorOrg[] = [{ id: 's1', nome: 'Jurídico', gestorId: null }]
 const base = [P('a'), P('b', 'a'), P('c', 'a'), P('d', 'b'), P('e')]
 
 describe('hierarquia', () => {
+  it('o CEO marcado como topo não é encaixado abaixo do líder da própria área', () => {
+    // CEO está na área s1, cujo líder cadastrado é "a" (que não responde explicitamente a ninguém).
+    const pessoas = [P('ceo', null, { topo: true }), P('a'), P('b', 'a')]
+    const sem = construirHierarquia(pessoas.map((p) => ({ ...p, topo: false })), setores)
+    expect(sem.nos.get('ceo')!.pai).toBe('a') // comportamento antigo: CEO caía abaixo do líder da área
+    const h = construirHierarquia([...pessoas.slice(1).map((p) => p.id === 'a' ? { ...p, responsavelId: 'ceo' } : p), pessoas[0]], setores)
+    expect(h.raizes).toEqual(['ceo'])
+    const soTopo = construirHierarquia(pessoas, setores)
+    expect(soTopo.nos.get('ceo')!.pai).toBeNull()
+  })
   it('constrói a árvore pelos vínculos explícitos, com níveis e contagens', () => {
     const h = construirHierarquia(base, semLider)
     expect(h.raizes).toEqual(['a'])

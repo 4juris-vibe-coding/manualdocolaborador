@@ -40,6 +40,9 @@ export function CommandPalette({ aberto, onFechar }: { aberto: boolean; onFechar
     const acoes: Item[] = [
       { id: 'a-periodo', grupo: 'Ações', titulo: 'Registrar período de indisponibilidade', icon: 'Palmtree', acao: ir('/disponibilidade') },
       { id: 'a-reconhecer', grupo: 'Ações', titulo: 'Reconhecer alguém', icon: 'Heart', acao: ir('/gamificacao') },
+      ...(s.previewColaborador || s.realUser().papel !== 'colaborador' || acessoV2.length > 0
+        ? [{ id: 'a-visao', grupo: 'Ações', titulo: s.previewColaborador ? 'Sair da visão de colaborador' : 'Ver como colaborador', icon: s.previewColaborador ? 'EyeOff' : 'Eye', acao: () => { s.setPreview(!s.previewColaborador); navigate('/'); onFechar() } }]
+        : []),
       { id: 'a-claro', grupo: 'Ações', titulo: 'Tema claro', icon: 'Sun', acao: () => { definirTema('claro'); onFechar() } },
       { id: 'a-escuro', grupo: 'Ações', titulo: 'Tema escuro', icon: 'Moon', acao: () => { definirTema('escuro'); onFechar() } },
       { id: 'a-sistema', grupo: 'Ações', titulo: 'Tema do sistema', icon: 'Monitor', acao: () => { definirTema('sistema'); onFechar() } },

@@ -34,5 +34,6 @@ export function limparAcesso() {
 /** Hook: a pessoa tem a capacidade (papel + funções)? Re-renderiza quando o acesso carrega. */
 export function useTem(cap: Capacidade): boolean {
   const papel = useStore((s) => s.currentUser().papel)
-  return useAcesso((s) => s.capacidades.includes(cap)) || can(papel, cap)
+  const preview = useStore((s) => s.previewColaborador)
+  return (useAcesso((s) => s.capacidades.includes(cap)) && !preview) || can(papel, cap)
 }

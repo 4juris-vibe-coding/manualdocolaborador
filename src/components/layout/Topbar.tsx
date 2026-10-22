@@ -8,7 +8,8 @@ import { CommandPalette } from '@/components/CommandPalette'
 import { useTema } from '@/lib/tema'
 import { Avatar, Icon } from '@/components/ui'
 import { relTime, cn } from '@/lib/utils'
-import { can, PAPEL_LABEL } from '@/domain/permissions'
+import { PAPEL_LABEL } from '@/domain/permissions'
+import { useAcesso } from '@/data/v2/acesso'
 import { nivelDe } from '@/domain/gamificacao'
 import { Bell, Search, LogOut, Trophy, Eye, EyeOff, Menu, Sun, Moon, Monitor } from 'lucide-react'
 
@@ -38,7 +39,9 @@ export function Topbar({ onAbrirMenu }: { onAbrirMenu: () => void }) {
   }, [])
   const proximoTema = tema === 'claro' ? 'escuro' : tema === 'escuro' ? 'sistema' : 'claro'
   const TemaIcon = tema === 'claro' ? Sun : tema === 'escuro' ? Moon : Monitor
-  const podeAlternar = can(real.papel, 'lideranca:painel')
+  // Quem tem algo além da área pessoal (papel de gestão ou função adicional) pode conferir o portal como colaborador.
+  const temFuncoes = useAcesso((x) => x.funcoes.length > 0)
+  const podeAlternar = preview || real.papel !== 'colaborador' || temFuncoes
 
   const pontos = useStore((s) => s.pontosDe(user.id))
   const nivel = nivelDe(pontos, niveis)
@@ -76,14 +79,14 @@ export function Topbar({ onAbrirMenu }: { onAbrirMenu: () => void }) {
         </button>
         {podeAlternar && (
           <button
-            onClick={() => setPreview(!preview)}
+            onClick={() => { setPreview(!preview); navigate('/') }}
             title={preview ? 'Sair da visão de colaborador' : 'Ver o portal como colaborador'}
             aria-label={preview ? 'Sair da visão de colaborador' : 'Ver como colaborador'}
-            className={cn('hidden lg:flex items-center gap-2 h-10 px-3 rounded-xl font-semibold text-[12.5px] border transition whitespace-nowrap shrink-0',
+            className={cn('flex items-center gap-2 h-10 px-2.5 sm:px-3 rounded-xl font-semibold text-[12.5px] border transition whitespace-nowrap shrink-0',
               preview ? 'bg-midnight text-white border-ink hover:bg-midnight-soft dark:bg-brand dark:border-brand' : 'bg-surface text-ink-2 border-line hover:bg-surface-2 hover:text-ink')}
           >
             {preview ? <EyeOff className="h-[17px] w-[17px]" /> : <Eye className="h-[17px] w-[17px]" />}
-            <span className="hidden 2xl:inline">{preview ? 'Sair da visão' : 'Ver como colaborador'}</span>
+            <span className="hidden xl:inline">{preview ? 'Sair da visão' : 'Ver como colaborador'}</span>
           </button>
         )}
 

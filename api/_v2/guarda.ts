@@ -133,7 +133,7 @@ const proprioOuPriv = (campo = 'colaboradorId', gerencial = false) => (r: Obj, c
 
 /* ---------- pessoas ---------- */
 /** Campos de terceiros visíveis a quem não é RH (diretório e organização). */
-const PUBLICOS = ['id', 'nome', 'nomeSocial', 'email', 'telefone', 'avatarCor', 'papel', 'setorId', 'cargoId', 'unidadeId', 'status', 'dataEntrada', 'cidade', 'uf', 'regime', 'privacidade', 'responsavelId', 'fusoHorario']
+const PUBLICOS = ['id', 'nome', 'nomeSocial', 'email', 'telefone', 'avatarCor', 'papel', 'setorId', 'cargoId', 'unidadeId', 'status', 'dataEntrada', 'cidade', 'uf', 'regime', 'privacidade', 'responsavelId', 'topoOrganizacao', 'fusoHorario']
 /** O que a própria pessoa altera no próprio cadastro (Meu perfil, privacidade, diversidade, perfil comportamental). */
 const AUTO_EDITAVEIS = new Set(['nomeSocial', 'telefone', 'cidade', 'uf', 'nascimento', 'banco', 'agencia', 'conta', 'pixTipo', 'pixChave',
   'emergenciaNome', 'emergenciaTelefone', 'emergenciaParentesco', 'endereco', 'celular', 'emailPessoal', 'escolaridade', 'curso',

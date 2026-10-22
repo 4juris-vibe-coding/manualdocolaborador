@@ -70,6 +70,8 @@ export interface Colaborador {
   matricula?: string
   /** Ponto focal / responsável direto pela coordenação (equivale ao "superior direto"). */
   responsavelId?: string
+  /** Topo da organização (CEO): fica sem superior e nunca é encaixado abaixo do líder da própria área. */
+  topoOrganizacao?: boolean
   fusoHorario?: string
   tamanhoCamisa?: string
   escolaridade?: Escolaridade

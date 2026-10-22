@@ -12,6 +12,7 @@ import { alterarConvite, decidirSolicitacao, lerConvite, linkCadastro, listarAce
 import { gerarSenha } from '@/components/AcessoPortal'
 import { hojeISO } from '@/domain/datas'
 import { Dropdown } from '@/components/Dropdown'
+import { ImportarColaboradores } from '@/components/ImportarColaboradores'
 
 const CAP_LABEL: Partial<Record<Capacidade, string>> = {
   'portal:usar': 'Área pessoal', 'lideranca:painel': 'Painel da liderança', 'lideranca:ver_disponibilidade_equipe': 'Ver disponibilidade da equipe',
@@ -36,6 +37,7 @@ export default function Admin() {
   const [senha, setSenha] = useState('')
   const [verSenha, setVerSenha] = useState(false)
   const [salvando, setSalvando] = useState(false)
+  const [importar, setImportar] = useState(false)
   const recarregarAcessos = () => listarAcessos().then((l) => setAcessos(Object.fromEntries(l.map((a) => [a.colaboradorId, a]))))
   useEffect(() => { if (MODO_API && tab === 'usuarios') void recarregarAcessos() }, [tab])
   const [novo, setNovo] = useState<{ nome: string; email: string; papel: Papel; setorId: string; senha: string } | null>(null)
@@ -135,7 +137,10 @@ export default function Admin() {
   return (
     <>
       <PageHeader title="Usuários & acessos" subtitle="Papéis, permissões e dados da plataforma."
-        actions={MODO_API ? <Button icon="UserPlus" onClick={() => { setNovo({ nome: '', email: '', papel: 'colaborador', setorId: s.setores[0]?.id ?? '', senha: '' }); setVerNovaSenha(false) }}>Criar acesso</Button> : undefined} />
+        actions={<>
+          <Button variant="soft" icon="Upload" onClick={() => setImportar(true)}>Importar planilha</Button>
+          {MODO_API && <Button icon="UserPlus" onClick={() => { setNovo({ nome: '', email: '', papel: 'colaborador', setorId: s.setores[0]?.id ?? '', senha: '' }); setVerNovaSenha(false) }}>Criar acesso</Button>}
+        </>} />
       <Tabs tabs={[
         { key: 'usuarios', label: 'Usuários e papéis' },
         ...(MODO_API ? [{ key: 'solicitacoes', label: pendentes.length ? `Solicitações de acesso (${pendentes.length})` : 'Solicitações de acesso' }] : []),
@@ -389,6 +394,8 @@ export default function Admin() {
           </div>
         ))}
       </Modal>
+
+      {importar && <ImportarColaboradores onClose={() => setImportar(false)} onConcluido={() => { setTab('usuarios'); if (MODO_API) void recarregarAcessos() }} />}
 
       <ConfirmModal open={!!recusando} onClose={() => setRecusando(null)} titulo="Recusar solicitação?" confirmar="Recusar"
         texto={recusando ? `${recusando.nome} (${recusando.email}) não terá acesso ao portal. Se tentar entrar, verá que o cadastro não foi aprovado.` : ''}

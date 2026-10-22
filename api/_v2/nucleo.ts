@@ -178,7 +178,7 @@ export async function notificar(ex: Executor, n: NovaNotificacao) {
 /* ---------- organização (fonte da verdade: coleções legadas em JSONB) ---------- */
 export interface PessoaOrg {
   id: string; nome: string; nomeSocial?: string; email: string; papel: Papel; setorId: string; cargoId: string; unidadeId?: string
-  status: string; responsavelId?: string; dataEntrada?: string; avatarCor?: string; cidade?: string; uf?: string; telefone?: string
+  status: string; responsavelId?: string; topoOrganizacao?: boolean; dataEntrada?: string; avatarCor?: string; cidade?: string; uf?: string; telefone?: string
   privacidade?: Record<string, unknown>
 }
 export interface SetorOrg { id: string; nome: string; gestorId: string | null; liderancaIds: string[]; unidadeId?: string; cor?: string; icon?: string; paiId?: string | null }

@@ -167,8 +167,13 @@ export function capacidadesDe(papel: Papel, funcoes: FuncaoAdicional[] = []): Se
 let extrasDaSessao: Set<Capacidade> = new Set()
 export function definirExtrasDaSessao(caps: Capacidade[]) { extrasDaSessao = new Set(caps) }
 
+/** Visão "ver como colaborador": valem só as capacidades do papel colaborador, sem as extras da sessão. */
+let visaoColaborador = false
+export function definirVisaoColaborador(v: boolean) { visaoColaborador = v }
+export function emVisaoColaborador(): boolean { return visaoColaborador }
+
 export function can(papel: Papel, cap: Capacidade): boolean {
-  return (MATRIZ[papel]?.includes(cap) ?? false) || extrasDaSessao.has(cap)
+  return (MATRIZ[papel]?.includes(cap) ?? false) || (!visaoColaborador && extrasDaSessao.has(cap))
 }
 
 export function canAny(papel: Papel, caps: Capacidade[]): boolean {

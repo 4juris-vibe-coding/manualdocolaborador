@@ -9,6 +9,14 @@ import { comunicadoVisivel, eventoVisivel } from '@/domain/visibilidade'
 import { pesquisaAbertaPara } from '@/domain/pesquisas'
 import { podeVerReembolsosView } from '@/lib/utils'
 
+/** Saudação pela hora local: madrugada (0h–5h), dia (5h–12h), tarde (12h–18h) e noite. */
+function saudacao(h = new Date().getHours()): string {
+  if (h < 5) return 'Boa madrugada'
+  if (h < 12) return 'Bom dia'
+  if (h < 18) return 'Boa tarde'
+  return 'Boa noite'
+}
+
 export default function Dashboard() {
   const s = useStore()
   const user = s.currentUser()
@@ -61,7 +69,7 @@ export default function Dashboard() {
         <div className="relative flex items-center justify-between gap-6 flex-wrap">
           <div className="min-w-0">
             <div className="text-[13px] text-[#9aa7b1] font-medium capitalize">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</div>
-            <h1 className="text-[24px] sm:text-[26px] font-extrabold tracking-tight mt-1">Olá, {firstName(user.nomeSocial || user.nome)} 👋</h1>
+            <h1 className="text-[24px] sm:text-[26px] font-extrabold tracking-tight mt-1">{saudacao()}, {firstName(user.nomeSocial || user.nome)} 👋</h1>
             <p className="text-[#b5c0c9] text-[14px] mt-1.5 max-w-md">
               {pendencias.length ? `Você tem ${pendencias.length} item(ns) que pedem atenção.` : 'Tudo em dia por aqui.'}
               {proximos.length > 0 && ` Próximo evento: ${proximos[0].titulo}.`}

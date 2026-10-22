@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { capacidadesDe, definirExtrasDaSessao } from '@/domain/permissions'
+import { capacidadesDe, definirExtrasDaSessao, definirVisaoColaborador } from '@/domain/permissions'
 import { itemDaRota, podeAbrir, ultimosVisiveis } from './nav'
 
-afterEach(() => definirExtrasDaSessao([]))
+afterEach(() => { definirExtrasDaSessao([]); definirVisaoColaborador(false) })
 
 describe('guarda de rota', () => {
   it('diretoria abre vagas (para aprovar) e resultados de pesquisa, mas não o painel de pesquisas', () => {
@@ -33,5 +33,14 @@ describe('guarda de rota', () => {
     expect(ultimosVisiveis('rh').get('/recrutamento/vagas')?.label).toBe('Vagas')
     expect(ultimosVisiveis('gestor').get('/recrutamento/vagas')?.label).toBe('Vagas e aprovações')
     expect(itemDaRota('/recrutamento/vagas', 'rh')?.label).toBe('Vagas')
+  })
+  it('na visão de colaborador, as capacidades extras da sessão não valem', () => {
+    definirExtrasDaSessao([...capacidadesDe('admin', ['recrutador'])])
+    expect(podeAbrir('colaborador', '/rh/pessoas')).toBe(true)
+    definirVisaoColaborador(true)
+    expect(podeAbrir('colaborador', '/rh/pessoas')).toBe(false)
+    expect(podeAbrir('colaborador', '/recrutamento/candidatos')).toBe(false)
+    expect(podeAbrir('colaborador', '/financeiro')).toBe(false)
+    expect(podeAbrir('colaborador', '/perfil')).toBe(true)
   })
 })

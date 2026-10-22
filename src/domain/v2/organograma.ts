@@ -15,6 +15,8 @@ export interface PessoaOrg {
   unidadeId?: string
   status: string
   responsavelId?: string | null
+  /** Topo da organização (CEO): não herda o líder do departamento. */
+  topo?: boolean
 }
 export interface SetorOrg { id: string; nome: string; gestorId?: string | null; liderancaIds?: string[]; unidadeId?: string; paiId?: string | null }
 
@@ -122,7 +124,7 @@ export function construirHierarquia(todas: PessoaOrg[], setores: SetorOrg[] = []
     return false
   }
   for (const p of ativas) {
-    if (p.responsavelId) continue
+    if (p.responsavelId || p.topo) continue
     const g = liderPeloDepartamento(p.setorId, p.id, setoresPorId, (id) => pessoas.has(id))
     if (!g || chegaEm(g, p.id)) continue
     pai.set(p.id, g)

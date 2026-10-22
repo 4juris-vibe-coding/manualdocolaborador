@@ -31,5 +31,9 @@ export const SCHEMA_V2: { nome: string; sql: string }[] = [
   {
     "nome": "70-vagas-regime.sql",
     "sql": "-- 70 · Forma de contratação explícita na vaga (PJ, MEI, autônomo, CLT, estágio, temporário).\n-- Vagas existentes ficam \"não informado\" (não se presume o regime).\nalter table rec_vagas add column if not exists regime_contratacao text not null default 'nao_informado';\nalter table rec_vagas drop constraint if exists rec_vagas_regime_contratacao_check;\nalter table rec_vagas add constraint rec_vagas_regime_contratacao_check\n  check (regime_contratacao in ('pj','mei','autonomo','clt','estagio','temporario','nao_informado'));\n"
+  },
+  {
+    "nome": "80-vagas-empresa.sql",
+    "sql": "-- 80 · Texto \"Sobre a empresa\" e endereço completo do local de trabalho, exibidos na página pública da vaga.\nalter table rec_vagas add column if not exists sobre_empresa text;\nalter table rec_vagas add column if not exists endereco text;\n"
   }
 ]
