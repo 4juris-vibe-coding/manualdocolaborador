@@ -48,3 +48,14 @@ export function celebracoesDoDia(pessoas: Colaborador[], hoje: string): Celebrac
 export function rotuloDiaMes(dia: number, mes: number): string {
   return new Date(2000, mes, dia).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')
 }
+
+/** Gostos informados no perfil, na ordem em que aparecem. */
+export const GOSTOS: { chave: keyof NonNullable<Colaborador['preferencias']>; rotulo: string; emoji: string }[] = [
+  { chave: 'boloFavorito', rotulo: 'Bolo favorito', emoji: '🎂' },
+  { chave: 'docePreferido', rotulo: 'Doce', emoji: '🍫' },
+  { chave: 'comidaFavorita', rotulo: 'Comida', emoji: '🍝' },
+  { chave: 'bebidaFavorita', rotulo: 'Bebida', emoji: '☕' },
+  { chave: 'hobby', rotulo: 'Hobby', emoji: '🎯' },
+  { chave: 'mimo', rotulo: 'Adoraria ganhar', emoji: '🎁' },
+]
+

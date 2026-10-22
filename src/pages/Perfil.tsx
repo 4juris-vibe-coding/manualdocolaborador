@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { MODO_API } from '@/data/config'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '@/lib/store'
 import { ListaDocumentos } from '@/components/v2/financeiro/Documentos'
 import type { Colaborador, TipoDocumento, Diversidade, PerfilDisc, Escolaridade } from '@/lib/types'
@@ -19,6 +19,7 @@ import { hojeISO, tempoParceria } from '@/domain/datas'
 import { ocultar } from '@/domain/validacao'
 import { baixarArquivo } from '@/domain/csv'
 import { PAPEL_LABEL } from '@/domain/permissions'
+import { GOSTOS } from '@/domain/aniversarios'
 import { CONFIG } from '@/data/config'
 import { exportarDadosTitular } from '@/domain/lgpd'
 import { Dropdown } from '@/components/Dropdown'
@@ -42,6 +43,15 @@ export default function Perfil() {
   const documentos = s.documentos.filter((d) => d.colaboradorId === user.id)
   const [tab, setTab] = useState('pessoais')
   const [edit, setEdit] = useState(false)
+  // Link "Contar meus gostos" (Celebrações) abre a edição já na seção de gostos.
+  const [params, setParams] = useSearchParams()
+  useEffect(() => {
+    if (params.get('editar') !== 'gostos') return
+    setEdit(true)
+    setParams((p) => { p.delete('editar'); return p }, { replace: true })
+    const t = setTimeout(() => { const el = document.getElementById('pf-gosto-boloFavorito'); el?.scrollIntoView({ block: 'center', behavior: 'smooth' }); el?.focus() }, 120)
+    return () => clearTimeout(t)
+  }, [params, setParams])
   const [docOpen, setDocOpen] = useState(false)
   const [mostrarBanco, setMostrarBanco] = useState(false)
   const st = STATUS_COLAB[user.status]
@@ -67,6 +77,7 @@ export default function Perfil() {
       pixTipo: d.pixTipo as Colaborador['pixTipo'], pixChave: d.pixChave?.trim(),
       celular: d.celular?.trim() || undefined, emailPessoal: d.emailPessoal?.trim() || undefined,
       escolaridade: (d.escolaridade || undefined) as Escolaridade | undefined, curso: d.curso?.trim() || undefined, tamanhoCamisa: d.tamanhoCamisa || undefined,
+      preferencias: Object.fromEntries(GOSTOS.map((g) => [g.chave, d[`gosto_${g.chave}`]?.trim().slice(0, 80) || undefined]).filter(([, v]) => v)),
       endereco: { ...user.endereco, cep: d.cep?.trim() || undefined, logradouro: d.logradouro?.trim() || undefined, numero: d.numero?.trim() || undefined, complemento: d.complemento?.trim() || undefined, bairro: d.bairro?.trim() || undefined, cidade: d.cidade?.trim(), uf: d.uf?.trim().toUpperCase().slice(0, 2) },
     }
     if (patch.nascimento && patch.nascimento > hoje) { toast('A data de nascimento não pode estar no futuro.', 'danger'); return }
@@ -123,7 +134,8 @@ export default function Perfil() {
           <Card className="px-5 sm:px-6 py-2"><dl>
             <Row label="Nome completo" value={user.nome} />
             <Row label="Nome social" value={user.nomeSocial} />
-            <Row label="Nascimento" value={user.nascimento ? `${fmtDate(user.nascimento)} · ${user.privacidade.mostrarAniversario ? 'dia e mês visíveis à comunidade' : 'oculto da comunidade'}` : undefined} />
+            <Row label="Nascimento" value={user.nascimento ? `${fmtDate(user.nascimento)} · dia e mês aparecem nas celebrações (o ano, nunca)` : undefined} />
+            <Row label="Gostos" value={GOSTOS.filter((g) => user.preferencias?.[g.chave]).map((g) => `${g.emoji} ${user.preferencias![g.chave]}`).join(' · ') || undefined} />
             <Row label="Cidade / UF" value={user.cidade ? `${user.cidade} / ${user.uf}` : undefined} />
             <Row label="Telefone / celular" value={[user.telefone, user.celular].filter(Boolean).join(' · ')} />
             <Row label="E-mail pessoal" value={user.emailPessoal} />
@@ -238,7 +250,6 @@ export default function Perfil() {
             <h3 className="text-[15px] font-bold text-ink mb-1">O que a comunidade vê</h3>
             <p className="text-[12.5px] text-muted mb-5">Suas escolhas valem imediatamente em toda a plataforma.</p>
             <div className="space-y-4">
-              <Toggle checked={user.privacidade.mostrarAniversario} disabled={!user.nascimento} onChange={(v) => feedback(s.atualizarPrivacidade({ mostrarAniversario: v }), 'Preferência salva.')} label="Mostrar meu aniversário (apenas dia e mês)" />
               <Toggle checked={user.privacidade.mostrarMarcos} onChange={(v) => feedback(s.atualizarPrivacidade({ mostrarMarcos: v }), 'Preferência salva.')} label="Mostrar meus marcos de parceria" />
               <Toggle checked={user.privacidade.aparecerEmDestaques} onChange={(v) => feedback(s.atualizarPrivacidade({ aparecerEmDestaques: v }), 'Preferência salva.')} label="Aparecer nos destaques da gamificação" />
             </div>
@@ -264,11 +275,21 @@ export default function Perfil() {
           <div className="grid sm:grid-cols-2 gap-x-4">
             <Field label="Nome social (opcional)" htmlFor="pf-ns"><input id="pf-ns" name="nomeSocial" className="input" defaultValue={user.nomeSocial} /></Field>
             <Field label="Telefone" htmlFor="pf-tel"><input id="pf-tel" name="telefone" className="input" defaultValue={user.telefone} inputMode="tel" /></Field>
-            <Field label="Data de nascimento (opcional)" htmlFor="pf-nasc" hint="Usada só para celebrações, conforme sua privacidade."><input id="pf-nasc" name="nascimento" type="date" max={hoje} className="input" defaultValue={user.nascimento} /></Field>
+            <Field label="Data de nascimento (opcional)" htmlFor="pf-nasc" hint="Dia e mês aparecem nas celebrações; o ano nunca é exibido."><input id="pf-nasc" name="nascimento" type="date" max={hoje} className="input" defaultValue={user.nascimento} /></Field>
             <div className="grid grid-cols-[1fr_80px] gap-3">
               <Field label="Cidade" htmlFor="pf-cid"><input id="pf-cid" name="cidade" className="input" defaultValue={user.cidade} /></Field>
               <Field label="UF" htmlFor="pf-uf"><input id="pf-uf" name="uf" className="input uppercase" maxLength={2} defaultValue={user.uf} /></Field>
             </div>
+          </div>
+          <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-1 mt-2">Gostos para celebrações</h4>
+          <p className="text-[12px] text-muted mb-3">Opcional. Aparece junto do seu aniversário para o time acertar no seu dia.</p>
+          <div className="grid sm:grid-cols-2 gap-x-4">
+            {GOSTOS.map((g) => (
+              <Field key={g.chave} label={`${g.emoji} ${g.rotulo}`} htmlFor={`pf-gosto-${g.chave}`}>
+                <input id={`pf-gosto-${g.chave}`} name={`gosto_${g.chave}`} className="input" maxLength={80} defaultValue={user.preferencias?.[g.chave]}
+                  placeholder={{ boloFavorito: 'Ex.: chocolate com morango', docePreferido: 'Ex.: brigadeiro', comidaFavorita: 'Ex.: lasanha', bebidaFavorita: 'Ex.: café gelado', hobby: 'Ex.: corrida', mimo: 'Ex.: um livro, uma planta' }[g.chave]} />
+              </Field>
+            ))}
           </div>
           <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-3 mt-2">Contatos, endereço e formação</h4>
           <div className="grid sm:grid-cols-2 gap-x-4">

@@ -9,6 +9,7 @@ import { brl, fmtDate, STATUS_COLAB, REGIME_LABEL, cn } from '@/lib/utils'
 import { hojeISO, tempoParceria, diasEntre } from '@/domain/datas'
 import { progresso, RESPONSAVEL_LABEL_ADMIN, prazoItem } from '@/domain/jornada'
 import { ACAO_LABEL, historico, nivelDe } from '@/domain/gamificacao'
+import { GOSTOS } from '@/domain/aniversarios'
 import { PAPEL_LABEL } from '@/domain/permissions'
 import { ocultar } from '@/domain/validacao'
 import { PessoaForm } from './PessoaForm'
@@ -115,7 +116,8 @@ export default function PessoaDetalhe() {
           <Card className="px-5 py-2"><dl>
             <Row label="Banco / PIX" value={p.pixChave ? `${p.banco ?? '—'} · PIX ${p.pixTipo}: ${ocultar(p.pixChave, 4)}` : p.banco} />
             <Row label="Emergência" value={p.emergenciaNome ? `${p.emergenciaNome} · ${p.emergenciaTelefone ?? ''}` : ''} />
-            <Row label="Privacidade" value={[p.privacidade.mostrarAniversario && 'aniversário visível', p.privacidade.mostrarMarcos && 'marcos visíveis', p.privacidade.aparecerEmDestaques && 'em destaques'].filter(Boolean).join(' · ') || 'Tudo oculto'} />
+            <Row label="Gostos" value={GOSTOS.filter((g) => p.preferencias?.[g.chave]).map((g) => `${g.emoji} ${p.preferencias![g.chave]}`).join(' · ') || undefined} />
+            <Row label="Privacidade" value={[p.privacidade.mostrarMarcos && 'marcos visíveis', p.privacidade.aparecerEmDestaques && 'em destaques'].filter(Boolean).join(' · ') || 'Tudo oculto'} />
           </dl></Card>
           <Card className="px-5 py-2"><dl>
             <Row label="Endereço" value={p.endereco?.logradouro ? `${p.endereco.logradouro}${p.endereco.numero ? `, ${p.endereco.numero}` : ''}${p.endereco.bairro ? ` · ${p.endereco.bairro}` : ''}${p.endereco.cep ? ` · CEP ${p.endereco.cep}` : ''}` : undefined} />

@@ -1,17 +1,24 @@
 import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useStore } from '@/lib/store'
-import { PageHeader, Card, CardHead, Avatar, Badge, Button, Field, EmptyState, Toggle, Callout } from '@/components/ui'
+import { PageHeader, Card, CardHead, Avatar, Badge, Button, Field, EmptyState, Toggle, Callout, Icon } from '@/components/ui'
 import { Modal } from '@/components/Modal'
 import { feedback } from '@/components/toast'
 import { cn, relTime, firstName } from '@/lib/utils'
 import { hojeISO, parseDia } from '@/domain/datas'
-import { aniversariosDoMes, marcosDoMes, rotuloDiaMes, type Celebracao } from '@/domain/aniversarios'
+import { GOSTOS, aniversariosDoMes, marcosDoMes, rotuloDiaMes, type Celebracao } from '@/domain/aniversarios'
 
 const MESES = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''))
+const MES_LONGO = (m: number) => new Date(2000, m, 1).toLocaleDateString('pt-BR', { month: 'long' })
+const dataLonga = (dia: number, mes: number) => `${dia} de ${MES_LONGO(mes)}`
+
 
 export default function Aniversarios() {
   const s = useStore()
+  const navigate = useNavigate()
   const me = s.realUser()
+  // RH e administração criam as artes no 4juris Canva.
+  const podeArte = s.pode('pessoas:gerenciar')
   const hoje = hojeISO()
   const dHoje = parseDia(hoje)
   const ano = dHoje.getFullYear()
@@ -28,13 +35,36 @@ export default function Aniversarios() {
   const ehHoje = (c: Celebracao) => mes === dHoje.getMonth() && c.dia === dHoje.getDate()
   const passou = (c: Celebracao) => mes < dHoje.getMonth() || (mes === dHoje.getMonth() && c.dia < dHoje.getDate())
 
+  // Cria a arte no Canva já preenchida (nome, área, data) e abre o editor.
+  const criarArte = (c: Celebracao) => {
+    const nome = c.pessoa.nomeSocial || c.pessoa.nome
+    const aniv = c.tipo === 'aniversario'
+    const r = s.criarApresentacao(`editor-livre:${aniv ? 'aniversario' : 'marco-parceria'}`, `${aniv ? 'Aniversário' : 'Marco de parceria'} · ${nome}`)
+    if (!feedback(r, 'Arte criada no 4juris Canva.') || !r.ok) return
+    const cargo = [s.cargoNome(c.pessoa.cargoId), s.setorNome(c.pessoa.setorId)].filter((x) => x && x !== '—').join(' · ')
+    const bolo = c.pessoa.preferencias?.boloFavorito
+    navigate(`/canva/${r.id}`, { state: { preencher: { pessoa: {
+      nome, cargo,
+      data: aniv ? dataLonga(c.dia, c.mes) : `${c.anos} ${c.anos === 1 ? 'ano' : 'anos'} de 4JURIS`,
+      ...(aniv ? { kicker: 'Feliz aniversário! 🎂', frase: `Hoje o dia é seu, ${firstName(nome)}! Que este novo ciclo venha cheio de conquistas.${bolo ? ` Já separamos o bolo de ${bolo.toLowerCase()} 😉` : ''} Parabéns de todo o time 4JURIS.` } : {}),
+    } } } })
+  }
+  const criarArteDoMes = () => {
+    const r = s.criarApresentacao('editor-livre:aniversariantes', `Aniversariantes de ${MES_LONGO(mes)}`)
+    if (!feedback(r, 'Arte do mês criada no 4juris Canva.') || !r.ok) return
+    navigate(`/canva/${r.id}`, { state: { preencher: {
+      titulo: `Aniversariantes de ${MES_LONGO(mes)}`,
+      pessoas: anivs.map((c) => ({ nome: c.pessoa.nomeSocial || c.pessoa.nome, info: `${String(c.dia).padStart(2, '0')}/${String(c.mes + 1).padStart(2, '0')}` })),
+    } } })
+  }
+
   const enviar = () => {
     if (!msg) return
     if (feedback(s.enviarParabens(msg.pessoa.id, ocasiao(msg), texto), 'Mensagem enviada! 🎉')) { setMsg(null); setTexto('') }
   }
 
   const Linha = ({ c }: { c: Celebracao }) => (
-    <li className={cn('flex items-center gap-3 p-3 sm:p-4', ehHoje(c) && 'bg-gold-soft/60')}>
+    <li className={cn('flex items-center gap-3 p-3 sm:p-4 flex-wrap sm:flex-nowrap', ehHoje(c) && 'bg-gold-soft/60')}>
       <div className={cn('h-12 w-12 rounded-xl flex flex-col items-center justify-center shrink-0 leading-none', ehHoje(c) ? 'bg-gold text-white' : 'bg-winter text-ink')}>
         <span className="text-[16px] font-extrabold">{c.dia}</span>
         <span className="text-[9px] font-bold uppercase">{MESES[c.mes]}</span>
@@ -46,8 +76,22 @@ export default function Aniversarios() {
           {s.setorNome(c.pessoa.setorId)}{c.tipo === 'marco' && ` · ${c.anos} ${c.anos === 1 ? 'ano' : 'anos'} de parceria`}
           {qtdMensagens(c) > 0 && ` · ${qtdMensagens(c)} mensagem(ns)`}
         </div>
+        {c.tipo === 'aniversario' && GOSTOS.some((g) => c.pessoa.preferencias?.[g.chave]) && (
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {GOSTOS.filter((g) => c.pessoa.preferencias?.[g.chave]).slice(0, 3).map((g) => (
+              <span key={g.chave} title={g.rotulo} className="inline-flex items-center gap-1 rounded-full bg-surface-2 border border-line px-2 py-0.5 text-[11px] text-ink-2 max-w-[200px] truncate">
+                <span aria-hidden>{g.emoji}</span><span className="sr-only">{g.rotulo}:</span>{c.pessoa.preferencias![g.chave]}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
       {ehHoje(c) && <Badge tone="gold">Hoje!</Badge>}
+      {podeArte && (
+        <Button size="sm" variant="ghost" icon="Palette" onClick={() => criarArte(c)} title="Criar uma arte no 4juris Canva já preenchida com esta celebração">
+          <span className="hidden sm:inline">Criar arte</span><span className="sm:hidden sr-only">Criar arte</span>
+        </Button>
+      )}
       {c.pessoa.id !== me.id && !passou(c) && (
         jaEnviei(c)
           ? <Badge tone="success" dot>Enviada</Badge>
@@ -69,8 +113,9 @@ export default function Aniversarios() {
       <div className="grid lg:grid-cols-[1.3fr_1fr] gap-6">
         <div className="space-y-6 min-w-0">
           <Card>
-            <CardHead title="🎂 Aniversários" sub={`${anivs.length} em ${new Date(2000, mes, 1).toLocaleDateString('pt-BR', { month: 'long' })} · somente dia e mês`} />
-            {anivs.length === 0 ? <EmptyState icon="Cake" title="Nenhum aniversário compartilhado neste mês" desc="Só aparecem pessoas que optaram por mostrar o aniversário." /> : (
+            <CardHead title="🎂 Aniversários" sub={`${anivs.length} em ${MES_LONGO(mes)} · somente dia e mês`}
+              action={podeArte && anivs.length > 0 ? <Button size="sm" variant="soft" icon="Sparkles" onClick={criarArteDoMes} title="Arte com todos os aniversariantes do mês, no 4juris Canva">Arte do mês</Button> : undefined} />
+            {anivs.length === 0 ? <EmptyState icon="Cake" title="Nenhum aniversário neste mês" desc="Aparecem todas as pessoas ativas com data de nascimento no cadastro." /> : (
               <ul className="divide-y divide-line">{anivs.map((c) => <Linha key={c.pessoa.id} c={c} />)}</ul>
             )}
           </Card>
@@ -84,11 +129,23 @@ export default function Aniversarios() {
 
         <div className="space-y-6 min-w-0">
           <Card className="p-5">
-            <h3 className="text-[15px] font-bold text-ink mb-1">Sua privacidade</h3>
-            <p className="text-[12.5px] text-muted mb-4">Você escolhe o que a comunidade vê. O ano de nascimento nunca é exibido.</p>
-            <div className="space-y-3">
-              <Toggle checked={me.privacidade.mostrarAniversario} onChange={(v) => feedback(s.atualizarPrivacidade({ mostrarAniversario: v }), v ? 'Seu aniversário aparecerá nas celebrações.' : 'Seu aniversário ficará oculto.')} label="Mostrar meu aniversário (dia e mês)" disabled={!me.nascimento} />
-              {!me.nascimento && <p className="text-[11.5px] text-muted -mt-1.5 ml-12">Informe sua data de nascimento no perfil para ativar.</p>}
+            <h3 className="text-[15px] font-bold text-ink mb-1">Seus gostos</h3>
+            <p className="text-[12.5px] text-muted mb-4">Conte do que você gosta para o time acertar no seu dia. Aparece junto do seu aniversário (só dia e mês, nunca o ano).</p>
+            {GOSTOS.some((g) => me.preferencias?.[g.chave]) ? (
+              <ul className="grid grid-cols-2 gap-2 mb-4">
+                {GOSTOS.filter((g) => me.preferencias?.[g.chave]).map((g) => (
+                  <li key={g.chave} className="rounded-xl bg-surface-2 border border-line px-3 py-2 min-w-0">
+                    <div className="text-[11px] text-muted">{g.emoji} {g.rotulo}</div>
+                    <div className="text-[13px] font-semibold text-ink truncate">{me.preferencias![g.chave]}</div>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="text-[12.5px] text-ink-2 mb-4">Você ainda não contou seus gostos.</p>}
+            {!me.nascimento && <Callout tone="warning" icon="Cake" className="mb-4 text-[12.5px]">Informe sua data de nascimento no perfil para aparecer nos aniversários.</Callout>}
+            <div className="flex items-center gap-3 flex-wrap">
+              <Link to="/perfil?editar=gostos" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand hover:underline"><Icon name="Pencil" className="h-3.5 w-3.5" />{GOSTOS.some((g) => me.preferencias?.[g.chave]) ? 'Editar meus gostos' : 'Contar meus gostos'}</Link>
+            </div>
+            <div className="mt-4 pt-4 border-t border-line">
               <Toggle checked={me.privacidade.mostrarMarcos} onChange={(v) => feedback(s.atualizarPrivacidade({ mostrarMarcos: v }), 'Preferência salva.')} label="Mostrar meus marcos de parceria" />
             </div>
           </Card>
