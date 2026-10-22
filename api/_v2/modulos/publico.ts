@@ -80,6 +80,8 @@ export const rotas: Rota[] = [
         }
         throw naoEncontrado('Vaga não encontrada ou não disponível.')
       }
+      // Contador agregado de acessos (não guarda IP, cookie nem qualquer dado de quem visitou).
+      await db.query('update rec_vagas set visualizacoes = visualizacoes + 1 where id = $1', [v.id])
       const mapa = new Map((await setores(db)).map((s) => [s.id, s.nome]))
       const priv = await obterPrivacidade(db)
       return ok({

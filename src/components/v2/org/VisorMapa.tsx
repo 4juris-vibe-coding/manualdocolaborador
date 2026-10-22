@@ -10,6 +10,7 @@ import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui'
 import { useAlturaDisponivel } from '@/lib/layout'
 import { cn } from '@/lib/utils'
+import type { Aresta } from './layoutArvore'
 
 export interface VisorHandle {
   /** Enquadra com textos legíveis (padrão ao abrir e ao trocar o recorte). */
@@ -91,13 +92,13 @@ export const VisorMapa = forwardRef<VisorHandle, {
   const ultimaChave = useRef<string | null>(null)
   useEffect(() => {
     if (!largura || disponivel === null) return
-    const chave = `${chaveAjuste ?? ''}|${alturaCaixa}|${cheia === 'aberto'}`
+    const chave = `${chaveAjuste ?? ''}|${alturaCaixa}`
     if (ultimaChave.current === chave) return
     const primeira = ultimaChave.current === null
     ultimaChave.current = chave
     // Espera o layout da nova caixa (tela cheia) antes de medir.
     requestAnimationFrame(() => enquadrarCom(K_LEGIVEL, !primeira))
-  }, [chaveAjuste, alturaCaixa, cheia, largura, disponivel, enquadrarCom])
+  }, [chaveAjuste, alturaCaixa, largura, disponivel, enquadrarCom])
   useEffect(() => {
     const el = vp.current
     if (!el) return
@@ -165,8 +166,28 @@ export const VisorMapa = forwardRef<VisorHandle, {
     window.addEventListener('pointerup', soltar)
   }
 
-  const abrirCheia = () => setCheia('aberto')
-  const fecharCheia = useCallback(() => setCheia((c) => (c === 'aberto' ? 'fechando' : c)), [])
+  // Maximizar/minimizar mantém a mesma visão: o ponto do mapa no centro e o zoom são guardados e reaplicados na nova caixa.
+  const vistaRef = useRef(vista)
+  vistaRef.current = vista
+  const centroGuardado = useRef<{ cx: number; cy: number; k: number } | null>(null)
+  const guardarCentro = () => {
+    const el = vp.current, v = vistaRef.current
+    if (el) centroGuardado.current = { cx: (el.clientWidth / 2 - v.x) / v.k, cy: (el.clientHeight / 2 - v.y) / v.k, k: v.k }
+  }
+  const abrirCheia = () => { guardarCentro(); setCheia('aberto') }
+  const fecharCheia = useCallback(() => { guardarCentro(); setCheia((c) => (c === 'aberto' ? 'fechando' : c)) }, [])
+  useEffect(() => {
+    if (cheia === 'fechando') return
+    const c = centroGuardado.current
+    if (!c) return
+    centroGuardado.current = cheia === 'fechado' ? null : c
+    // Espera a nova caixa (portal ou página) ter tamanho antes de reposicionar.
+    requestAnimationFrame(() => {
+      const el = vp.current
+      if (!el) return
+      mover({ k: c.k, x: el.clientWidth / 2 - c.cx * c.k, y: el.clientHeight / 2 - c.cy * c.k })
+    })
+  }, [cheia, mover])
   useEffect(() => {
     if (cheia === 'fechando') { const t = window.setTimeout(() => setCheia('fechado'), 200); return () => window.clearTimeout(t) }
     if (cheia !== 'aberto') return
@@ -261,12 +282,11 @@ export const VisorMapa = forwardRef<VisorHandle, {
 })
 
 /** Conexões em "cotovelo" entre pai e filhos. Quando o mapa muda (expandir/recolher), as linhas deslizam junto com os cartões. */
-export function Conexoes({ largura, altura, arestas }: { largura: number; altura: number; arestas: { de: string; para: string; x1: number; y1: number; x2: number; y2: number }[] }) {
+export function Conexoes({ largura, altura, arestas }: { largura: number; altura: number; arestas: Aresta[] }) {
   return (
     <svg width={largura} height={altura} className="absolute inset-0 overflow-visible pointer-events-none" aria-hidden>
       {arestas.map((a) => {
-        const meio = a.y1 + (a.y2 - a.y1) / 2
-        const d = `M${a.x1},${a.y1} V${meio} H${a.x2} V${a.y2}`
+        const d = a.d
         // A propriedade CSS `d` anima o caminho nos navegadores que a suportam; nos demais, o atributo mantém o desenho correto.
         return <path key={a.de + a.para} d={d} className="animate-fade-in" fill="none" stroke="rgb(var(--c-line-strong))" strokeWidth="1.5"
           style={{ d: `path("${d}")`, transition: `d ${DURACAO}ms cubic-bezier(.2,.8,.3,1)` } as React.CSSProperties} />

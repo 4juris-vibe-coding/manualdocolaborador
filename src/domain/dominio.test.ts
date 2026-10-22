@@ -169,9 +169,9 @@ describe('aniversários e privacidade', () => {
     id, nome: id, email: '', telefone: '', avatarCor: '', papel: 'colaborador', setorId: 's', cargoId: '', status: 'ativo', dataEntrada: entrada,
     nascimento: nasc, cidade: '', uf: '', regime: 'PJ', razaoSocial: '', cnpj: '', privacidade: { mostrarAniversario: mostrar, mostrarMarcos: true, aparecerEmDestaques: false },
   })
-  it('só exibe quem optou e calcula marcos de parceria', () => {
+  it('mostra o aniversário de todos (com ou sem a antiga opção) e calcula marcos de parceria', () => {
     const lista = [pessoa('a', '1990-10-03', true), pessoa('b', '1991-10-09', false)]
-    expect(aniversariosDoMes(lista, 9).map((c) => c.pessoa.id)).toEqual(['a'])
+    expect(aniversariosDoMes(lista, 9).map((c) => c.pessoa.id)).toEqual(['a', 'b'])
     expect(marcosDoMes(lista, 9, 2026)[0].anos).toBe(6)
   })
 })

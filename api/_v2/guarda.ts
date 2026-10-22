@@ -134,11 +134,11 @@ const proprioOuPriv = (campo = 'colaboradorId', gerencial = false) => (r: Obj, c
 
 /* ---------- pessoas ---------- */
 /** Campos de terceiros visíveis a quem não é RH (diretório e organização). */
-const PUBLICOS = ['id', 'nome', 'nomeSocial', 'email', 'telefone', 'avatarCor', 'papel', 'setorId', 'cargoId', 'unidadeId', 'status', 'dataEntrada', 'cidade', 'uf', 'regime', 'privacidade', 'responsavelId', 'topoOrganizacao', 'fusoHorario']
+const PUBLICOS = ['id', 'nome', 'nomeSocial', 'email', 'telefone', 'avatarCor', 'papel', 'setorId', 'cargoId', 'unidadeId', 'status', 'dataEntrada', 'cidade', 'uf', 'regime', 'privacidade', 'responsavelId', 'topoOrganizacao', 'fusoHorario', 'preferencias']
 /** O que a própria pessoa altera no próprio cadastro (Meu perfil, privacidade, diversidade, perfil comportamental). */
 const AUTO_EDITAVEIS = new Set(['nomeSocial', 'telefone', 'cidade', 'uf', 'nascimento', 'banco', 'agencia', 'conta', 'pixTipo', 'pixChave',
   'emergenciaNome', 'emergenciaTelefone', 'emergenciaParentesco', 'endereco', 'celular', 'emailPessoal', 'escolaridade', 'curso',
-  'tamanhoCamisa', 'fusoHorario', 'privacidade', 'diversidade', 'perfil'])
+  'tamanhoCamisa', 'fusoHorario', 'privacidade', 'diversidade', 'perfil', 'preferencias'])
 
 /** Campos que a liderança informa ao cadastrar alguém da equipe (o restante do cadastro é do RH). */
 const CADASTRO_LIDERANCA = new Set([...PUBLICOS, 'razaoSocial', 'cnpj'])
@@ -151,8 +151,8 @@ const colaboradores: Politica = {
       // Indicadores executivos: idade média, escolaridade e encerramentos (sem a observação).
       Object.assign(o, pick(r, ['nascimento', 'escolaridade', 'curso']))
       if (r.encerramento) o.encerramento = pick(r.encerramento, ['data', 'motivoId'])
-    } else if (r.nascimento && r.privacidade?.mostrarAniversario) {
-      // Celebrações mostram dia e mês; o ano nunca sai do servidor.
+    } else if (r.nascimento) {
+      // Celebrações mostram o dia e o mês de todos; o ano nunca sai do servidor.
       o.nascimento = `2000${String(r.nascimento).slice(4, 10)}`
     }
     return o
@@ -542,9 +542,10 @@ export const POLITICAS: Record<string, Politica> = {
   cargos: {
     redigir: (r, c) => {
       // "Visível para as pessoas desta função" (Funcoes.tsx): só quem exerce a função, não toda a empresa.
-      if (c.priv || tem(c, 'cargos:ver_faixas') || !r.faixaValor || (r.faixaValor.visivel && c.eu.cargoId === r.id)) return r
-      const { faixaValor: _f, ...resto } = r
-      return resto
+      if (c.priv || tem(c, 'cargos:ver_faixas')) return r
+      // Valor padrão da função é dado salarial: só RH ou quem vê faixas. A faixa "visível" vai a quem exerce a função.
+      const { faixaValor: f, valorPadrao: _v, ...resto } = r
+      return f && f.visivel && c.eu.cargoId === r.id ? { ...resto, faixaValor: f } : resto
     },
     escrever: (_a, n, c) => { exigirCap(c, 'estrutura:gerenciar'); return n },
   },

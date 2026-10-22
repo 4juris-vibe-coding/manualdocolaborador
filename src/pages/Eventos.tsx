@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useStore, type EventoInput } from '@/lib/store'
 import type { CategoriaEvento, Evento } from '@/lib/types'
-import { PageHeader, Card, Badge, Button, Icon, Avatar, Field, EmptyState, Callout, Tabs, corTextoSobre } from '@/components/ui'
+import { PageHeader, Card, Badge, Button, Icon, Avatar, Field, EmptyState, Callout, Tabs } from '@/components/ui'
 import { Modal, ConfirmModal } from '@/components/Modal'
 import { feedback } from '@/components/toast'
 import { fmtDate, fmtDateTime, cn } from '@/lib/utils'
@@ -10,6 +10,7 @@ import { eventoVisivel, podeGerenciarEvento, areasLideradas } from '@/domain/vis
 import { aniversariosDoMes } from '@/domain/aniversarios'
 import { can } from '@/domain/permissions'
 import { Dropdown } from '@/components/Dropdown'
+import { Calendario, type EventoCal } from '@/components/calendario/Calendario'
 
 export const CATEGORIAS: CategoriaEvento[] = ['Integração', 'Celebração', 'Aprendizado', 'Reunião aberta', 'Bem-estar', 'Data comemorativa']
 const CAT_TONE: Record<string, string> = {
@@ -18,7 +19,6 @@ const CAT_TONE: Record<string, string> = {
 const CAT_COR: Record<string, string> = {
   'Integração': '#0032D2', 'Celebração': '#c98a12', 'Aprendizado': '#0f9d6b', 'Reunião aberta': '#3d4b56', 'Bem-estar': '#ea580c', 'Data comemorativa': '#db2777',
 }
-const SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
 
 export default function Eventos() {
   const s = useStore()
@@ -26,13 +26,12 @@ export default function Eventos() {
   const hoje = hojeISO()
   const podeCriar = can(user.papel, 'eventos:gerenciar') || (can(user.papel, 'eventos:gerenciar_area') && areasLideradas(user, s.setores).length > 0)
 
-  const [vista, setVista] = useState<'lista' | 'mes'>('lista')
+  const [vista, setVista] = useState<'calendario' | 'cards'>('calendario')
   const [quando, setQuando] = useState<'proximos' | 'passados'>('proximos')
   const [cats, setCats] = useState<string[]>([])
   const [soMeus, setSoMeus] = useState(false)
-  const [mesRef, setMesRef] = useState(() => hoje.slice(0, 7))
   const [aberto, setAberto] = useState<string | null>(null)
-  const [form, setForm] = useState<{ aberto: boolean; evento?: Evento }>({ aberto: false })
+  const [form, setForm] = useState<{ aberto: boolean; evento?: Evento; inicial?: { data: string; hora?: string } }>({ aberto: false })
 
   const visiveis = useMemo(() => s.eventos.filter((e) => eventoVisivel(e, user)), [s.eventos, user])
   const filtrados = visiveis
@@ -52,10 +51,10 @@ export default function Eventos() {
 
       <div className="flex flex-wrap items-center gap-2 mb-5">
         <div className="inline-flex rounded-xl border border-line bg-surface p-1" role="group" aria-label="Modo de visualização">
-          {(['lista', 'mes'] as const).map((v) => (
+          {(['calendario', 'cards'] as const).map((v) => (
             <button key={v} type="button" aria-pressed={vista === v} onClick={() => setVista(v)}
               className={cn('h-8 px-3 rounded-lg text-[12.5px] font-semibold flex items-center gap-1.5 transition', vista === v ? 'bg-ink text-surface' : 'text-ink-2 hover:bg-surface-2')}>
-              <Icon name={v === 'lista' ? 'List' : 'CalendarDays'} className="h-4 w-4" />{v === 'lista' ? 'Lista' : 'Mês'}
+              <Icon name={v === 'cards' ? 'LayoutDashboard' : 'CalendarDays'} className="h-4 w-4" />{v === 'cards' ? 'Cartões' : 'Calendário'}
             </button>
           ))}
         </div>
@@ -75,7 +74,7 @@ export default function Eventos() {
         </label>
       </div>
 
-      {vista === 'lista' && (
+      {vista === 'cards' && (
         <>
           <Tabs tabs={[{ key: 'proximos', label: 'Próximos' }, { key: 'passados', label: 'Já aconteceram' }]} active={quando} onChange={(k) => setQuando(k as 'proximos' | 'passados')} />
           {lista.length === 0 ? (
@@ -88,10 +87,10 @@ export default function Eventos() {
         </>
       )}
 
-      {vista === 'mes' && <Calendario mesRef={mesRef} setMesRef={setMesRef} eventos={filtrados} onAbrir={setAberto} />}
+      {vista === 'calendario' && <AgendaCalendario eventos={filtrados} onAbrir={setAberto} onCriar={podeCriar ? (data, hora) => setForm({ aberto: true, inicial: { data, hora } }) : undefined} />}
 
       {evAberto && <EventoDetalhe e={evAberto} onClose={() => setAberto(null)} onEditar={() => { setForm({ aberto: true, evento: evAberto }); setAberto(null) }} />}
-      {form.aberto && <EventoForm evento={form.evento} onClose={() => setForm({ aberto: false })} />}
+      {form.aberto && <EventoForm evento={form.evento} inicial={form.inicial} onClose={() => setForm({ aberto: false })} />}
     </>
   )
 }
@@ -139,72 +138,23 @@ function EventoCard({ e, onAbrir }: { e: Evento; onAbrir: () => void }) {
   )
 }
 
-function Calendario({ mesRef, setMesRef, eventos, onAbrir }: { mesRef: string; setMesRef: (m: string) => void; eventos: Evento[]; onAbrir: (id: string) => void }) {
+/** Eventos da comunidade no calendário (mês, semana, dia e lista), com os aniversários compartilhados. */
+function AgendaCalendario({ eventos, onAbrir, onCriar }: { eventos: Evento[]; onAbrir: (id: string) => void; onCriar?: (data: string, hora?: string) => void }) {
   const s = useStore()
-  const hoje = hojeISO()
-  const [ano, mes] = mesRef.split('-').map(Number)
-  const primeiro = new Date(ano, mes - 1, 1)
-  const diasNoMes = new Date(ano, mes, 0).getDate()
-  const offset = primeiro.getDay()
-  const celulas = Array.from({ length: Math.ceil((offset + diasNoMes) / 7) * 7 }, (_, i) => i - offset + 1)
-  const niver = aniversariosDoMes(s.colaboradores, mes - 1)
-  const mover = (delta: number) => { const d = new Date(ano, mes - 1 + delta, 1); setMesRef(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`) }
-  const iso = (dia: number) => `${mesRef}-${String(dia).padStart(2, '0')}`
-
+  const cal: EventoCal[] = useMemo(() => eventos.map((e) => ({
+    id: e.id, titulo: e.titulo, inicio: e.inicio, fim: e.fim, cor: CAT_COR[e.categoria] ?? '#3d4b56',
+    subtitulo: `${e.categoria} · ${e.local}`, cancelado: e.status === 'cancelado',
+  })), [eventos])
+  const niverPorMes = useMemo(() => new Map<number, ReturnType<typeof aniversariosDoMes>>(), [s.colaboradores])
+  const extras = (dia: string) => {
+    const m = Number(dia.slice(5, 7)) - 1
+    if (!niverPorMes.has(m)) niverPorMes.set(m, aniversariosDoMes(s.colaboradores, m))
+    return niverPorMes.get(m)!.filter((n) => n.dia === Number(dia.slice(8, 10))).map((n) => ({ id: `niver-${n.pessoa.id}`, texto: `🎂 ${n.pessoa.nome.split(' ')[0]}` }))
+  }
   return (
-    <Card className="overflow-hidden">
-      <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-line">
-        <Button size="icon-sm" variant="ghost" icon="ChevronLeft" aria-label="Mês anterior" onClick={() => mover(-1)} />
-        <h2 className="text-[15px] font-bold text-ink capitalize">{primeiro.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</h2>
-        <Button size="icon-sm" variant="ghost" icon="ChevronRight" aria-label="Próximo mês" onClick={() => mover(1)} />
-      </div>
-      {/* Grade (telas médias+) */}
-      <div className="hidden md:grid grid-cols-7">
-        {SEMANA.map((d) => <div key={d} className="text-[11px] font-bold uppercase text-muted text-center py-2 border-b border-line bg-surface-2">{d}</div>)}
-        {celulas.map((dia, i) => {
-          const valido = dia >= 1 && dia <= diasNoMes
-          const evs = valido ? eventos.filter((e) => e.inicio.slice(0, 10) === iso(dia)) : []
-          const nv = valido ? niver.filter((n) => n.dia === dia) : []
-          return (
-            <div key={i} className={cn('min-h-[104px] border-b border-r border-line p-1.5', !valido && 'bg-surface-2/60', valido && iso(dia) === hoje && 'bg-brand-50/60')}>
-              {valido && (
-                <>
-                  <div className={cn('text-[12px] font-bold mb-1 h-6 w-6 rounded-full flex items-center justify-center', iso(dia) === hoje ? 'bg-brand text-white' : 'text-ink-2')}>{dia}</div>
-                  <div className="space-y-1">
-                    {evs.map((e) => (
-                      <button key={e.id} type="button" onClick={() => onAbrir(e.id)} title={e.titulo}
-                        className={cn('w-full text-left text-[11px] font-semibold rounded-md px-1.5 py-1 truncate', e.status === 'cancelado' && 'line-through opacity-60')}
-                        style={{ background: CAT_COR[e.categoria], color: corTextoSobre(CAT_COR[e.categoria]) }}>
-                        {e.inicio.slice(11, 16)} {e.titulo}
-                      </button>
-                    ))}
-                    {nv.map((n) => <div key={n.pessoa.id} className="text-[11px] text-ink-2 truncate">🎂 {n.pessoa.nome.split(' ')[0]}</div>)}
-                  </div>
-                </>
-              )}
-            </div>
-          )
-        })}
-      </div>
-      {/* Agenda do mês (celular) */}
-      <ul className="md:hidden divide-y divide-line">
-        {Array.from({ length: diasNoMes }, (_, i) => i + 1).filter((dia) => eventos.some((e) => e.inicio.slice(0, 10) === iso(dia)) || niver.some((n) => n.dia === dia)).map((dia) => (
-          <li key={dia} className="flex gap-3 p-3">
-            <div className={cn('h-10 w-10 rounded-xl flex flex-col items-center justify-center shrink-0 text-[14px] font-extrabold', iso(dia) === hoje ? 'bg-brand text-white' : 'bg-winter text-ink')}>{dia}</div>
-            <div className="flex-1 min-w-0 space-y-1">
-              {eventos.filter((e) => e.inicio.slice(0, 10) === iso(dia)).map((e) => (
-                <button key={e.id} type="button" onClick={() => onAbrir(e.id)} className="block text-left text-[13px] font-semibold text-ink">
-                  <span className="inline-block h-2 w-2 rounded-full mr-1.5" style={{ background: CAT_COR[e.categoria] }} />{e.inicio.slice(11, 16)} · {e.titulo}{e.status === 'cancelado' && ' (cancelado)'}
-                </button>
-              ))}
-              {niver.filter((n) => n.dia === dia).map((n) => <div key={n.pessoa.id} className="text-[12.5px] text-ink-2">🎂 Aniversário de {n.pessoa.nome.split(' ')[0]}</div>)}
-            </div>
-          </li>
-        ))}
-        {!eventos.some((e) => e.inicio.startsWith(mesRef)) && !niver.length && <li className="p-5 text-[13px] text-muted">Nada agendado neste mês.</li>}
-      </ul>
-      <div className="px-4 py-2.5 text-[11.5px] text-muted border-t border-line">🎂 Aniversários aparecem apenas para quem optou por compartilhar (dia e mês).</div>
-    </Card>
+    <Calendario eventos={cal} onAbrir={onAbrir} onCriar={onCriar} extrasDoDia={extras} horaFoco={8}
+      legenda={CATEGORIAS.map((c) => ({ rotulo: c, cor: CAT_COR[c] }))}
+      rodape={<>🎂 Aniversários só de quem optou por compartilhar (dia e mês).{onCriar ? ' Clique num horário livre para criar.' : ''}</>} />
   )
 }
 
@@ -299,14 +249,14 @@ function EventoDetalhe({ e, onClose, onEditar }: { e: Evento; onClose: () => voi
   )
 }
 
-function EventoForm({ evento, onClose }: { evento?: Evento; onClose: () => void }) {
+function EventoForm({ evento, inicial, onClose }: { evento?: Evento; inicial?: { data: string; hora?: string }; onClose: () => void }) {
   const s = useStore()
   const user = s.currentUser()
   const somenteArea = !can(user.papel, 'eventos:gerenciar')
   const minhasAreas = areasLideradas(user, s.setores)
   const [f, setF] = useState(() => ({
     titulo: evento?.titulo ?? '', descricao: evento?.descricao ?? '', categoria: (evento?.categoria ?? 'Reunião aberta') as CategoriaEvento,
-    data: evento?.inicio.slice(0, 10) ?? hojeISO(), hora: evento?.inicio.slice(11, 16) ?? '10:00', horaFim: evento?.fim?.slice(11, 16) ?? '',
+    data: evento?.inicio.slice(0, 10) ?? inicial?.data ?? hojeISO(), hora: evento?.inicio.slice(11, 16) ?? inicial?.hora ?? '10:00', horaFim: evento?.fim?.slice(11, 16) ?? '',
     local: evento?.local ?? '', link: evento?.link ?? '', capacidade: evento?.capacidade ? String(evento.capacidade) : '',
     visibilidade: (somenteArea ? 'setores' : evento?.visibilidade ?? 'todos') as 'todos' | 'setores',
     setoresAlvo: evento?.setoresAlvo ?? (somenteArea ? minhasAreas.map((a) => a.id).slice(0, 1) : []),

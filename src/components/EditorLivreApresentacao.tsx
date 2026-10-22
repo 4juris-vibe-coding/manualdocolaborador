@@ -5,6 +5,7 @@
    O "load" é enviado quando o iframe avisa 'ready' E quando o iframe termina de carregar: assim não depende de
    quem ficou pronto primeiro. O editor ignora o segundo envio. */
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useStore } from '@/lib/store'
 import type { Apresentacao } from '@/lib/types'
 import { toast } from '@/components/toast'
@@ -23,14 +24,16 @@ export function EditorLivreApresentacao({ a, somenteLeitura, onSalvo, preencher 
   const [estado, setEstado] = useState<'carregando' | 'pronto' | 'falhou'>('carregando')
   const [tentativa, setTentativa] = useState(0)
   // Valores mais recentes sem reabrir o listener a cada edição.
-  const atual = useRef({ a, somenteLeitura, onSalvo })
-  atual.current = { a, somenteLeitura, onSalvo }
+  // Dados para preencher um modelo novo (ex.: "Criar arte" nas celebrações), passados pela navegação.
+  const dados = (useLocation().state as { preencher?: unknown } | null)?.preencher
+  const atual = useRef({ a, somenteLeitura, onSalvo, dados })
+  atual.current = { a, somenteLeitura, onSalvo, dados }
 
   const enviarCarga = useCallback(() => {
     const win = frame.current?.contentWindow
     if (!win) return
-    const { a: ap, somenteLeitura: ro } = atual.current
-    win.postMessage({ src: '4j-deck', type: 'load', deck: ap.deck ?? null, titulo: ap.titulo, template: modeloProntoDe(ap.modeloId), tamanho: ehArte(ap.modeloId) ? tamanhoDe(ap.modeloId) : undefined, readonly: ro }, window.location.origin)
+    const { a: ap, somenteLeitura: ro, dados: d } = atual.current
+    win.postMessage({ src: '4j-deck', type: 'load', deck: ap.deck ?? null, titulo: ap.titulo, template: modeloProntoDe(ap.modeloId), tamanho: ehArte(ap.modeloId) ? tamanhoDe(ap.modeloId) : undefined, readonly: ro, dados: ap.deck ? undefined : d }, window.location.origin)
   }, [])
 
   useEffect(() => {

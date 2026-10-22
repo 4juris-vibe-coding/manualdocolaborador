@@ -88,7 +88,9 @@ describe('leitura filtrada', () => {
     expect(estado.reembolsos).toEqual([])
     expect(estado.notificacoes.map((n: Obj) => n.id)).toEqual(['no2'])
     const caio = estado.colaboradores.find((p: Obj) => p.id === 'col1')
-    for (const k of ['cpf', 'banco', 'agencia', 'conta', 'pixChave', 'emergenciaNome', 'endereco', 'diversidade', 'cnpj', 'razaoSocial', 'nascimento']) expect(caio).not.toHaveProperty(k)
+    for (const k of ['cpf', 'banco', 'agencia', 'conta', 'pixChave', 'emergenciaNome', 'endereco', 'diversidade', 'cnpj', 'razaoSocial']) expect(caio).not.toHaveProperty(k)
+    // Nascimento chega só com dia e mês (o ano é trocado por 2000).
+    expect(caio.nascimento).toBe('2000-05-17')
     expect(caio.nome).toBe('Caio Colaborador')
     // Períodos de outra área não aparecem; para a liderança da área, aparecem sem a observação privada.
     expect(estado.periodos).toEqual([])
@@ -99,7 +101,7 @@ describe('leitura filtrada', () => {
     expect(estado.colaboradores.find((p: Obj) => p.id === 'col2').cpf).toBe(SENSIVEL.cpf)
   })
 
-  it('aniversário de quem optou aparece sem o ano', async () => {
+  it('aniversário de todos aparece sem o ano', async () => {
     const { estado } = await ler(c.col1)
     expect(estado.colaboradores.find((p: Obj) => p.id === 'col2').nascimento).toBe('2000-05-17')
   })

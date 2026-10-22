@@ -111,6 +111,7 @@ function limparPerguntas(raw: unknown): PerguntaPesquisa[] {
     }
     if (x.descricao) p.descricao = String(x.descricao).slice(0, 500)
     if (x.dimensao) p.dimensao = String(x.dimensao).slice(0, 60)
+    if (x.secao) p.secao = String(x.secao).slice(0, 80)
     if (tipoTemOpcoes(x.tipo)) p.opcoes = (Array.isArray(x.opcoes) ? x.opcoes : []).slice(0, 20).map((o: unknown) => String(o ?? '').slice(0, 200))
     if (x.tipo === 'escala') p.escala = { min: Number(x.escala?.min), max: Number(x.escala?.max), rotuloMin: x.escala?.rotuloMin ? String(x.escala.rotuloMin).slice(0, 60) : undefined, rotuloMax: x.escala?.rotuloMax ? String(x.escala.rotuloMax).slice(0, 60) : undefined }
     if (x.condicao && typeof x.condicao === 'object') {

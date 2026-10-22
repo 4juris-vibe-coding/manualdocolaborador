@@ -26,6 +26,7 @@ describe('vaga · campos de divulgação (desafios, jornada, etapas do processo)
     expect(r.json.vaga.etapasProcesso).toEqual(['Triagem de currículo', 'Entrevista com RH', 'Entrevista com gestor'])
     id = r.json.vaga.id; slug = r.json.vaga.slug
     expect((await pub('GET', `publico/vagas/${slug}`)).status).toBe(404)
+    expect((await GET(m, `vagas/${id}`, m.c.rh1)).json.vaga.visualizacoes).toBe(0)
   })
 
   it('valida limites dos campos novos no servidor', async () => {
@@ -52,12 +53,23 @@ describe('vaga · campos de divulgação (desafios, jornada, etapas do processo)
     expect(JSON.stringify(r.json)).not.toMatch(/SEGREDO|"observacoesRh"|"recrutadorId"|"gestor\w*Id"|"aprovacoes"|"salarioMin"/)
   })
 
+  it('conta visualizações da página pública (só de vaga publicada) e não copia o contador', async () => {
+    const antes = (await GET(m, `vagas/${id}`, m.c.rh1)).json.vaga.visualizacoes
+    await pub('GET', `publico/vagas/${slug}`)
+    await pub('GET', `publico/vagas/${slug}`)
+    const depois = await GET(m, `vagas/${id}`, m.c.rh1)
+    expect(depois.json.vaga.visualizacoes).toBe(antes + 2)
+    // o contador não mexe na versão (não gera conflito com quem está editando)
+    expect(depois.json.vaga.versao).toBe((await GET(m, `vagas/${id}`, m.c.rh1)).json.vaga.versao)
+  })
+
   it('duplicar leva os campos novos para o rascunho copiado', async () => {
     const d = await POST(m, `vagas/${id}/duplicar`, m.c.rh1)
     expect(d.status).toBe(201)
     expect(d.json.vaga.status).toBe('rascunho')
     expect(d.json.vaga.jornada).toBe('Segunda a sexta, 9h às 18h')
     expect(d.json.vaga.etapasProcesso).toHaveLength(3)
+    expect(d.json.vaga.visualizacoes).toBe(0)
   })
 
   it('encerrada: o link público passa a responder 410', async () => {

@@ -8,10 +8,17 @@ import { can } from '@/domain/permissions'
 import { useAcesso } from '@/data/v2/acesso'
 import { ChevronDown, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
 
-const AREA_ROTULO: Record<string, string> = { lideranca: 'Liderança', rh: 'Administração de pessoas', admin: 'Plataforma' }
+/** Cada área do menu: primeiro o que a pessoa usa como colaborador(a), depois as ferramentas de cada função. */
+const AREAS: Record<string, { rotulo: string; icone: string; cor: string }> = {
+  pessoal: { rotulo: 'Meu espaço', icone: 'UserCircle', cor: 'text-[#9fb3c0]' },
+  lideranca: { rotulo: 'Liderança', icone: 'UserCog', cor: 'text-[#f2c94c]' },
+  financeiro: { rotulo: 'Financeiro', icone: 'Landmark', cor: 'text-[#6fcf97]' },
+  rh: { rotulo: 'RH & Pessoas', icone: 'Users', cor: 'text-brand-300' },
+  admin: { rotulo: 'Administração', icone: 'ShieldCheck', cor: 'text-[#eb8c8c]' },
+}
 const CHAVE = '4juris_menu_fechados'
 const lerFechados = (): string[] => {
-  try { return JSON.parse(localStorage.getItem(CHAVE) ?? 'null') ?? ['Conhecimento', 'Desenvolvimento & performance', 'Engajamento & benefícios', 'Relatórios', 'Configurações'] } catch { return [] }
+  try { return JSON.parse(localStorage.getItem(CHAVE) ?? 'null') ?? ['Conhecimento', 'Desenvolvimento', 'Engajamento & benefícios', 'Estrutura & cargos'] } catch { return [] }
 }
 
 export function Sidebar({ aberto, onFechar, entrada }: { aberto: boolean; onFechar: () => void; entrada?: boolean }) {
@@ -32,7 +39,9 @@ export function Sidebar({ aberto, onFechar, entrada }: { aberto: boolean; onFech
   useEffect(() => { try { localStorage.setItem(CHAVE, JSON.stringify(fechados)) } catch { /* sem armazenamento */ } }, [fechados])
   const alternar = (t: string) => setFechados((f) => (f.includes(t) ? f.filter((x) => x !== t) : [...f, t]))
 
-  let ultimaArea = 'pessoal'
+  let ultimaArea = ''
+  // Só mostra o rótulo "Meu espaço" quando a pessoa também tem alguma área de função.
+  const temFuncao = NAV.some((g) => g.area !== 'pessoal' && g.items.some((i) => permitido(user.papel, i)))
   const ultimoVisivel = ultimosVisiveis(user.papel)
 
   return (
@@ -68,18 +77,20 @@ export function Sidebar({ aberto, onFechar, entrada }: { aberto: boolean; onFech
               .filter((i) => permitido(user.papel, i) && ultimoVisivel.get(i.to) === i)
               .filter((i) => i.to !== '/reembolsos' || verReemb)
             if (!items.length) return null
-            const novaArea = group.area !== 'pessoal' && group.area !== ultimaArea
+            const novaArea = group.area !== ultimaArea && (group.area !== 'pessoal' || temFuncao)
             ultimaArea = group.area
             const fechado = !collapsed && fechados.includes(group.title)
             const temAtivo = items.some((i) => i.to === pathname || (i.to !== '/' && i.to !== '/rh' && pathname.startsWith(i.to + '/')))
             return (
               <div key={group.title} className="mt-3 first:mt-1">
                 {novaArea && !collapsed && (
-                  <div className="mx-3 mb-2 mt-5 pt-4 border-t border-white/[.08] text-[10px] font-bold tracking-[.1em] uppercase text-brand-300/80">
-                    {AREA_ROTULO[group.area]}
+                  <div className={cn('mx-1 mb-2 flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[.04] text-[10.5px] font-bold tracking-[.1em] uppercase',
+                    AREAS[group.area].cor, group.area === 'pessoal' ? 'mt-1' : 'mt-6')}>
+                    <Icon name={AREAS[group.area].icone} className="h-3.5 w-3.5" />{AREAS[group.area].rotulo}
                   </div>
                 )}
-                {!collapsed && !(novaArea && AREA_ROTULO[group.area] === group.title) && (
+                {novaArea && collapsed && group.area !== 'pessoal' && <div className="h-px bg-white/15 mx-2 my-3" />}
+                {!collapsed && !(novaArea && AREAS[group.area]?.rotulo === group.title) && (
                   <button type="button" onClick={() => alternar(group.title)} aria-expanded={!fechado}
                     className="w-full flex items-center justify-between text-[10.5px] font-bold tracking-[.08em] uppercase text-[#7d8a94] hover:text-[#c5cfd6] px-3 py-1.5 rounded-lg transition">
                     <span className="flex items-center gap-2">{group.title}{fechado && temAtivo && <span className="h-1.5 w-1.5 rounded-full bg-brand-300" />}</span>

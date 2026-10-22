@@ -589,7 +589,7 @@ function slideHTML(s, ctx) {
    ================================================================ */
 const KEY = '4jurisday:deck:v1';
 /* Modo embutido (?embed=1): o sistema hospeda este editor num iframe e troca o deck por postMessage.
-   parent -> editor: {src:'4j-deck', type:'load', deck|null, titulo, template, readonly}
+   parent -> editor: {src:'4j-deck', type:'load', deck|null, titulo, template, readonly, dados?}  (dados preenche um modelo novo)
    editor -> parent: {src:'4j-deck', type:'ready'} e {src:'4j-deck', type:'save', deck} */
 const EMB = new URLSearchParams(location.search).has('embed') && parent !== window;
 let RO = false;
@@ -632,12 +632,37 @@ const TEMPLATES = [
   { id: 'aniversariantes', nome: 'Aniversariantes do mês', desc: 'Fotos e datas, em fundo claro', build: () => [mk('pessoas', { bg: '#E9ECEC', opt: { caixa: 'normal' }, f: { titulo: 'Aniversariantes do <b>mês</b>' }, items: [pessoa('10/10'), pessoa('12/10'), pessoa('25/10'), pessoa('31/10')] })] },
   { id: 'destaque-mes', nome: 'Destaque do mês', desc: 'Homenagem a uma pessoa, com foto e mensagem', build: () => [mk('boasVindas', { deco: { t: 'barra', p: 'dir' }, f: { kicker: 'Destaque do mês', cargo: 'Cargo · Área', frase: 'Conte, em uma ou duas frases, o que essa pessoa fez de especial.', inicio: '' } })] },
   { id: 'evento', nome: 'Convite de evento', desc: 'Foto de fundo com data, hora e local', build: () => [mk('fotoFundo', { f: { kicker: 'Você está convidado(a)', titulo: '4JURIS <b>Day</b>', sub: 'Um dia para celebrar resultados, conhecer o time e planejar o próximo ciclo.', chip1: 'Sexta, 10/11', chip2: '14h', chip3: 'Auditório' } })] },
+  { id: 'aniversario', nome: 'Feliz aniversário', desc: 'Homenagem individual: foto, nome, área e mensagem', build: () => [mk('boasVindas', { deco: { t: 'quatro', p: 'dir' }, f: { kicker: 'Feliz aniversário! 🎂', nome: 'Nome <b>Sobrenome</b>', cargo: 'Cargo · Área', frase: 'Hoje o dia é seu! Que este novo ciclo venha cheio de conquistas. Parabéns de todo o time 4JURIS.', inicio: 'DD/MM' } })] },
+  { id: 'marco-parceria', nome: 'Marco de parceria', desc: 'Anos de parceria com a 4JURIS', build: () => [mk('boasVindas', { deco: { t: 'barra', p: 'dir' }, f: { kicker: 'Marco de parceria', nome: 'Nome <b>Sobrenome</b>', cargo: 'Cargo · Área', frase: 'Obrigado por construir essa história com a gente. Que venham muitos outros anos!', inicio: 'X anos de 4JURIS' } })] },
   { id: 'galeria', nome: 'Galeria do evento', desc: 'Até 4 fotos com legenda', build: () => [mk('galeria')] },
   { id: 'branco', nome: 'Em branco', desc: 'Só uma capa para começar do zero', build: () => [mk('capa', { f: { eyebrow: '', titulo: 'Título da <b>apresentação</b>', sub: '' } })] },
 ];
-function deckDeTemplate(id, titulo) {
+/* Dados vindos do sistema para preencher o modelo (ex.: arte de aniversário de uma pessoa ou do mês).
+   Tudo é texto do cadastro: escapado antes de virar HTML do slide. */
+function aplicarDados(d, dados) {
+  if (!dados || typeof dados !== 'object') return;
+  const t = v => esc(String(v ?? '').slice(0, 160));
+  if (dados.pessoa && d.slides[0] && d.slides[0].layout === 'boasVindas') {
+    const p = dados.pessoa, f = d.slides[0].f, partes = String(p.nome || '').trim().split(/\s+/);
+    if (p.kicker) f.kicker = t(p.kicker);
+    if (p.nome) f.nome = partes.length > 1 ? `${t(partes.slice(0, -1).join(' '))} <b>${t(partes[partes.length - 1])}</b>` : `<b>${t(p.nome)}</b>`;
+    f.cargo = t(p.cargo || '');
+    if (p.frase) f.frase = t(p.frase);
+    f.inicio = t(p.data || '');
+  }
+  if (Array.isArray(dados.pessoas) && dados.pessoas.length) {
+    // Até 8 pessoas por slide (limite do layout); mais que isso vira mais slides.
+    const lotes = [];
+    for (let i = 0; i < dados.pessoas.length && lotes.length < 6; i += 8) lotes.push(dados.pessoas.slice(i, i + 8));
+    d.slides = lotes.map((lote, i) => mk('pessoas', { bg: '#E9ECEC', opt: { caixa: 'normal' },
+      f: { titulo: dados.titulo ? t(dados.titulo) + (lotes.length > 1 ? ` <b>${i + 1}/${lotes.length}</b>` : '') : 'Aniversariantes do <b>mês</b>' },
+      items: lote.map(p => ({ nome: t(p.nome), info: t(p.info), foto: '' })) }));
+  }
+}
+function deckDeTemplate(id, titulo, dados) {
   const d = deckPadrao(), tp = TEMPLATES.find(x => x.id === id) || TEMPLATES[0];
   d.slides = tp.build(); d.id = uid();
+  aplicarDados(d, dados);
   if (tp.id !== '4jurisday') { d.rodape.texto = ''; d.rodape.marca = '4juris'; }
   if (titulo) d.titulo = titulo; else if (tp.id !== '4jurisday') d.titulo = tp.nome;
   return d;
@@ -1179,9 +1204,9 @@ document.addEventListener('scroll', e => { if (ddAberto && !e.target.closest?.('
 /* ================================================================
    INÍCIO
    ================================================================ */
-function iniciar(d, titulo, template) {
+function iniciar(d, titulo, template, dados) {
   if (deck) return;
-  deck = normalizar(d || deckDeTemplate(template, titulo));
+  deck = normalizar(d || deckDeTemplate(template, titulo, dados));
   hist = [JSON.stringify(deck)]; hi = 0;
   document.title = (deck.titulo || 'Apresentação') + ' · 4JURIS Day';
   $('#undo').disabled = true; $('#redo').disabled = true;
@@ -1196,7 +1221,7 @@ if (EMB) {
     const m = e.data;
     if (e.origin !== location.origin || e.source !== parent || !m || m.src !== '4j-deck' || m.type !== 'load') return;
     if (orfao) { orfao = false; deck = null; }   // resposta tardia do sistema: troca o modelo padrão pelo design de verdade
-    RO = !!m.readonly; iniciar(m.deck, m.titulo, m.template);
+    RO = !!m.readonly; iniciar(m.deck, m.titulo, m.template, m.dados);
   });
   enviar({ type: 'ready' });
   setTimeout(() => { if (!deck) { orfao = true; iniciar(null); } }, 8000);   // aberto fora do sistema: segue com o modelo padrão, sem gravar

@@ -13,6 +13,7 @@ describe('PDF da vaga', () => {
     expect(d.link).toBe(`${ORIGEM}/carreiras/sdr`)
     expect(d.aviso).toBeNull()
     expect(html(d)).toContain(`${ORIGEM}/carreiras/sdr`)
+    expect(html(d)).toContain('aria-label="QR Code do link de candidatura"')
   })
 
   it('vaga não publicada: avisa que é documento interno e não traz link', () => {
@@ -20,6 +21,7 @@ describe('PDF da vaga', () => {
     expect(d.link).toBeNull()
     expect(d.aviso).toMatch(/Documento interno/)
     expect(html(d)).not.toContain('/carreiras/')
+    expect(html(d)).not.toContain('QR Code')
   })
 
   it('faixa salarial só entra quando a vaga marcou divulgar', () => {

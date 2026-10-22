@@ -1,7 +1,8 @@
 /* ============================================================
    4JURIS Pessoas · Aniversários e marcos de parceria
    - Apenas dia/mês são exibidos (nunca o ano de nascimento).
-   - Só aparecem pessoas que optaram por mostrar (privacidade).
+   - Aniversários: todas as pessoas ativas com data de nascimento.
+   - Marcos de parceria: só quem optou por mostrar (privacidade).
    - Marcos de parceria NÃO representam antiguidade trabalhista.
    ============================================================ */
 import type { Colaborador } from '@/lib/types'
@@ -21,7 +22,7 @@ const ativo = (c: Colaborador) => c.status !== 'encerrado'
 
 export function aniversariosDoMes(pessoas: Colaborador[], mes: number): Celebracao[] {
   return pessoas
-    .filter((c) => ativo(c) && c.privacidade.mostrarAniversario && c.nascimento)
+    .filter((c) => ativo(c) && c.nascimento)
     .map((c) => ({ c, d: parseDia(c.nascimento!) }))
     .filter(({ d }) => d.getMonth() === mes)
     .map(({ c, d }) => ({ pessoa: c, tipo: 'aniversario' as const, dia: d.getDate(), mes }))

@@ -56,6 +56,7 @@ export function EditorPerguntas({ perguntas, onChange, desabilitado }: Props) {
   return (
     <div className="space-y-3">
       {erroGeral && <Callout tone="warning" icon="AlertTriangle">{erroGeral}</Callout>}
+      <datalist id="secoes-pesquisa">{[...new Set(perguntas.map((x) => x.secao).filter(Boolean))].map((x) => <option key={x} value={x} />)}</datalist>
       {perguntas.length === 0 && <div className="rounded-2xl border border-dashed border-line-strong py-10 text-center text-[13.5px] text-muted">Nenhuma pergunta ainda. Escolha um tipo abaixo e clique em “Adicionar pergunta”.</div>}
       <ol className="space-y-3">
         {perguntas.map((p, i) => {
@@ -127,7 +128,10 @@ export function EditorPerguntas({ perguntas, onChange, desabilitado }: Props) {
                     <Field label="Dimensão de análise (opcional)" hint="Agrupa perguntas parecidas nos resultados, ex.: Liderança.">
                       <input className="input" maxLength={60} value={p.dimensao ?? ''} onChange={(e) => atualizar(i, { dimensao: e.target.value || undefined })} />
                     </Field>
-                    <div className="mb-4 pt-6"><Toggle checked={p.obrigatoria} onChange={(v) => atualizar(i, { obrigatoria: v })} label="Resposta obrigatória" /></div>
+                    <Field label="Seção (opcional)" hint="Perguntas seguidas com a mesma seção aparecem juntas numa página.">
+                      <input className="input" maxLength={80} list="secoes-pesquisa" value={p.secao ?? ''} onChange={(e) => atualizar(i, { secao: e.target.value || undefined })} />
+                    </Field>
+                    <div className="mb-4 sm:col-span-2"><Toggle checked={p.obrigatoria} onChange={(v) => atualizar(i, { obrigatoria: v })} label="Resposta obrigatória" /></div>
                   </div>
 
                   <div className="rounded-xl bg-surface-2 border border-line p-3.5">

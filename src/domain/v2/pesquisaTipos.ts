@@ -39,6 +39,8 @@ export interface PerguntaPesquisa {
   escala?: { min: number; max: number; rotuloMin?: string; rotuloMax?: string }
   /** Agrupa perguntas na análise (ex.: "Liderança", "Reconhecimento"). */
   dimensao?: string
+  /** Seção na tela de resposta: perguntas seguidas com a mesma seção aparecem juntas numa página. */
+  secao?: string
   /** Só aparece se a condição for verdadeira (sempre sobre uma pergunta ANTERIOR). */
   condicao?: Condicao
 }
@@ -250,4 +252,17 @@ export function textoConfidencialidade(modo: 'anonima' | 'identificada', via: 'c
   return via === 'link'
     ? 'Esta pesquisa usa um link público: qualquer pessoa com o link pode responder e nenhuma identidade é registrada. Para limitar repetições, usamos uma marca do seu navegador (sem ligação com as respostas).'
     : base
+}
+
+/** Páginas da tela de resposta: perguntas consecutivas com a mesma seção formam uma página;
+ *  pergunta sem seção ocupa uma página sozinha (comportamento original). */
+export function paginasDeResposta(visiveis: PerguntaPesquisa[]): { secao?: string; perguntas: PerguntaPesquisa[] }[] {
+  const paginas: { secao?: string; perguntas: PerguntaPesquisa[] }[] = []
+  for (const p of visiveis) {
+    const s = p.secao?.trim()
+    const ultima = paginas[paginas.length - 1]
+    if (s && ultima?.secao === s) ultima.perguntas.push(p)
+    else paginas.push({ secao: s || undefined, perguntas: [p] })
+  }
+  return paginas
 }

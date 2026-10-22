@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { avaliarFiltro, calcularNps, destaquesDimensoes, calcularResultados, resultadosParaCsv, resumoExecutivo, suprimirGrupos, type RespostaBruta } from './pesquisaCalculo'
-import { assinaturaPergunta, condicaoVerdadeira, perguntasVisiveis, resolverPublico, validarEstrutura, validarRespostas, validarValor, type PerguntaPesquisa } from './pesquisaTipos'
+import { assinaturaPergunta, condicaoVerdadeira, paginasDeResposta, perguntasVisiveis, resolverPublico, validarEstrutura, validarRespostas, validarValor, type PerguntaPesquisa } from './pesquisaTipos'
 import { MODELOS } from './pesquisaModelos'
 
 const P = (o: Partial<PerguntaPesquisa> & Pick<PerguntaPesquisa, 'id' | 'tipo'>): PerguntaPesquisa => ({ texto: `Pergunta ${o.id}`, obrigatoria: true, ...o })
@@ -222,5 +222,13 @@ describe('destaques por dimensão', () => {
   })
   it('ignora dimensões com poucas respostas', () => {
     expect(destaquesDimensoes([d('A', 1.5, 2)], 5).atencao).toHaveLength(0)
+  })
+})
+
+describe('páginas da tela de resposta', () => {
+  it('agrupa perguntas seguidas da mesma seção e mantém uma por página sem seção', () => {
+    const ps = [P({ id: 'a', tipo: 'likert', secao: 'Liderança' }), P({ id: 'b', tipo: 'likert', secao: 'Liderança' }), P({ id: 'c', tipo: 'sim_nao' }), P({ id: 'd', tipo: 'sim_nao' }), P({ id: 'e', tipo: 'likert', secao: 'Liderança' })]
+    expect(paginasDeResposta(ps).map((x) => x.perguntas.map((q) => q.id))).toEqual([['a', 'b'], ['c'], ['d'], ['e']])
+    expect(paginasDeResposta(ps)[0].secao).toBe('Liderança')
   })
 })

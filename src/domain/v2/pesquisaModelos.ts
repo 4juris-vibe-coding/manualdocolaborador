@@ -41,9 +41,10 @@ function montar(chave: string, itens: Item[]): PerguntaPesquisa[] {
   }))
 }
 
-function modelo(m: Omit<ModeloPesquisa, 'tempoMin' | 'perguntas'> & { itens: Item[] }): ModeloPesquisa {
-  const { itens, ...resto } = m
-  const perguntas = montar(m.chave, itens)
+/** `secao`: título único para modelos curtos, respondidos numa só página. */
+function modelo(m: Omit<ModeloPesquisa, 'tempoMin' | 'perguntas'> & { itens: Item[]; secao?: string }): ModeloPesquisa {
+  const { itens, secao, ...resto } = m
+  const perguntas = montar(m.chave, itens).map((p) => (secao ? { ...p, secao } : p))
   return { ...resto, perguntas, tempoMin: perguntas.length ? tempoEstimadoMin(perguntas) : 1 }
 }
 
@@ -425,7 +426,7 @@ export const MODELOS: ModeloPesquisa[] = [
     ],
   }),
   modelo({
-    chave: 'pulso', titulo: 'Pesquisa rápida de pulso', categoria: 'Ciclos específicos', modoSugerido: 'anonima',
+    chave: 'pulso', titulo: 'Pesquisa rápida de pulso', categoria: 'Ciclos específicos', modoSugerido: 'anonima', secao: 'Como foi o período',
     objetivo: 'Acompanhar com frequência (semanal ou quinzenal) o sentimento da equipe em poucas perguntas.',
     descricao: 'Cinco perguntas, menos de um minuto.',
     intro: 'Um minuto para dizer como as coisas estão.', mensagemFinal: 'Obrigado!',
@@ -490,7 +491,7 @@ export const MODELOS: ModeloPesquisa[] = [
     ],
   }),
   modelo({
-    chave: 'onboarding-7', titulo: 'Onboarding · primeira semana (7 dias)', categoria: 'Ciclos específicos', modoSugerido: 'identificada',
+    chave: 'onboarding-7', titulo: 'Onboarding · primeira semana (7 dias)', categoria: 'Ciclos específicos', modoSugerido: 'identificada', secao: 'Sua primeira semana',
     objetivo: 'Verificar, ao fim da primeira semana, se a pessoa recebeu as orientações iniciais e o acesso de que precisa.',
     descricao: 'Curta e identificada, para o RH agir rápido em acessos ou orientações que faltaram.',
     intro: 'Suas respostas serão vistas pelo RH e pela liderança direta para resolver o que faltou na sua chegada.', mensagemFinal: 'Obrigado! Se você indicou alguma pendência, o RH vai procurar você.',

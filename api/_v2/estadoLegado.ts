@@ -14,6 +14,8 @@ import { CHAVE_COMPOSTA, chaveRegistro, hashRegistro, canonico, type OpsColecao 
 import { chaveApoio, chaveAutor } from '../../src/domain/anonimato.js'
 import { IGNORAR, Recusa, filtrarEstado, mesclar, montarContexto, politicaDe, visao, type CtxEscrita } from './guarda.js'
 import type { FuncaoAdicional } from '../../src/domain/permissions.js'
+import { aplicarPadraoAosIndefinidos } from './modulos/financeiro/salario.js'
+import type { Executor } from './nucleo.js'
 
 type Obj = Record<string, any>
 export interface Ex { query(sql: string, params?: unknown[]): Promise<{ rows: any[]; rowCount?: number | null }> }
@@ -240,5 +242,10 @@ export async function aplicarLote(ex: Ex, colaboradorId: string, lote: Lote, ago
     }
     gravadas.add('config')
   }
+  // Salário "a definir" recebe o valor padrão da função: quando a pessoa ganha (ou troca de) função, ou quando a função ganha um padrão.
+  const pessoasComFuncaoNova = gravar.filter((g) => g.colecao === 'colaboradores' && g.final?.cargoId && g.final.cargoId !== g.antes?.cargoId).map((g) => String(g.final!.id))
+  const funcoesComPadraoNovo = gravar.filter((g) => g.colecao === 'cargos' && Number(g.final?.valorPadrao) > 0 && g.final!.valorPadrao !== g.antes?.valorPadrao).map((g) => String(g.final!.id))
+  if ((pessoasComFuncaoNova.length || funcoesComPadraoNovo.length)
+    && await aplicarPadraoAosIndefinidos(ex as unknown as Executor, colaboradorId, { pessoas: pessoasComFuncaoNova, cargos: funcoesComPadraoNovo })) gravadas.add('contratos')
   return { gravadas: [...gravadas] }
 }

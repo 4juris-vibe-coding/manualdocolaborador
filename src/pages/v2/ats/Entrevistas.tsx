@@ -10,13 +10,17 @@ import { useTem } from '@/data/v2/acesso'
 import { ROTULO_STATUS_ENTREVISTA } from '@/domain/v2/ats'
 import { dataHoraBR } from '@/lib/fmt'
 import { Dropdown } from '@/components/Dropdown'
+import { Calendario, type EventoCal } from '@/components/calendario/Calendario'
+
+const COR_STATUS: Record<string, string> = { agendada: '#0032D2', realizada: '#0f9d6b', nao_compareceu: '#db2777', cancelada: '#8b98a2' }
 
 export default function Entrevistas() {
   useTitulo('Entrevistas · 4JURIS Pessoas')
-  const [aba, setAba] = useState('proximas')
+  const [aba, setAba] = useState('agenda')
   const gerenciar = useTem('ats:gerenciar')
   const verAts = useTem('ats:ver')
   const r = useApi<{ itens: any[] }>(`ats/entrevistas${qs({ pendentes: aba === 'pendentes' ? 1 : undefined, status: aba === 'proximas' ? 'agendada' : aba === 'realizadas' ? 'realizada' : undefined })}`)
+  const [aberta, setAberta] = useState<any | null>(null)
   const [reg, setReg] = useState<any | null>(null)
   const [reag, setReag] = useState<any | null>(null)
   // "Canceladas e ausências" busca tudo (o filtro de status do servidor aceita um valor só) e separa aqui.
@@ -25,7 +29,17 @@ export default function Entrevistas() {
   return (
     <SoComBanco>
       <PageHeader title="Entrevistas" subtitle="Agenda das entrevistas e pareceres que ainda precisam ser registrados." />
-      <Tabs active={aba} onChange={setAba} tabs={[{ key: 'proximas', label: 'Próximas' }, { key: 'pendentes', label: 'Aguardando resultado' }, { key: 'realizadas', label: 'Realizadas' }, { key: 'outras', label: 'Canceladas e ausências' }]} />
+      <Tabs active={aba} onChange={setAba} tabs={[{ key: 'agenda', label: 'Agenda' }, { key: 'proximas', label: 'Próximas' }, { key: 'pendentes', label: 'Aguardando resultado' }, { key: 'realizadas', label: 'Realizadas' }, { key: 'outras', label: 'Canceladas e ausências' }]} />
+      {aba === 'agenda' ? (
+        <Aguardar r={r}>
+          {(d) => <Calendario vistaInicial="semana" eventos={d.itens.map((e): EventoCal => ({
+            id: e.id, titulo: e.candidatoNome, inicio: e.inicio, fim: e.fim ?? undefined, cor: COR_STATUS[e.status] ?? '#3d4b56',
+            subtitulo: `${e.vagaCodigo} · ${e.vagaTitulo} · ${e.modalidade}`, cancelado: e.status === 'cancelada',
+          }))} onAbrir={(id) => setAberta(d.itens.find((x) => x.id === id) ?? null)}
+            legenda={[{ rotulo: 'Agendada', cor: COR_STATUS.agendada }, { rotulo: 'Realizada', cor: COR_STATUS.realizada }, { rotulo: 'Não compareceu', cor: COR_STATUS.nao_compareceu }, { rotulo: 'Cancelada', cor: COR_STATUS.cancelada }]}
+            textoVazio="Nenhuma entrevista neste mês." />}
+        </Aguardar>
+      ) : (
       <Aguardar r={r} vazio={() => lista.length === 0 ? (
         <Card><EmptyState icon="CalendarClock" title={aba === 'pendentes' ? 'Nenhum parecer pendente' : 'Nenhuma entrevista aqui'} desc="As entrevistas são agendadas no perfil de cada candidato." /></Card>
       ) : null}>
@@ -56,6 +70,20 @@ export default function Entrevistas() {
           </div>
         )}
       </Aguardar>
+      )}
+      {aberta && (
+        <Modal open onClose={() => setAberta(null)} title={aberta.candidatoNome} subtitle={`${aberta.vagaCodigo} · ${aberta.vagaTitulo}`}
+          footer={<>
+            {verAts && <Link to={`/recrutamento/candidatos/${aberta.candidaturaId}`}><Button variant="ghost" icon="UserCircle">Ver candidato</Button></Link>}
+            {aberta.status === 'agendada' && gerenciar && <Button variant="ghost" onClick={() => { setReag(aberta); setAberta(null) }}>Reagendar</Button>}
+            {aberta.status === 'agendada' && (gerenciar || aberta.ehParticipante) && <Button onClick={() => { setReg(aberta); setAberta(null) }}>Registrar resultado</Button>}
+          </>}>
+          <div className="flex flex-wrap gap-2 mb-3"><StatusBadge mapa={ROTULO_STATUS_ENTREVISTA} valor={aberta.status} />{aberta.parecerPendente && <Badge tone="warning">Aguardando resultado</Badge>}</div>
+          <p className="text-[14px] font-semibold text-ink">{dataHoraBR(aberta.inicio)}{aberta.fim ? ` – ${new Date(aberta.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}</p>
+          <p className="text-[13px] text-ink-2 mt-1">{aberta.modalidade}{aberta.localOuLink ? ` · ${aberta.localOuLink}` : ''}</p>
+          <p className="text-[13px] text-muted mt-1">Com {aberta.participantes.map((p: any) => p.nome).join(', ')}</p>
+        </Modal>
+      )}
       {reg && <Resultado e={reg} onClose={() => setReg(null)} onFeito={() => { setReg(null); r.recarregar() }} />}
       {reag && <Reagendar e={reag} onClose={() => setReag(null)} onFeito={() => { setReag(null); r.recarregar() }} />}
     </SoComBanco>

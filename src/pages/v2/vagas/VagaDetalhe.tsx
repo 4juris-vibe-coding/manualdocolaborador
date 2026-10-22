@@ -28,10 +28,12 @@ const STATUS_PASSO: Record<string, { rotulo: string; tom: 'success' | 'danger' |
   pendente: { rotulo: 'Pendente', tom: 'warning' }, aprovada: { rotulo: 'Aprovada', tom: 'success' }, rejeitada: { rotulo: 'Rejeitada', tom: 'danger' }, ajustes: { rotulo: 'Ajustes pedidos', tom: 'brand' }, cancelada: { rotulo: 'Cancelada', tom: 'neutral' }, dispensada: { rotulo: 'Dispensada', tom: 'neutral' },
 }
 
-const Info = ({ rotulo, children }: { rotulo: string; children: ReactNode }) => (
-  <div className="py-2.5 border-b border-line last:border-0"><dt className="text-[11.5px] font-bold uppercase tracking-wide text-muted">{rotulo}</dt><dd className="text-[13.5px] text-ink mt-0.5 whitespace-pre-line">{children || '—'}</dd></div>
-)
-const Chips = ({ itens }: { itens?: string[] }) => (itens?.length ? <span className="flex flex-wrap gap-1.5">{itens.map((i) => <Badge key={i} tone="brand">{i}</Badge>)}</span> : <>—</>)
+/** Campo vazio não ocupa espaço: a visão geral mostra só o que foi preenchido. */
+const vazio = (v: ReactNode) => v === null || v === undefined || v === false || (typeof v === 'string' && (!v.trim() || v.trim() === '—'))
+const Info = ({ rotulo, children }: { rotulo: string; children: ReactNode }) => (vazio(children) ? null : (
+  <div className="py-2.5 border-b border-line last:border-0"><dt className="text-[11.5px] font-bold uppercase tracking-wide text-muted">{rotulo}</dt><dd className="text-[13.5px] text-ink mt-0.5 whitespace-pre-line">{children}</dd></div>
+))
+const chips = (itens?: string[]) => (itens?.length ? <span className="flex flex-wrap gap-1.5">{itens.map((i) => <Badge key={i} tone="brand">{i}</Badge>)}</span> : null)
 
 export default function VagaDetalhe() {
   const { id = '' } = useParams()
@@ -71,10 +73,11 @@ export default function VagaDetalhe() {
               {v.status === 'ajustes' && <Callout tone="warning" icon="MessageSquareWarning" className="mb-5">A solicitação foi devolvida para ajustes. Veja a justificativa na aba <button className="underline font-semibold" onClick={() => setSp({ aba: 'aprovacoes' })}>Aprovações</button>, edite a vaga e solicite a aprovação novamente.</Callout>}
               {p.decidir.length > 0 && <Callout tone="brand" icon="ClipboardCheck" className="mb-5">Esta vaga aguarda a sua decisão. <button className="underline font-semibold" onClick={() => setSp({ aba: 'aprovacoes' })}>Abrir aprovações</button></Callout>}
 
-              <Divulgacao v={v} onPdf={() => setPdf(true)} />
+              <Divulgacao v={v} candidaturas={d!.contagens?.total ?? 0} onPdf={() => setPdf(true)} />
 
               <Tabs tabs={ABAS} active={aba} onChange={(k) => setSp({ aba: k }, { replace: true })} />
 
+              {aba === 'visao' && <p className="text-[12.5px] text-muted -mt-1 mb-3">Campos não preenchidos ficam ocultos.{p.editar ? ' Use Editar para completá-los.' : ''}</p>}
               {aba === 'visao' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                   <Card><CardHead title="Informações gerais" /><dl className="px-5 pb-3">
@@ -88,25 +91,25 @@ export default function VagaDetalhe() {
                     <Info rotulo="Gestor(a) solicitante">{v.gestorSolicitanteNome}</Info><Info rotulo="Gestor(a) responsável">{v.gestorResponsavelNome}</Info><Info rotulo="Gestor(a) imediato(a)">{v.gestorImediatoNome}</Info><Info rotulo="Recrutador(a)">{v.recrutadorNome}</Info>
                   </dl></Card>
                   <Card><CardHead title="Local e remuneração" /><dl className="px-5 pb-3">
-                    <Info rotulo="Local">{[v.cidade, v.estado, v.pais].filter(Boolean).join(', ')}</Info><Info rotulo="Modalidade">{ROTULO_MODALIDADE[v.modalidade]}</Info><Info rotulo="Viagens">{v.viagens}</Info><Info rotulo="Jornada">{v.jornada}</Info>
+                    <Info rotulo="Local">{[v.cidade, v.estado].filter(Boolean).join(', ') || v.endereco}</Info><Info rotulo="Modalidade">{ROTULO_MODALIDADE[v.modalidade]}</Info><Info rotulo="Viagens">{v.viagens}</Info><Info rotulo="Jornada">{v.jornada}</Info>
                     {'salarioMin' in v ? (
-                      <><Info rotulo="Faixa salarial">{v.salarioMin != null || v.salarioMax != null ? `${moeda(v.salarioMin, v.moeda)} a ${moeda(v.salarioMax, v.moeda)} (${ROTULO_REMUNERACAO[v.tipoRemuneracao] ?? ''})` : ''}</Info><Info rotulo="Variável">{v.variavel}</Info><Info rotulo="Divulgar salário no portal">{v.divulgarSalario ? 'Sim' : 'Não'}</Info></>
+                      <><Info rotulo="Faixa salarial">{v.salarioMin != null || v.salarioMax != null ? `${moeda(v.salarioMin, v.moeda)} a ${moeda(v.salarioMax, v.moeda)} (${ROTULO_REMUNERACAO[v.tipoRemuneracao] ?? ''})` : ''}</Info><Info rotulo="Variável">{v.variavel}</Info><Info rotulo="Divulgar salário no portal">{v.salarioMin != null || v.salarioMax != null ? (v.divulgarSalario ? 'Sim' : 'Não') : null}</Info></>
                     ) : <Info rotulo="Faixa salarial"><span className="text-muted">Restrita ao RH</span></Info>}
-                    <Info rotulo="Benefícios"><Chips itens={v.beneficios} /></Info>
+                    <Info rotulo="Benefícios">{chips(v.beneficios)}</Info>
                   </dl></Card>
                   <Card><CardHead title="Perfil profissional" /><dl className="px-5 pb-3">
                     <Info rotulo="Responsabilidades">{v.responsabilidades}</Info><Info rotulo="Atividades">{v.atividades}</Info><Info rotulo="Desafios da posição">{v.desafios}</Info>
-                    <Info rotulo="Requisitos obrigatórios"><Chips itens={v.requisitosObrigatorios} /></Info><Info rotulo="Requisitos desejáveis"><Chips itens={v.requisitosDesejaveis} /></Info>
+                    <Info rotulo="Requisitos obrigatórios">{chips(v.requisitosObrigatorios)}</Info><Info rotulo="Requisitos desejáveis">{chips(v.requisitosDesejaveis)}</Info>
                     <Info rotulo="Formação">{v.formacao}</Info><Info rotulo="Experiência">{v.experiencia}</Info>
-                    <Info rotulo="Competências técnicas"><Chips itens={v.competenciasTecnicas} /></Info><Info rotulo="Competências comportamentais"><Chips itens={v.competenciasComportamentais} /></Info>
-                    <Info rotulo="Idiomas"><Chips itens={v.idiomas} /></Info><Info rotulo="Certificações"><Chips itens={v.certificacoes} /></Info>
+                    <Info rotulo="Competências técnicas">{chips(v.competenciasTecnicas)}</Info><Info rotulo="Competências comportamentais">{chips(v.competenciasComportamentais)}</Info>
+                    <Info rotulo="Idiomas">{chips(v.idiomas)}</Info><Info rotulo="Certificações">{chips(v.certificacoes)}</Info>
                   </dl></Card>
                   <Card><CardHead title="Triagem" sub="Perguntas feitas na candidatura" />
                     {v.perguntasTriagem?.length ? <ol className="px-5 pb-4 list-decimal ml-5 space-y-1.5 text-[13.5px]">{v.perguntasTriagem.map((q: D) => <li key={q.id}>{q.texto} <span className="text-muted text-[12px]">({q.tipo === 'sim_nao' ? 'sim/não' : q.tipo === 'opcoes' ? 'múltipla escolha' : 'texto'}{q.obrigatoria ? ', obrigatória' : ''})</span></li>)}</ol> : <p className="px-5 pb-4 text-[13px] text-muted">Sem perguntas de triagem.</p>}
                   </Card>
                   <Card><CardHead title="Divulgação" /><dl className="px-5 pb-3">
-                    <Info rotulo="Canais"><Chips itens={(v.canais as string[]).map((c) => opcoes.dados?.canais.find((x) => x.chave === c)?.nome ?? c)} /></Info>
-                    <Info rotulo="Etapas do processo (página pública)"><Chips itens={v.etapasProcesso} /></Info><Info rotulo="Publicação agendada">{dataBR(v.publicarEm)}</Info><Info rotulo="Encerramento das candidaturas">{dataBR(v.encerraCandidaturasEm)}</Info>
+                    <Info rotulo="Canais">{chips((v.canais as string[]).map((c) => opcoes.dados?.canais.find((x) => x.chave === c)?.nome ?? c))}</Info>
+                    <Info rotulo="Etapas do processo (página pública)">{chips(v.etapasProcesso)}</Info><Info rotulo="Publicação agendada">{dataBR(v.publicarEm)}</Info><Info rotulo="Encerramento das candidaturas">{dataBR(v.encerraCandidaturasEm)}</Info>
                     <Info rotulo="Texto público">{v.textoPublico}</Info><Info rotulo="Critérios de encerramento">{v.criteriosEncerramento}</Info>
                     {'observacoesRh' in v && <Info rotulo="Observações do RH">{v.observacoesRh}</Info>}
                     {v.motivoEncerramento && <Info rotulo="Motivo do encerramento/cancelamento">{v.motivoEncerramento}</Info>}
@@ -174,7 +177,9 @@ export default function VagaDetalhe() {
 }
 
 /** Link público e compartilhamento, sempre à vista. Fora do ar, explica o motivo e oferece a prévia. */
-function Divulgacao({ v, onPdf }: { v: D; onPdf: () => void }) {
+function Divulgacao({ v, candidaturas, onPdf }: { v: D; candidaturas: number; onPdf: () => void }) {
+  const vis = Number(v.visualizacoes ?? 0)
+  const conversao = vis > 0 ? Math.round((candidaturas / vis) * 1000) / 10 : null
   const url = `${window.location.origin}/carreiras/${v.slug}`
   const noAr = v.status === 'publicada'
   const copiar = () => navigator.clipboard?.writeText(url).then(() => toast('Link copiado. Cole onde quiser divulgar.'), () => toast('Não foi possível copiar. Selecione o link e copie manualmente.', 'danger'))
@@ -191,6 +196,11 @@ function Divulgacao({ v, onPdf }: { v: D; onPdf: () => void }) {
           {noAr
             ? <code className="block text-[13px] text-ink break-all mt-0.5">{url}</code>
             : <div className="text-[13px] text-ink-2 mt-0.5">{situacao[v.status] ?? 'O link só funciona com a vaga publicada.'}</div>}
+          {(vis > 0 || candidaturas > 0) && (
+            <div className="text-[12px] text-muted mt-1" title="Visualizações contam cada abertura da página pública (inclui acessos internos); é um número aproximado.">
+              {vis} {vis === 1 ? 'visualização' : 'visualizações'} · {candidaturas} {candidaturas === 1 ? 'candidatura' : 'candidaturas'}{conversao !== null ? ` · conversão ${conversao.toLocaleString('pt-BR')}%` : ''}
+            </div>
+          )}
         </div>
         <div className="flex gap-2 flex-wrap">
           {noAr && <Button size="sm" icon="Copy" onClick={copiar}>Copiar link</Button>}

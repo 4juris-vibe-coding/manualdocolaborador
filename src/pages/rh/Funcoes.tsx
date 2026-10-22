@@ -29,14 +29,14 @@ export default function Funcoes() {
     .filter((c) => !discF.length || (c.perfilIdeal && discF.includes(discDominante(c.perfilIdeal.disc)!.chave))), [s.cargos, area, q, discF])
   const pessoasDe = (id: string) => s.colaboradores.filter((p) => p.cargoId === id && p.status !== 'encerrado').length
   const { ordenados, ordem, onOrdenar } = useOrdenacao(lista, {
-    nome: (c) => c.nome, area: (c) => s.setorNome(c.setorId), nivel: (c) => NIVEIS.indexOf(c.nivel), pessoas: (c) => pessoasDe(c.id), faixa: (c) => c.faixaValor?.min ?? 0,
+    nome: (c) => c.nome, area: (c) => s.setorNome(c.setorId), nivel: (c) => NIVEIS.indexOf(c.nivel), pessoas: (c) => pessoasDe(c.id), faixa: (c) => c.valorPadrao ?? c.faixaValor?.min ?? 0,
   }, 'nome')
 
   const exportar = () => {
     baixarArquivo(gerarCSV(ordenados, [
       { titulo: 'Função', valor: (c) => c.nome }, { titulo: 'Área', valor: (c) => s.setorNome(c.setorId) }, { titulo: 'Senioridade', valor: (c) => c.nivel },
       { titulo: 'CBO', valor: (c) => c.codigoCBO ?? '' }, { titulo: 'Função superior', valor: (c) => s.cargos.find((x) => x.id === c.funcaoSuperiorId)?.nome ?? '' },
-      { titulo: 'Faixa mínima', valor: (c) => c.faixaValor?.min ?? '' }, { titulo: 'Faixa máxima', valor: (c) => c.faixaValor?.max ?? '' },
+      { titulo: 'Valor padrão', valor: (c) => c.valorPadrao ?? '' }, { titulo: 'Faixa mínima', valor: (c) => c.faixaValor?.min ?? '' }, { titulo: 'Faixa máxima', valor: (c) => c.faixaValor?.max ?? '' },
       { titulo: 'Perfil dominante', valor: (c) => discDominante(c.perfilIdeal?.disc)?.label ?? '' }, { titulo: 'Habilidades', valor: (c) => (c.habilidades ?? []).join(', ') },
       { titulo: 'Pessoas', valor: (c) => pessoasDe(c.id) },
     ]), 'funcoes.csv')
@@ -64,7 +64,7 @@ export default function Funcoes() {
                     <th className={TH}>Perfil</th>
                     <ThOrdenavel className={TH} campo="nivel" ordem={ordem} onOrdenar={onOrdenar}>Senioridade</ThOrdenavel>
                     <th className={TH}>CBO</th>
-                    <ThOrdenavel className={TH} campo="faixa" ordem={ordem} onOrdenar={onOrdenar}>Faixa de valor</ThOrdenavel>
+                    <ThOrdenavel className={TH} campo="faixa" ordem={ordem} onOrdenar={onOrdenar}>Valor padrão</ThOrdenavel>
                     <ThOrdenavel className={TH} campo="pessoas" ordem={ordem} onOrdenar={onOrdenar}>Pessoas</ThOrdenavel>
                   </tr></thead>
                   <tbody>
@@ -76,7 +76,7 @@ export default function Funcoes() {
                           <td className={TD}>{dom ? <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold"><span className="h-2.5 w-2.5 rounded-full" style={{ background: dom.cor }} />{dom.label}</span> : <span className="text-muted">—</span>}</td>
                           <td className={TD}><Badge tone="neutral">{c.nivel}</Badge></td>
                           <td className={TD}>{c.codigoCBO ?? '—'}</td>
-                          <td className={TD}>{c.faixaValor?.min != null || c.faixaValor?.max != null ? <span className="text-[12.5px]">{brl(c.faixaValor?.min ?? 0)} – {brl(c.faixaValor?.max ?? 0)}{!c.faixaValor?.visivel && <Icon name="EyeOff" className="h-3.5 w-3.5 inline ml-1.5 text-muted" aria-label="oculta para a pessoa" />}</span> : '—'}</td>
+                          <td className={TD}>{c.valorPadrao != null ? <span className="text-[12.5px] font-semibold">{brl(c.valorPadrao)}</span> : c.faixaValor?.min != null || c.faixaValor?.max != null ? <span className="text-[12.5px]">{brl(c.faixaValor?.min ?? 0)} – {brl(c.faixaValor?.max ?? 0)}{!c.faixaValor?.visivel && <Icon name="EyeOff" className="h-3.5 w-3.5 inline ml-1.5 text-muted" aria-label="oculta para a pessoa" />}</span> : '—'}</td>
                           <td className={TD}>{pessoasDe(c.id)}</td>
                         </tr>
                       )
@@ -152,6 +152,8 @@ function FuncaoDetalhe({ c, onClose, onEditar }: { c: Cargo; onClose: () => void
           <h4 className="text-[11px] font-bold uppercase text-muted mb-2 mt-4">Habilidades</h4>
           <div className="flex flex-wrap gap-1.5">{(c.habilidades ?? []).map((h) => <Badge key={h} tone="brand">{h}</Badge>)}{!c.habilidades?.length && <span className="text-[13px] text-muted">—</span>}</div>
           {!!c.requisitos?.length && <><h4 className="text-[11px] font-bold uppercase text-muted mb-2 mt-4">Requisitos</h4><div className="flex flex-wrap gap-1.5">{c.requisitos.map((h) => <Badge key={h} tone="neutral">{h}</Badge>)}</div></>}
+          <h4 className="text-[11px] font-bold uppercase text-muted mb-2 mt-4">Valor padrão</h4>
+          <p className="text-[13px] text-ink">{c.valorPadrao != null ? `${brl(c.valorPadrao)}/mês` : '—'} <span className="text-muted">· preenche o salário de quem entra na função; cada pessoa pode ter o próprio valor</span></p>
           <h4 className="text-[11px] font-bold uppercase text-muted mb-2 mt-4">Faixa de valor de referência</h4>
           <p className="text-[13px] text-ink">{c.faixaValor?.min != null ? `${brl(c.faixaValor.min)} – ${brl(c.faixaValor.max ?? 0)}` : '—'} {c.faixaValor && <span className="text-muted">· {c.faixaValor.visivel ? 'visível às pessoas da função' : 'restrita ao RH'}</span>}</p>
           {c.funcaoSuperiorId && <p className="text-[12.5px] text-muted mt-3">Função superior: <b className="text-ink">{s.cargos.find((x) => x.id === c.funcaoSuperiorId)?.nome}</b></p>}
@@ -187,7 +189,7 @@ function FuncaoForm({ c, onClose }: { c?: Cargo; onClose: () => void }) {
   const [f, setF] = useState<Omit<Cargo, 'id'>>(() => ({
     nome: c?.nome ?? '', setorId: c?.setorId ?? s.setores[0]?.id ?? '', nivel: c?.nivel ?? 'Pleno', descricao: c?.descricao ?? '',
     codigoCBO: c?.codigoCBO ?? '', funcaoSuperiorId: c?.funcaoSuperiorId, atividades: c?.atividades ?? '', habilidades: c?.habilidades ?? [], requisitos: c?.requisitos ?? [],
-    responsaveisIds: c?.responsaveisIds ?? [], faixaValor: c?.faixaValor ?? { visivel: false },
+    responsaveisIds: c?.responsaveisIds ?? [], valorPadrao: c?.valorPadrao, faixaValor: c?.faixaValor ?? { visivel: false },
     perfilIdeal: c?.perfilIdeal ?? { disc: { ...DISC_NEUTRO }, tracos: tracosPadrao() },
   }))
   const set = (p: Partial<typeof f>) => setF((x) => ({ ...x, ...p }))
@@ -198,7 +200,7 @@ function FuncaoForm({ c, onClose }: { c?: Cargo; onClose: () => void }) {
   }
   return (
     <Modal open onClose={onClose} wide title={c ? `Editar ${c.nome}` : 'Nova função'} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Check" onClick={salvar}>Salvar</Button></>}>
-      <Tabs tabs={[{ key: 'geral', label: 'Geral' }, { key: 'atividades', label: 'Atividades & habilidades' }, { key: 'valor', label: 'Faixa de valor' }, { key: 'perfil', label: 'Perfil ideal' }]} active={aba} onChange={setAba} />
+      <Tabs tabs={[{ key: 'geral', label: 'Geral' }, { key: 'atividades', label: 'Atividades & habilidades' }, { key: 'valor', label: 'Valor padrão' }, { key: 'perfil', label: 'Perfil ideal' }]} active={aba} onChange={setAba} />
       {aba === 'geral' && (
         <div className="grid sm:grid-cols-2 gap-x-4">
           <Field label="Nome" required htmlFor="fn-n"><input id="fn-n" className="input" value={f.nome} onChange={(e) => set({ nome: e.target.value })} /></Field>
@@ -223,6 +225,11 @@ function FuncaoForm({ c, onClose }: { c?: Cargo; onClose: () => void }) {
       )}
       {aba === 'valor' && (
         <>
+          <Field label="Valor padrão mensal (R$)" htmlFor="fn-vp" hint="Opcional. Não é piso nem faixa: é o valor que a pessoa recebe ao entrar nesta função.">
+            <input id="fn-vp" type="number" min={0} step="0.01" className="input" value={f.valorPadrao ?? ''} onChange={(e) => set({ valorPadrao: e.target.value === '' ? undefined : Number(e.target.value) })} />
+          </Field>
+          <Callout tone="neutral" icon="Info" className="mb-4">Quem entra na função (ou está com salário “a definir”) recebe este valor automaticamente. Depois, ajuste o valor de cada pessoa na ficha dela (Pessoas › pessoa › Salário). Mudar o padrão aqui <b>não</b> altera quem já tem salário definido.</Callout>
+          <h4 className="text-[11px] font-bold uppercase text-muted mb-2">Faixa de negociação (opcional)</h4>
           <div className="grid sm:grid-cols-2 gap-x-4">
             <Field label="Valor mínimo (R$)" htmlFor="fn-min"><input id="fn-min" type="number" min={0} className="input" value={f.faixaValor?.min ?? ''} onChange={(e) => set({ faixaValor: { ...f.faixaValor!, min: e.target.value === '' ? undefined : Number(e.target.value) } })} /></Field>
             <Field label="Valor máximo (R$)" htmlFor="fn-max"><input id="fn-max" type="number" min={0} className="input" value={f.faixaValor?.max ?? ''} onChange={(e) => set({ faixaValor: { ...f.faixaValor!, max: e.target.value === '' ? undefined : Number(e.target.value) } })} /></Field>

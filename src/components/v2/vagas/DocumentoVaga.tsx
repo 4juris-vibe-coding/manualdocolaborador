@@ -5,6 +5,7 @@
    Seções sem conteúdo são omitidas; nada é inventado. */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import qrcode from 'qrcode-generator'
 import { Button, Callout, Logo } from '@/components/ui'
 import { Modal } from '@/components/Modal'
 import { ROTULO_MODALIDADE, ROTULO_REGIME_CONTRATACAO } from '@/domain/v2/vagas'
@@ -110,9 +111,25 @@ export function pendenciasDocumento(d: DadosDocumentoVaga): string[] {
 
 /* ---------------- documento ---------------- */
 
-function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
+/** QR Code do link de candidatura, desenhado como SVG (nítido em qualquer resolução de impressão). */
+export function QrCode({ texto, tamanho = 96 }: { texto: string; tamanho?: number }) {
+  const qr = qrcode(0, 'M')
+  qr.addData(texto)
+  qr.make()
+  const n = qr.getModuleCount()
+  let d = ''
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (qr.isDark(y, x)) d += `M${x + 4} ${y + 4}h1v1h-1z`
   return (
-    <section className="dv-secao">
+    <svg width={tamanho} height={tamanho} viewBox={`0 0 ${n + 8} ${n + 8}`} shapeRendering="crispEdges" role="img" aria-label="QR Code do link de candidatura">
+      <rect width={n + 8} height={n + 8} fill="#fff" />
+      <path d={d} fill="#000" />
+    </svg>
+  )
+}
+
+function Secao({ titulo, children, inteira }: { titulo: string; children: ReactNode; inteira?: boolean }) {
+  return (
+    <section className={inteira ? 'dv-secao dv-inteira' : 'dv-secao'}>
       <h2>{titulo}</h2>
       {children}
     </section>
@@ -139,9 +156,14 @@ export function DocumentoVaga({ d }: { d: DadosDocumentoVaga }) {
           <span>4JURIS</span>
           <em>Oportunidade de trabalho</em>
         </div>
-        <h1>{d.titulo}</h1>
-        {meta.length > 0 && <p className="dv-meta">{meta.join(' · ')}</p>}
-        {d.atualizadaEm && <p className="dv-data">Atualizado em {dataBR(d.atualizadaEm)}</p>}
+        <div className="dv-titulo">
+          <div>
+            <h1>{d.titulo}</h1>
+            {meta.length > 0 && <p className="dv-meta">{meta.join(' · ')}</p>}
+            {d.atualizadaEm && <p className="dv-data">Atualizado em {dataBR(d.atualizadaEm)}</p>}
+          </div>
+          {d.link && <figure className="dv-qr"><QrCode texto={d.link} /><figcaption>Candidate-se</figcaption></figure>}
+        </div>
       </div>
       {d.aviso && <p className="dv-aviso">{d.aviso}</p>}
 
@@ -167,9 +189,9 @@ export function DocumentoVaga({ d }: { d: DadosDocumentoVaga }) {
         </Secao>
       )}
       {(d.etapas.length > 0 || d.link) && (
-        <Secao titulo="Processo seletivo">
+        <Secao titulo="Processo seletivo" inteira>
           {d.etapas.length > 0 && <ol className="dv-etapas">{d.etapas.map((e, i) => <li key={i}>{e}</li>)}</ol>}
-          {d.link && <p className="dv-texto">Para se candidatar, acesse <b className="dv-link">{d.link}</b> e preencha o formulário. Não é preciso criar conta.</p>}
+          {d.link && <p className="dv-texto">Para se candidatar, aponte a câmera do celular para o código no topo do documento ou acesse <b className="dv-link">{d.link}</b> e preencha o formulário. Não é preciso criar conta.</p>}
         </Secao>
       )}
     </div>
@@ -189,6 +211,7 @@ const CSS_DOC = `
 .dv-data { margin: 1mm 0 0; color: #6a7681; font-size: 8.5pt; }
 .dv-aviso { border: 1px solid #e7b04a; background: #fff7e6; color: #7a4b00; border-radius: 2mm; padding: 2.5mm 3.5mm; font-size: 9.5pt; margin: 0 0 6mm; }
 .dv-secao { margin: 0 0 6mm; }
+.dv-inteira { break-inside: avoid; page-break-inside: avoid; }
 .dv-secao h2 { font-size: 12.5pt; font-weight: 800; color: ${AZUL}; margin: 0 0 2mm; break-after: avoid; page-break-after: avoid; }
 .dv-secao h3 { font-size: 10pt; font-weight: 700; color: #121f2a; margin: 3mm 0 1mm; break-after: avoid; page-break-after: avoid; }
 .dv-texto { margin: 0 0 2mm; white-space: pre-line; overflow-wrap: anywhere; orphans: 3; widows: 3; }
@@ -199,6 +222,11 @@ const CSS_DOC = `
 .dv-condicoes dt { font-size: 8.5pt; text-transform: uppercase; letter-spacing: .05em; color: #6a7681; font-weight: 700; }
 .dv-condicoes dd { margin: 0; overflow-wrap: anywhere; }
 .dv-link { color: ${AZUL}; overflow-wrap: anywhere; }
+.dv-titulo { display: flex; align-items: flex-start; justify-content: space-between; gap: 6mm; }
+.dv-titulo > div { min-width: 0; }
+.dv-qr { margin: 0; flex-shrink: 0; text-align: center; }
+.dv-qr svg { display: block; width: 24mm; height: 24mm; }
+.dv-qr figcaption { font-size: 7.5pt; color: #6a7681; text-transform: uppercase; letter-spacing: .06em; margin-top: 1mm; }
 `
 
 /* ---------------- impressão ---------------- */

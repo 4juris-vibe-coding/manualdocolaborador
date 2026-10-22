@@ -5,12 +5,14 @@
    rotina cria, para quem ainda não tem:
    - o fornecedor (CPF do autônomo, CNPJ do PJ/MEI), se faltar;
    - um contrato mensal vigente, por prazo indeterminado, com o
-     valor "a definir" (R$ 0). O valor é definido depois, uma vez,
-     sem aditivo (e não gera divergência enquanto estiver em 0).
+     valor padrão da função da pessoa ou, sem padrão, "a definir"
+     (R$ 0). O valor "a definir" é definido depois, uma vez, sem
+     aditivo (e não gera divergência enquanto estiver em 0).
    Idempotente: quem já tem contrato (não encerrado) é mantido.
    ============================================================ */
 import { auditar, ok, type Executor, type Rota } from '../../nucleo.js'
 import { espelharContrato, hoje, mapaPessoas, type Linha } from './comum.js'
+import { valorPadraoDaFuncao } from './salario.js'
 
 /** Conta técnica da administração (src/lib/mock.ts ADMIN_ID): não presta serviço. */
 const ADMIN_ID = 'c1'
@@ -60,12 +62,14 @@ export async function gerarContratosBase(ex: Executor, quem: string, agora: Date
     }
     const entrada = /^\d{4}-\d{2}-\d{2}/.test(String(p.dataEntrada ?? '')) ? String(p.dataEntrada).slice(0, 7) : hoje(agora).slice(0, 7)
     const numero = `PS-${ano}-${String(++seq).padStart(3, '0')}`
+    // Valor inicial = padrão da função da pessoa (salario.ts); sem padrão, fica "a definir" (0).
+    const padrao = await valorPadraoDaFuncao(ex, p.cargoId)
     const id = (await ex.query(`insert into fin_contratos (numero, fornecedor_id, prestador_id, gestor_id, setor_id, objeto, modelo_remuneracao, valor, periodicidade_faturamento,
         tipo_prazo, inicio, renovacao, observacoes, status, criado_por)
-      values ($1,$2,$3,$4,$5,'Prestação de serviços','mensal_fixo',0,'mensal','indeterminado',$6,'manual',$7,'vigente',$8) returning id`,
+      values ($1,$2,$3,$4,$5,'Prestação de serviços','mensal_fixo',$9,'mensal','indeterminado',$6,'manual',$7,'vigente',$8) returning id`,
       [numero, fornecedorId, p.id, p.responsavelId || null, p.setorId || null, `${entrada}-01`,
-        'Contrato-base criado automaticamente para habilitar o envio mensal da nota fiscal. Complete o valor mensal, o objeto e a data de assinatura.', quem])).rows[0].id
-    await auditar(ex, quem, 'contrato', id, 'criado', { origem: 'contratos_base', numero })
+        `Contrato-base criado automaticamente para habilitar o envio mensal da nota fiscal. ${padrao ? 'Valor inicial = padrão da função (ajuste na ficha da pessoa se for diferente). Complete' : 'Complete o valor mensal,'} o objeto e a data de assinatura.`, quem, padrao])).rows[0].id
+    await auditar(ex, quem, 'contrato', id, 'criado', { origem: 'contratos_base', numero, ...(padrao ? { valorPadraoDaFuncao: padrao } : {}) })
     await espelharContrato(ex, id)
   }
   return { contratos: criar.length, fornecedores, semDocumento }

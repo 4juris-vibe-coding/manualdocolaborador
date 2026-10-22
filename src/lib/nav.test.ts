@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { capacidadesDe, definirExtrasDaSessao, definirVisaoColaborador } from '@/domain/permissions'
-import { itemDaRota, podeAbrir, ultimosVisiveis } from './nav'
+import { NAV, itemDaRota, podeAbrir, ultimosVisiveis } from './nav'
 
 afterEach(() => { definirExtrasDaSessao([]); definirVisaoColaborador(false) })
 
@@ -42,5 +42,31 @@ describe('guarda de rota', () => {
     expect(podeAbrir('colaborador', '/recrutamento/candidatos')).toBe(false)
     expect(podeAbrir('colaborador', '/financeiro')).toBe(false)
     expect(podeAbrir('colaborador', '/perfil')).toBe(true)
+  })
+})
+
+describe('organização do menu', () => {
+  it('primeiro o espaço pessoal, depois as áreas de função, sem misturar', () => {
+    const ordem = ['pessoal', 'lideranca', 'financeiro', 'rh', 'admin']
+    const areas = NAV.map((g) => g.area)
+    expect(areas).toEqual([...areas].sort((a, b) => ordem.indexOf(a) - ordem.indexOf(b)))
+    expect(new Set(areas)).toEqual(new Set(ordem))
+  })
+  it('uma tela aparece uma vez por área (sem item duplicado dentro da mesma área)', () => {
+    for (const area of new Set(NAV.map((g) => g.area))) {
+      const tos = NAV.filter((g) => g.area === area).flatMap((g) => g.items.filter((i) => !i.soDemo && !i.soApi).map((i) => i.to))
+      expect(new Set(tos).size, area).toBe(tos.length)
+    }
+  })
+  it('quem é do financeiro também tem o próprio espaço (envia a própria nota)', () => {
+    expect(ultimosVisiveis('financeiro').get('/notas')?.label).toBe('Minhas notas fiscais')
+    expect(podeAbrir('financeiro', '/notas')).toBe(true)
+    expect(podeAbrir('financeiro', '/rh/pessoas')).toBe(false)
+  })
+  it('relatórios de pessoas unidos numa tela; links antigos continuam abrindo', () => {
+    expect(ultimosVisiveis('rh').has('/rh/relatorios')).toBe(true)
+    expect(ultimosVisiveis('rh').has('/rh/metricas')).toBe(false)
+    expect(podeAbrir('rh', '/rh/metricas')).toBe(true)
+    expect(podeAbrir('colaborador', '/rh/relatorios')).toBe(false)
   })
 })

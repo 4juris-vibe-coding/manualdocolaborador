@@ -2,7 +2,7 @@
    Colunas: aguardando → recebida → aprovada → paga, e recusada (devolvida).
    Mover um cartão chama o servidor, que executa as etapas do fluxo com as mesmas travas
    (nota própria, divergência com justificativa, segregação de funções). */
-import { useMemo, useState, type DragEvent } from 'react'
+import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge, Button, Callout, Card, EmptyState, Field, Icon, PageHeader, SearchBox, Select, TD, TH, Tabela, Tabs, Toggle } from '@/components/ui'
 import { Modal } from '@/components/Modal'
@@ -14,7 +14,7 @@ import { FORMAS_PAGAMENTO, ROTULO_FORMA } from '@/domain/v2/financeiro'
 import { dataBR, dataHoraBR, haQuanto } from '@/lib/fmt'
 import { toast } from '@/components/toast'
 import { cn } from '@/lib/utils'
-import { DetalheNota } from './Notas'
+import NotasFinanceiro, { DetalheNota } from './Notas'
 
 type Coluna = 'aguardando' | 'recebida' | 'aprovada' | 'recusada' | 'paga'
 interface Cartao {
@@ -42,11 +42,11 @@ const COLUNAS: { chave: Coluna; titulo: string; desc: string; icone: string; tom
   { chave: 'paga', titulo: 'Paga', desc: 'Pagamento registrado', icone: 'Wallet', tom: 'border-t-success' },
 ]
 /** Para onde cada coluna pode ir pelo kanban (o servidor confere de novo). */
-const DESTINOS: Record<Coluna, Coluna[]> = { aguardando: [], recebida: ['aprovada', 'paga', 'recusada'], aprovada: ['paga'], recusada: [], paga: [] }
+const DESTINOS: Record<Coluna, Coluna[]> = { aguardando: ['recebida'], recebida: ['aprovada', 'paga', 'recusada'], aprovada: ['paga'], recusada: [], paga: [] }
 const mesAtual = () => new Date().toISOString().slice(0, 7)
 
 export default function KanbanNotas() {
-  const f = useFiltros(['aba', 'competencia', 'q', 'nota'])
+  const f = useFiltros(['aba', 'competencia', 'q', 'nota', 'sub'])
   const comp = f.valores.competencia || mesAtual()
   const aba = f.valores.aba || 'quadro'
   const r = useApi<Quadro>(`financeiro/kanban?competencia=${comp}`)
@@ -62,23 +62,25 @@ export default function KanbanNotas() {
       toast(c.coluna === 'aguardando' ? 'Ainda não há nota: registre a nota recebida ou cobre a pessoa.' : c.coluna === 'recusada' ? 'A nota recusada volta para "Recebida" quando o prestador reenviar a versão corrigida.' : c.coluna === 'paga' ? 'Nota já paga.' : 'Esse movimento não é permitido.', 'danger')
       return
     }
+    // Aguardando → Recebida: a nota chegou por outro canal; abre o registro.
+    if (c.coluna === 'aguardando') { if (r.dados?.capacidades.registrar) setRegistrar(c); else toast('Você não pode registrar notas.', 'danger'); return }
     setMover({ cartao: c, destino })
   }
 
   return (
     <>
-      <PageHeader title="Kanban de notas fiscais" subtitle="Quem já mandou, quem falta e em que pé está cada nota. Arraste o cartão para mudar a situação."
+      <PageHeader title="Notas fiscais" subtitle="As notas de todos: quem já mandou, quem falta e em que pé está cada uma. Arraste o cartão para mudar a situação."
         actions={caps?.disparar && <>
           <Button variant="ghost" icon="CalendarClock" onClick={() => setAuto(true)}>Disparos automáticos</Button>
           <Button icon="Send" onClick={() => setDisparo({})}>Cobrar notas</Button>
         </>} />
       <SoComBanco>
-        <Tabs tabs={[{ key: 'quadro', label: 'Quadro' }, { key: 'disparos', label: 'Histórico de disparos' }]} active={aba} onChange={(k) => f.definir('aba', k === 'quadro' ? '' : k)} />
-        <div className="flex flex-wrap items-end gap-2.5 mb-4">
+        <Tabs tabs={[{ key: 'quadro', label: 'Kanban' }, { key: 'lista', label: 'Lista e conferência' }, { key: 'disparos', label: 'Cobranças enviadas' }]} active={aba} onChange={(k) => f.definir('aba', k === 'quadro' ? '' : k)} />
+        {aba !== 'lista' && <div className="flex flex-wrap items-end gap-2.5 mb-4">
           <Field label="Competência" htmlFor="kb-comp"><input id="kb-comp" type="month" className="input w-auto" value={comp} onChange={(e) => f.definir('competencia', e.target.value)} /></Field>
           {aba === 'quadro' && <SearchBox value={f.valores.q} onChange={(v) => f.definir('q', v)} placeholder="Pessoa, empresa, contrato ou NF" />}
           {r.dados && <p className="text-[12.5px] text-muted pb-2.5">Prazo de envio: <b className="text-ink">{dataBR(r.dados.prazo)}</b>{r.dados.pessoasPendentes > 0 && <> · {r.dados.pessoasPendentes} pessoa(s) com nota pendente</>}</p>}
-        </div>
+        </div>}
         {aba === 'quadro' && r.dados && r.dados.semContrato > 0 && (
           <Callout tone="warning" icon="FileSignature" className="mb-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -92,10 +94,10 @@ export default function KanbanNotas() {
             </div>
           </Callout>
         )}
-        {aba === 'quadro'
-          ? <Aguardar r={r} linhas={6}>{(d) => <Quadro d={d} busca={f.valores.q} abrir={(id) => f.definir('nota', id)} mover={pedirMover} cobrar={(p) => setDisparo({ pessoas: p ? [p] : [] })} registrar={setRegistrar} />}</Aguardar>
-          : <HistoricoDisparos comp={comp} />}
-        <DetalheNota id={f.valores.nota} fechar={() => f.definir('nota', '')} mudou={() => r.recarregar()} />
+        {aba === 'quadro' && <Aguardar r={r} linhas={6}>{(d) => <Quadro d={d} busca={f.valores.q} abrir={(id) => f.definir('nota', id)} mover={pedirMover} cobrar={(p) => setDisparo({ pessoas: p ? [p] : [] })} registrar={setRegistrar} />}</Aguardar>}
+        {aba === 'lista' && <NotasFinanceiro embutido />}
+        {aba === 'disparos' && <HistoricoDisparos comp={comp} />}
+        {aba !== 'lista' && <DetalheNota id={f.valores.nota} fechar={() => f.definir('nota', '')} mudou={() => r.recarregar()} />}
         {mover && <MoverModal {...mover} segregacao={!!r.dados?.segregacao} fechar={() => setMover(null)} feito={() => { setMover(null); r.recarregar() }} />}
         {disparo && <DisparoModal comp={comp} pessoas={disparo.pessoas} fechar={() => setDisparo(null)} feito={() => { setDisparo(null); r.recarregar() }} />}
         {auto && <AutomaticoModal comp={comp} fechar={() => setAuto(false)} />}
@@ -105,24 +107,60 @@ export default function KanbanNotas() {
   )
 }
 
+/** Arrasto por ponteiro (mouse, trackpad e toque): o cartão segue o ponteiro e a coluna sob ele recebe a nota. */
+interface Arrasto { c: Cartao; x: number; y: number; dx: number; dy: number; largura: number; ativo: boolean }
+const LIMIAR = 6 // px antes de virar arrasto (um clique continua sendo clique)
+const podeArrastar = (c: Cartao, caps: Quadro['capacidades']) =>
+  c.tipo === 'esperada' ? caps.registrar : caps.mover && DESTINOS[c.coluna].length > 0
+
 function Quadro({ d, busca, abrir, mover, cobrar, registrar }: {
   d: Quadro; busca: string; abrir: (id: string) => void; mover: (c: Cartao, destino: Coluna) => void; cobrar: (pessoaId: string | null) => void; registrar: (c: Cartao) => void
 }) {
-  const [arrastando, setArrastando] = useState<Cartao | null>(null)
+  const [arr, setArr] = useState<Arrasto | null>(null)
   const [sobre, setSobre] = useState<Coluna | null>(null)
+  const ref = useRef<Arrasto | null>(null)
   const termo = busca.trim().toLowerCase()
   const visiveis = useMemo(() => d.cartoes.filter((c) => !termo || [c.pessoaNome, c.fornecedorNome, c.contratoNumero, c.numero].some((x) => x?.toLowerCase().includes(termo))), [d.cartoes, termo])
-  const soltar = (e: DragEvent, col: Coluna) => { e.preventDefault(); setSobre(null); if (arrastando) mover(arrastando, col); setArrastando(null) }
+
+  const colunaEm = (x: number, y: number): Coluna | null => (document.elementFromPoint(x, y)?.closest('[data-coluna]')?.getAttribute('data-coluna') as Coluna | null) ?? null
+  const iniciar = (e: ReactPointerEvent<HTMLElement>, c: Cartao) => {
+    if (e.button !== 0 || !podeArrastar(c, d.capacidades) || (e.target as HTMLElement).closest('button,a,select,input')) return
+    const box = e.currentTarget.getBoundingClientRect()
+    ref.current = { c, x: e.clientX, y: e.clientY, dx: e.clientX - box.left, dy: e.clientY - box.top, largura: box.width, ativo: false }
+    const inicio = { x: e.clientX, y: e.clientY }
+    const mov = (ev: PointerEvent) => {
+      const a = ref.current
+      if (!a) return
+      if (!a.ativo && Math.hypot(ev.clientX - inicio.x, ev.clientY - inicio.y) < LIMIAR) return
+      ev.preventDefault()
+      ref.current = { ...a, x: ev.clientX, y: ev.clientY, ativo: true }
+      setArr(ref.current)
+      setSobre(colunaEm(ev.clientX, ev.clientY))
+    }
+    const fim = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', mov)
+      window.removeEventListener('pointerup', fim)
+      window.removeEventListener('pointercancel', fim)
+      const a = ref.current
+      ref.current = null
+      setArr(null); setSobre(null)
+      if (a?.ativo && ev.type === 'pointerup') { const col = colunaEm(ev.clientX, ev.clientY); if (col && col !== a.c.coluna) mover(a.c, col) }
+    }
+    window.addEventListener('pointermove', mov, { passive: false })
+    window.addEventListener('pointerup', fim)
+    window.addEventListener('pointercancel', fim)
+  }
+
   return (
-    <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
+    <div className={cn('overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-2', arr && 'select-none cursor-grabbing')}>
       <div className="grid grid-cols-5 gap-3 min-w-[1100px]">
         {COLUNAS.map((col) => {
           const cs = visiveis.filter((c) => c.coluna === col.chave)
-          const alvoValido = !!arrastando && DESTINOS[arrastando.coluna].includes(col.chave)
+          const alvoValido = !!arr && DESTINOS[arr.c.coluna].includes(col.chave)
           return (
-            <section key={col.chave} aria-label={col.titulo}
-              onDragOver={(e) => { if (alvoValido) { e.preventDefault(); setSobre(col.chave) } }} onDragLeave={() => setSobre((s) => (s === col.chave ? null : s))} onDrop={(e) => soltar(e, col.chave)}
-              className={cn('rounded-2xl bg-surface-2 border border-line border-t-4 flex flex-col min-h-[320px] transition', col.tom, alvoValido && 'ring-2 ring-brand/40', sobre === col.chave && 'ring-brand bg-brand-50')}>
+            <section key={col.chave} aria-label={col.titulo} data-coluna={col.chave}
+              className={cn('rounded-2xl bg-surface-2 border border-line border-t-4 flex flex-col min-h-[320px] transition', col.tom,
+                alvoValido && 'ring-2 ring-brand/30', alvoValido && sobre === col.chave && 'ring-brand bg-brand-50', arr && !alvoValido && arr.c.coluna !== col.chave && 'opacity-60')}>
               <header className="px-3.5 pt-3 pb-2">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-[13.5px] font-bold text-ink flex items-center gap-1.5"><Icon name={col.icone} className="h-4 w-4 text-muted" />{col.titulo}</h2>
@@ -132,27 +170,32 @@ function Quadro({ d, busca, abrir, mover, cobrar, registrar }: {
                 <p className="text-[12px] font-semibold text-ink-2 tabular-nums mt-1">{dinheiro(d.totais[col.chave].valor)}</p>
               </header>
               <div className="flex-1 px-2.5 pb-3 space-y-2">
-                {cs.length === 0 && <p className="text-[12px] text-muted text-center py-6">Nada aqui.</p>}
+                {cs.length === 0 && <p className={cn('text-[12px] text-muted text-center py-6 rounded-xl', alvoValido && 'border-2 border-dashed border-brand/40')}>{alvoValido ? 'Solte aqui' : 'Nada aqui.'}</p>}
                 {cs.map((c) => <CartaoNota key={c.id} c={c} caps={d.capacidades} abrir={abrir} mover={mover} cobrar={cobrar} registrar={registrar}
-                  onDragStart={() => setArrastando(c)} onDragEnd={() => { setArrastando(null); setSobre(null) }} />)}
+                  arrastando={arr?.c.id === c.id} onPointerDown={(e) => iniciar(e, c)} />)}
               </div>
             </section>
           )
         })}
       </div>
+      {arr && (
+        <div className="fixed z-[300] pointer-events-none rotate-2 opacity-95 shadow-lg rounded-xl" style={{ left: arr.x - arr.dx, top: arr.y - arr.dy, width: arr.largura }}>
+          <CartaoNota c={arr.c} caps={d.capacidades} abrir={() => undefined} mover={() => undefined} cobrar={() => undefined} registrar={() => undefined} fantasma />
+        </div>
+      )}
     </div>
   )
 }
 
-function CartaoNota({ c, caps, abrir, mover, cobrar, registrar, onDragStart, onDragEnd }: {
+function CartaoNota({ c, caps, abrir, mover, cobrar, registrar, onPointerDown, arrastando, fantasma }: {
   c: Cartao; caps: Quadro['capacidades']; abrir: (id: string) => void; mover: (c: Cartao, destino: Coluna) => void; cobrar: (p: string | null) => void; registrar: (c: Cartao) => void
-  onDragStart: () => void; onDragEnd: () => void
+  onPointerDown?: (e: ReactPointerEvent<HTMLElement>) => void; arrastando?: boolean; fantasma?: boolean
 }) {
-  const destinos = DESTINOS[c.coluna]
-  const arrastavel = caps.mover && c.tipo === 'nota' && destinos.length > 0
+  const destinos = DESTINOS[c.coluna].filter((x) => c.tipo === 'nota' || x === 'recebida')
+  const arrastavel = podeArrastar(c, caps)
   return (
-    <article draggable={arrastavel} onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', c.id); onDragStart() }} onDragEnd={onDragEnd}
-      className={cn('bg-surface rounded-xl border border-line p-3 shadow-xs text-[12.5px]', arrastavel && 'cursor-grab active:cursor-grabbing hover:border-brand')}>
+    <article onPointerDown={onPointerDown} title={arrastavel && !fantasma ? 'Arraste para outra coluna' : undefined}
+      className={cn('bg-surface rounded-xl border border-line p-3 shadow-xs text-[12.5px] touch-pan-y', arrastavel && 'cursor-grab hover:border-brand hover:shadow-sm', arrastando && 'opacity-30', fantasma && 'border-brand')}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-semibold text-ink truncate">{c.pessoaNome ?? 'Sem responsável'}</p>
@@ -182,7 +225,7 @@ function CartaoNota({ c, caps, abrir, mover, cobrar, registrar, onDragStart, onD
           {caps.registrar && <Button size="sm" variant="ghost" icon="FilePlus2" className="flex-1" onClick={() => registrar(c)}>Recebi</Button>}
         </div>
       )}
-      {arrastavel && (
+      {arrastavel && !fantasma && c.tipo === 'nota' && (
         <select aria-label={`Mover a NF ${c.numero}`} className="input h-8 text-[12px] mt-2.5 w-full" value="" onChange={(e) => e.target.value && mover(c, e.target.value as Coluna)}>
           <option value="">Mover para…</option>
           {destinos.map((d) => <option key={d} value={d}>{COLUNAS.find((x) => x.chave === d)!.titulo}</option>)}

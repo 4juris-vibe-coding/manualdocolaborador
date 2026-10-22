@@ -7,6 +7,7 @@ import { rotas as painel } from './painel.js'
 import { rotas as disparos } from './disparos.js'
 import { rotas as kanban } from './kanban.js'
 import { rotas as contratosBase } from './contratosBase.js'
+import { rotas as salario } from './salario.js'
 
 // Rotas fixas (ex.: contas/exportar, notas/esperadas) antes das com parâmetro: o roteador usa a primeira que casar.
-export const rotas: Rota[] = [...painel, ...disparos, ...kanban, ...contratosBase, ...cadastros, ...notas, ...contas]
+export const rotas: Rota[] = [...painel, ...disparos, ...kanban, ...contratosBase, ...salario, ...cadastros, ...notas, ...contas]

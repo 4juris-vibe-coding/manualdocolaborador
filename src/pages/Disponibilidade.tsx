@@ -5,8 +5,9 @@ import { PageHeader, Card, CardHead, StatCard, Badge, Button, Icon, EmptyState, 
 import { ConfirmModal } from '@/components/Modal'
 import { feedback } from '@/components/toast'
 import { AgendaTimeline } from '@/components/AgendaTimeline'
+import { CalendarioPeriodos } from '@/components/calendario/CalendarioPeriodos'
 import { PeriodoForm } from '@/components/PeriodoForm'
-import { fmtDate } from '@/lib/utils'
+import { cn, fmtDate } from '@/lib/utils'
 import { diasEntre, hojeISO } from '@/domain/datas'
 import { situacaoPeriodo, indisponivelEm } from '@/domain/disponibilidade'
 
@@ -25,6 +26,7 @@ export default function Disponibilidade() {
   const [form, setForm] = useState<{ aberto: boolean; editar?: PeriodoIndisponibilidade | null }>({ aberto: false })
   const [cancelar, setCancelar] = useState<PeriodoIndisponibilidade | null>(null)
   const [mostrarHistorico, setMostrarHistorico] = useState(false)
+  const [formato, setFormato] = useState<'linha' | 'calendario'>('linha')
 
   const meus = s.periodos.filter((p) => p.colaboradorId === me.id).sort((a, b) => b.inicio.localeCompare(a.inicio))
   const ativosMeus = meus.filter((p) => p.status !== 'cancelado' && p.fim >= hoje).sort((a, b) => a.inicio.localeCompare(b.inicio))
@@ -103,8 +105,18 @@ export default function Disponibilidade() {
       </Card>
 
       <Card>
-        <CardHead title={`Agenda da área · ${s.setorNome(me.setorId)}`} sub="Próximas 6 semanas. Mostra apenas datas e status — observações privadas não aparecem." />
-        <AgendaTimeline pessoas={area} periodos={periodosArea} inicio={hoje} vazio="Ninguém da sua área registrou indisponibilidade nas próximas semanas." />
+        <CardHead title={`Agenda da área · ${s.setorNome(me.setorId)}`} sub={formato === 'linha' ? 'Próximas 6 semanas. Mostra apenas datas e status — observações privadas não aparecem.' : 'Mês a mês. Mostra apenas datas e status — observações privadas não aparecem.'}
+          action={<div className="inline-flex rounded-xl bg-surface-2 border border-line p-0.5" role="group" aria-label="Formato da agenda">
+            {([['linha', 'Linha do tempo', 'CalendarRange'], ['calendario', 'Calendário', 'CalendarDays']] as const).map(([k, rot, ic]) => (
+              <button key={k} type="button" aria-pressed={formato === k} onClick={() => setFormato(k)}
+                className={cn('h-8 px-2.5 rounded-[10px] text-[12.5px] font-semibold flex items-center gap-1.5 transition outline-none focus-visible:ring-2 focus-visible:ring-brand', formato === k ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink')}>
+                <Icon name={ic} className="h-4 w-4" /><span className="hidden sm:inline">{rot}</span>
+              </button>
+            ))}
+          </div>} />
+        {formato === 'linha'
+          ? <AgendaTimeline pessoas={area} periodos={periodosArea} inicio={hoje} vazio="Ninguém da sua área registrou indisponibilidade nas próximas semanas." />
+          : <CalendarioPeriodos pessoas={area} periodos={periodosArea} textoVazio="Ninguém da sua área indisponível neste mês." />}
         {area.filter((c) => c.id !== me.id).some((c) => periodosArea.some((p) => p.colaboradorId === c.id && p.status !== 'cancelado' && p.fim >= hoje && p.mensagemEquipe)) && (
           <div className="border-t border-line p-4 space-y-2">
             <div className="text-[11px] font-bold uppercase tracking-wide text-muted">Mensagens para a equipe</div>

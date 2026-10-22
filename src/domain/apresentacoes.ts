@@ -110,6 +110,8 @@ export const MODELOS_EDITOR_LIVRE = [
   { id: 'novas-contratacoes', nome: 'Novas contratações', descricao: 'Abertura e grade de pessoas com foto.', icone: 'Users' },
   { id: 'aniversariantes', nome: 'Aniversariantes do mês', descricao: 'Fotos e datas em fundo claro.', icone: 'Cake' },
   { id: 'destaque-mes', nome: 'Destaque do mês', descricao: 'Homenagem a uma pessoa, com foto.', icone: 'Trophy' },
+  { id: 'aniversario', nome: 'Feliz aniversário', descricao: 'Homenagem individual com nome, área e data.', icone: 'Cake' },
+  { id: 'marco-parceria', nome: 'Marco de parceria', descricao: 'Anos de parceria com a 4JURIS.', icone: 'Handshake' },
   { id: 'evento', nome: 'Convite de evento', descricao: 'Foto de fundo com data, hora e local.', icone: 'CalendarDays' },
   { id: 'comunicado', nome: 'Comunicado com imagem', descricao: 'Imagem de um lado, texto do outro.', icone: 'FileText' },
   { id: 'galeria', nome: 'Galeria do evento', descricao: 'Até 4 fotos com legenda.', icone: 'Heart' },

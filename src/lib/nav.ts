@@ -1,8 +1,11 @@
 /* ============================================================
-   4JURIS Pessoas · Navegação (uma plataforma, três áreas)
-   - Área pessoal: todo participante.
-   - Liderança: coordenação das próprias áreas.
-   - RH e Administração: ferramentas administrativas.
+   4JURIS Pessoas · Navegação (uma plataforma, áreas por função)
+   - Meu espaço: o que toda pessoa usa como colaborador(a) — inclusive
+     quem é do financeiro, RH ou liderança (enviar a própria nota etc.).
+   - Liderança, Financeiro, RH & Pessoas e Administração: ferramentas
+     da função, cada uma numa área separada do menu.
+   Uma tela aparece em um só lugar; telas equivalentes foram unidas
+   (abas) ou ficam só no modo em que fazem sentido (soApi/soDemo).
    O acesso de cada item vem da matriz em src/domain/permissions.ts.
    ============================================================ */
 import { canAny, type Capacidade } from '@/domain/permissions'
@@ -20,16 +23,19 @@ export interface NavItem {
   oculto?: boolean
   /** Só existe com o banco conectado (módulos que gravam no servidor). */
   soApi?: boolean
+  /** Só no modo demonstração: com o banco, outra tela (v2) faz o mesmo papel. */
+  soDemo?: boolean
 }
 
-export const permitido = (papel: Papel, i: NavItem) => (!i.soApi || MODO_API) && (!i.cap || canAny(papel, Array.isArray(i.cap) ? i.cap : [i.cap]))
+export const permitido = (papel: Papel, i: NavItem) => (!i.soApi || MODO_API) && (!i.soDemo || !MODO_API) && (!i.cap || canAny(papel, Array.isArray(i.cap) ? i.cap : [i.cap]))
 export interface NavGroup {
   title: string
-  area: 'pessoal' | 'lideranca' | 'rh' | 'admin'
+  area: 'pessoal' | 'lideranca' | 'financeiro' | 'rh' | 'admin'
   items: NavItem[]
 }
 
 export const NAV: NavGroup[] = [
+  /* ---------- MEU ESPAÇO: o que toda pessoa usa como colaborador(a) ---------- */
   {
     title: 'Início', area: 'pessoal',
     items: [
@@ -38,14 +44,15 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
-    title: 'Meu espaço', area: 'pessoal',
+    title: 'Meu trabalho', area: 'pessoal',
     items: [
       { to: '/perfil', label: 'Meu perfil', icon: 'UserCircle', desc: 'Dados, contrato, documentos e privacidade.' },
       { to: '/disponibilidade', label: 'Disponibilidade', icon: 'Palmtree', desc: 'Descanso combinado e períodos de indisponibilidade.' },
-      { to: '/notas', label: 'Notas fiscais', icon: 'FileText', desc: 'Envio e acompanhamento das NFs de serviço.' },
+      { to: '/notas', label: 'Minhas notas fiscais', icon: 'FileText', desc: 'Envio e acompanhamento das NFs de serviço.' },
       { to: '/reembolsos', label: 'Reembolsos', icon: 'ReceiptText', desc: 'Reembolso de despesas vinculadas aos serviços.' },
       { to: '/meus-contratos', label: 'Meus contratos', icon: 'FileSignature', desc: 'Contratos de prestação de serviços em que você é contratada(o).', soApi: true },
       { to: '/meus-documentos', label: 'Meus documentos', icon: 'FolderLock', desc: 'Envio e acompanhamento dos seus documentos.', soApi: true },
+      { to: '/avaliacoes', label: 'Avaliações', icon: 'ClipboardCheck', desc: 'Avaliações para responder e seus resultados.' },
     ],
   },
   {
@@ -58,7 +65,6 @@ export const NAV: NavGroup[] = [
       { to: '/gamificacao', label: 'Reconhecimento', icon: 'Trophy', desc: 'Reconhecimentos, desafios e iniciativas.' },
       { to: '/pesquisas', label: 'Pesquisas', icon: 'MessagesSquare', desc: 'Pesquisas voluntárias e anônimas.' },
       { to: '/sugestoes', label: 'Caixa de sugestões', icon: 'Lightbulb', desc: 'Ideias anônimas da comunidade e seu andamento.' },
-      { to: '/avaliacoes', label: 'Avaliações', icon: 'ClipboardCheck', desc: 'Avaliações para responder e seus resultados.' },
     ],
   },
   {
@@ -74,34 +80,65 @@ export const NAV: NavGroup[] = [
       { to: '/beneficios', label: 'Vantagens & parcerias', icon: 'Gift', desc: 'Parcerias e condições opcionais.' },
     ],
   },
+  /* ---------- LIDERANÇA ---------- */
   {
     title: 'Liderança', area: 'lideranca',
     items: [
       { to: '/lideranca', label: 'Painel da liderança', icon: 'UserCog', desc: 'Equipe, disponibilidade, objetivos e integração.', cap: 'lideranca:painel' },
       { to: '/financeiro/notas', label: 'Aceite de serviços', icon: 'BadgeCheck', desc: 'Notas fiscais dos contratos que você gere, para aceitar ou devolver.', cap: 'lideranca:painel', soApi: true },
       { to: '/rh/feedbacks', label: 'Feedbacks', icon: 'MessageSquareText', desc: 'Feedbacks de alinhamento sobre as entregas.', cap: 'feedbacks:registrar' },
-      // Também para quem só aprova (diretoria, aprovação financeira, analista de RH): o servidor limita ao que cabe a cada um.
       { to: '/recrutamento/vagas', label: 'Vagas e aprovações', icon: 'BadgePlus', desc: 'Solicite vagas, acompanhe e decida aprovações.', cap: ['vagas:solicitar', 'vagas:ver'] },
     ],
   },
+  /* ---------- FINANCEIRO: notas, pagamentos e contratos de prestadores ---------- */
+  {
+    title: 'Notas & pagamentos', area: 'financeiro',
+    items: [
+      { to: '/financeiro/kanban', label: 'Notas fiscais', icon: 'KanbanSquare', desc: 'Kanban das notas de todos, lista para conferência e cobranças.', cap: 'fin:ver', soApi: true },
+      { to: '/financeiro/contas', label: 'Contas a pagar', icon: 'Wallet', desc: 'Retenções, autorização, registro de pagamento e conciliação.', cap: 'fin:ver', soApi: true },
+      { to: '/financeiro', label: 'Painel financeiro', icon: 'Landmark', desc: 'Contratado, faturado, aprovado, previsto e pago; alertas e agenda.', cap: 'fin:ver', soApi: true },
+    ],
+  },
+  {
+    title: 'Prestadores', area: 'financeiro',
+    items: [
+      { to: '/financeiro/contratos', label: 'Contratos', icon: 'FileSignature', desc: 'Contratos PJ: vigência, aditivos, renovação e encerramento.', cap: 'fin:ver', soApi: true },
+      { to: '/financeiro/fornecedores', label: 'Fornecedores', icon: 'Building2', desc: 'Empresas e autônomos contratados, dados fiscais e de pagamento.', cap: 'fin:ver', soApi: true },
+      { to: '/financeiro/documentos', label: 'Documentos', icon: 'FolderLock', desc: 'Documentos com arquivo: conferência, validade e substituição.', cap: 'fin:ver', soApi: true },
+      { to: '/financeiro/config', label: 'Configurações financeiras', icon: 'Settings2', desc: 'Segregação de funções, alertas e centros de custo.', cap: 'fin:ver', soApi: true },
+    ],
+  },
+  /* ---------- RH & PESSOAS ---------- */
   {
     title: 'Visão geral', area: 'rh',
     items: [
       { to: '/rh', label: 'Indicadores', icon: 'BarChart3', desc: 'Indicadores com definição, fonte e período.', cap: 'rh:painel' },
       { to: '/rh/analytics', label: 'People Analytics', icon: 'LineChart', desc: 'Recrutamento, pesquisas e estrutura em um só painel.', cap: 'analytics:ver' },
+      { to: '/rh/relatorios', label: 'Relatórios', icon: 'PieChart', desc: 'Perfil da comunidade, rotatividade e encerramentos.', cap: 'rh:painel' },
     ],
   },
   {
-    title: 'Gestão de prestadores', area: 'rh',
+    title: 'Pessoas', area: 'rh',
     items: [
-      { to: '/financeiro/kanban', label: 'Kanban de notas', icon: 'KanbanSquare', desc: 'Quem já mandou a nota, quem falta, cobranças e pagamentos, por competência.', cap: 'fin:ver', soApi: true },
-      { to: '/financeiro', label: 'Painel financeiro', icon: 'Landmark', desc: 'Contratado, faturado, aprovado, previsto e pago; alertas e agenda.', cap: 'fin:ver', soApi: true },
-      { to: '/financeiro/contratos', label: 'Contratos', icon: 'FileSignature', desc: 'Contratos PJ: vigência, aditivos, renovação e encerramento.', cap: 'fin:ver', soApi: true },
-      { to: '/financeiro/fornecedores', label: 'Fornecedores', icon: 'Building2', desc: 'Empresas e autônomos contratados, dados fiscais e de pagamento.', cap: 'fin:ver', soApi: true },
-      { to: '/financeiro/notas', label: 'Notas fiscais', icon: 'FileCheck2', desc: 'Conferência e aceite das notas de serviço.', cap: 'fin:ver', soApi: true },
-      { to: '/financeiro/contas', label: 'Contas a pagar', icon: 'Wallet', desc: 'Retenções, autorização, registro de pagamento e conciliação.', cap: 'fin:ver', soApi: true },
-      { to: '/financeiro/documentos', label: 'Documentos', icon: 'FolderLock', desc: 'Repositório com conferência, validade e substituição.', cap: ['fin:ver', 'documentos:gerenciar'], soApi: true },
-      { to: '/financeiro/config', label: 'Configurações financeiras', icon: 'Settings2', desc: 'Segregação de funções, alertas e centros de custo.', cap: 'fin:ver', soApi: true },
+      { to: '/rh/pessoas', label: 'Pessoas & contratos', icon: 'Users', desc: 'Cadastro, contratos, registros e encerramentos.', cap: 'pessoas:gerenciar' },
+      { to: '/rh/jornadas', label: 'Integração & encerramento', icon: 'ListChecks', desc: 'Checklists e acompanhamento por pessoa.', cap: 'onboarding:gerenciar' },
+      { to: '/rh/registros', label: 'Registros', icon: 'NotebookPen', desc: 'Registros administrativos e análise.', cap: 'pessoas:gerenciar' },
+      { to: '/financeiro/documentos', label: 'Documentos', icon: 'FolderLock', desc: 'Documentos pessoais e contratuais: conferência, validade e substituição.', cap: ['fin:ver', 'documentos:gerenciar'], soApi: true },
+      { to: '/rh/documentos', label: 'Documentos', icon: 'FolderLock', desc: 'Documentos, validades e pendências.', cap: 'documentos:gerenciar', soDemo: true },
+      { to: '/rh/exigencias', label: 'Exigências & certificações', icon: 'ShieldPlus', desc: 'Certificações, exames exigidos por clientes e validades.', cap: 'documentos:gerenciar' },
+      { to: '/rh/disponibilidade', label: 'Agenda de disponibilidade', icon: 'CalendarRange', desc: 'Visão geral e política de disponibilidade.', cap: 'disponibilidade:configurar' },
+    ],
+  },
+  {
+    title: 'Estrutura & cargos', area: 'rh',
+    items: [
+      { to: '/rh/estrutura', label: 'Departamentos & unidades', icon: 'Building2', desc: 'Departamentos, líderes, cargos, unidades e organograma.', cap: 'estrutura:gerenciar' },
+      { to: '/cargos', label: 'Catálogo de cargos', icon: 'Layers3', desc: 'Fichas oficiais, famílias, trilhas e níveis.', cap: 'cargos:ver' },
+      { to: '/rh/funcoes', label: 'Engenharia de funções', icon: 'Briefcase', desc: 'Funções, atividades, faixas de valor e perfil ideal.', cap: 'estrutura:gerenciar' },
+      { to: '/cargos/matriz', label: 'Matriz de competências', icon: 'Grid3x3', desc: 'Competências esperadas por cargo e nível.', cap: 'cargos:ver' },
+      { to: '/rh/competencias', label: 'Competências avaliadas', icon: 'Layers', desc: 'Grupos de competências e pesos por função.', cap: 'desenvolvimento:gerenciar' },
+      { to: '/cargos/faixas', label: 'Faixas salariais', icon: 'Coins', desc: 'Faixas por cargo, com vigência e histórico.', cap: 'cargos:ver_faixas' },
+      { to: '/cargos/governanca', label: 'Governança de cargos', icon: 'ShieldCheck', desc: 'Aprovações, versões e duplicidades.', cap: ['cargos:gerenciar', 'cargos:aprovar'] },
     ],
   },
   {
@@ -118,38 +155,17 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
-    title: 'Central de pesquisas', area: 'rh',
+    title: 'Pesquisas', area: 'rh',
     items: [
       { to: '/pesquisas-rh', label: 'Painel de pesquisas', icon: 'LayoutDashboard', desc: 'Participação, prazos e resultados.', cap: 'pesq:gerenciar' },
       { to: '/pesquisas-rh/lista', label: 'Pesquisas', icon: 'ClipboardList', desc: 'Criar, distribuir e acompanhar pesquisas.', cap: ['pesq:gerenciar', 'pesq:resultados'] },
       { to: '/pesquisas-rh/modelos', label: 'Biblioteca de modelos', icon: 'LibraryBig', desc: 'eNPS, clima, liderança, onboarding e mais.', cap: 'pesq:gerenciar' },
+      { to: '/rh/pesquisas', label: 'Gestão de pesquisas', icon: 'ClipboardList', desc: 'Criação e resultados agregados.', cap: 'pesquisas:gerenciar', soDemo: true },
     ],
   },
   {
-    title: 'Arquitetura de cargos', area: 'rh',
+    title: 'Desenvolvimento', area: 'rh',
     items: [
-      { to: '/cargos', label: 'Catálogo de cargos', icon: 'Layers3', desc: 'Fichas oficiais, famílias, trilhas e níveis.', cap: 'cargos:ver' },
-      { to: '/cargos/matriz', label: 'Matriz de competências', icon: 'Grid3x3', desc: 'Competências esperadas por cargo e nível.', cap: 'cargos:ver' },
-      { to: '/cargos/faixas', label: 'Faixas salariais', icon: 'Coins', desc: 'Faixas por cargo, com vigência e histórico.', cap: 'cargos:ver_faixas' },
-      { to: '/cargos/governanca', label: 'Governança de cargos', icon: 'ShieldCheck', desc: 'Aprovações, versões e duplicidades.', cap: ['cargos:gerenciar', 'cargos:aprovar'] },
-    ],
-  },
-  {
-    title: 'Gestão de talentos', area: 'rh',
-    items: [
-      { to: '/rh/pessoas', label: 'Pessoas & contratos', icon: 'Users', desc: 'Cadastro, contratos, registros e encerramentos.', cap: 'pessoas:gerenciar' },
-      { to: '/rh/estrutura', label: 'Departamentos & cargos', icon: 'Building2', desc: 'Departamentos, líderes, cargos, unidades e organograma.', cap: 'estrutura:gerenciar' },
-      { to: '/rh/funcoes', label: 'Engenharia de funções', icon: 'Briefcase', desc: 'Funções, atividades, faixas de valor e perfil ideal.', cap: 'estrutura:gerenciar' },
-      { to: '/rh/registros', label: 'Registros', icon: 'NotebookPen', desc: 'Registros administrativos e análise.', cap: 'pessoas:gerenciar' },
-      { to: '/rh/jornadas', label: 'Integração & encerramento', icon: 'ListChecks', desc: 'Checklists e acompanhamento por pessoa.', cap: 'onboarding:gerenciar' },
-      { to: '/rh/documentos', label: 'Documentos', icon: 'FolderLock', desc: 'Documentos, validades e pendências.', cap: 'documentos:gerenciar' },
-      { to: '/rh/exigencias', label: 'Exigências & certificações', icon: 'ShieldPlus', desc: 'Certificações, exames exigidos por clientes e validades.', cap: 'documentos:gerenciar' },
-    ],
-  },
-  {
-    title: 'Desenvolvimento & performance', area: 'rh',
-    items: [
-      { to: '/rh/competencias', label: 'Competências', icon: 'Layers', desc: 'Grupos de competências e pesos por função.', cap: 'desenvolvimento:gerenciar' },
       { to: '/rh/avaliacoes', label: 'Ciclos de avaliação', icon: 'ClipboardCheck', desc: 'Ciclos 90°, 180°, 360° e relatórios.', cap: 'desenvolvimento:gerenciar' },
       { to: '/rh/inicio-parceria', label: 'Início de parceria', icon: 'Sprout', desc: 'Avaliações nos primeiros 30, 60 e 90 dias.', cap: 'desenvolvimento:gerenciar' },
       { to: '/rh/metas', label: 'Metas', icon: 'Target', desc: 'Metas e objetivos das áreas.', cap: 'desenvolvimento:gerenciar' },
@@ -161,23 +177,14 @@ export const NAV: NavGroup[] = [
     title: 'Engajamento & benefícios', area: 'rh',
     items: [
       { to: '/rh/beneficios', label: 'Benefícios', icon: 'HeartHandshake', desc: 'Cadastro de benefícios, beneficiários e dependentes.', cap: 'beneficios:gerenciar' },
-      { to: '/rh/pesquisas', label: 'Gestão de pesquisas', icon: 'ClipboardList', desc: 'Criação e resultados agregados.', cap: 'pesquisas:gerenciar' },
       { to: '/rh/gamificacao', label: 'Gestão da gamificação', icon: 'SlidersHorizontal', desc: 'Regras, desafios, conquistas e histórico.', cap: 'gamificacao:configurar' },
       { to: '/rh/cultura', label: 'Cultura organizacional', icon: 'Sparkle', desc: 'Propósito, missão, visão e valores.', cap: 'estrutura:gerenciar' },
+      { to: '/rh/faturamento', label: 'Faturamento', icon: 'Landmark', desc: 'Notas fiscais e reembolsos por competência.', cap: 'financeiro:gerenciar', soDemo: true },
     ],
   },
+  /* ---------- ADMINISTRAÇÃO DA PLATAFORMA ---------- */
   {
-    title: 'Relatórios', area: 'rh',
-    items: [
-      { to: '/rh/metricas', label: 'Métricas de pessoas', icon: 'PieChart', desc: 'Perfil da comunidade e da organização.', cap: 'rh:painel' },
-      { to: '/rh/rotatividade', label: 'Rotatividade', icon: 'RefreshCw', desc: 'Entradas, encerramentos e taxa por período.', cap: 'rh:painel' },
-      { to: '/rh/encerramentos', label: 'Métricas de encerramento', icon: 'UserMinus', desc: 'Motivos, áreas e duração das parcerias encerradas.', cap: 'rh:painel' },
-      { to: '/rh/faturamento', label: 'Faturamento', icon: 'Landmark', desc: 'Notas fiscais e reembolsos por competência.', cap: 'financeiro:gerenciar' },
-      { to: '/rh/disponibilidade', label: 'Agenda de disponibilidade', icon: 'CalendarRange', desc: 'Visão geral e política de disponibilidade.', cap: 'disponibilidade:configurar' },
-    ],
-  },
-  {
-    title: 'Configurações', area: 'admin',
+    title: 'Administração', area: 'admin',
     items: [
       { to: '/admin', label: 'Usuários & acessos', icon: 'ShieldCheck', desc: 'Papéis, permissões e dados de demonstração.', cap: 'admin:usuarios' },
       { to: '/admin/funcoes', label: 'Funções adicionais', icon: 'UserCheck', desc: 'Recrutadores, analistas de RH e responsáveis por pesquisas.', cap: 'admin:usuarios' },
@@ -189,6 +196,12 @@ export const NAV: NavGroup[] = [
 
 /** Rotas fora do menu. */
 export const EXTRAS: NavItem[] = [
+  // Relatórios: as telas seguem acessíveis direto (links antigos) e como abas de /rh/relatorios.
+  { to: '/rh/metricas', label: 'Métricas de pessoas', icon: 'PieChart', desc: '', cap: 'rh:painel', oculto: true },
+  { to: '/rh/rotatividade', label: 'Rotatividade', icon: 'RefreshCw', desc: '', cap: 'rh:painel', oculto: true },
+  { to: '/rh/encerramentos', label: 'Métricas de encerramento', icon: 'UserMinus', desc: '', cap: 'rh:painel', oculto: true },
+  // Lista de notas do financeiro (aba do kanban) e links das notificações (?nota=…).
+  { to: '/financeiro/notas', label: 'Notas fiscais', icon: 'FileCheck2', desc: '', cap: 'fin:ver', oculto: true, soApi: true },
   { to: '/notificacoes', label: 'Notificações', icon: 'Bell', desc: 'Tudo o que aconteceu recentemente.' },
   // Entrevistador(a) designado(a) sem acesso ao ATS chega aqui pela notificação; o servidor mostra só as entrevistas de que participa.
   { to: '/recrutamento/entrevistas', label: 'Entrevistas', icon: 'CalendarClock', desc: '', oculto: true },

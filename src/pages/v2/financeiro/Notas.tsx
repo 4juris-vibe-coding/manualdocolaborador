@@ -18,20 +18,23 @@ export interface NotaLinha {
 }
 const ROTULO_HIST: Record<string, string> = { enviada: 'Enviada', conferida: 'Conferida', devolvida: 'Devolvida', reenviada: 'Reenviada', aprovada: 'Serviço aceito', cancelada: 'Cancelada' }
 
-export default function NotasFinanceiro() {
-  const f = useFiltros(['aba', 'q', 'status', 'competencia', 'fornecedor', 'divergencia', 'pendentes', 'nota', 'pagina'])
+/** `embutido`: dentro da tela de notas do financeiro (aba Lista), sem o próprio cabeçalho. */
+export default function NotasFinanceiro({ embutido = false }: { embutido?: boolean }) {
+  // Embutida, a sub-aba usa outro parâmetro: `aba` é da tela que a contém.
+  const ABA = embutido ? 'sub' : 'aba'
+  const f = useFiltros(['aba', 'sub', 'q', 'status', 'competencia', 'fornecedor', 'divergencia', 'pendentes', 'nota', 'pagina'])
   const op = useOpcoesFin()
-  const aba = f.valores.aba || (f.valores.pendentes ? 'pendentes' : 'todas')
-  const consulta = (() => { const u = new URLSearchParams(f.consulta.slice(1)); u.delete('aba'); u.delete('nota'); if (aba === 'pendentes') u.set('pendentes', '1'); else u.delete('pendentes'); const s = u.toString(); return s ? `?${s}` : '' })()
+  const aba = f.valores[ABA] || (f.valores.pendentes ? 'pendentes' : 'todas')
+  const consulta = (() => { const u = new URLSearchParams(f.consulta.slice(1)); u.delete('aba'); u.delete('sub'); u.delete('nota'); if (aba === 'pendentes') u.set('pendentes', '1'); else u.delete('pendentes'); const s = u.toString(); return s ? `?${s}` : '' })()
   const r = useApi<{ itens: NotaLinha[]; total: number; pagina: number; por: number; porStatus: Record<string, number> }>(aba === 'esperadas' ? null : `financeiro/notas${consulta}`)
   const esp = useApi<{ competencia: string; itens: { contratoId: string; contratoNumero: string; fornecedorNome: string; prestadorNome: string | null; valor: number }[] }>(aba === 'esperadas' && op.dados?.capacidades.ver ? `financeiro/notas/esperadas${f.valores.competencia ? `?competencia=${f.valores.competencia}` : ''}` : null)
   return (
     <>
-      <PageHeader title="Notas fiscais de serviço" subtitle="Recebimento, conferência documental, aceite do serviço e geração da conta a pagar." />
+      {!embutido && <PageHeader title="Notas fiscais de serviço" subtitle="Recebimento, conferência documental, aceite do serviço e geração da conta a pagar." />}
       <SoComBanco>
         <Callout tone="neutral" icon="Info" className="mb-4">{AVISO_INTEGRACOES}</Callout>
-        <Tabs tabs={[{ key: 'pendentes', label: 'Minhas pendências' }, { key: 'todas', label: 'Todas' }, ...(op.dados?.capacidades.ver ? [{ key: 'esperadas', label: 'Esperadas e não recebidas' }] : [])]}
-          active={aba} onChange={(k) => f.definir('aba', k)} />
+        <Tabs tabs={[{ key: 'pendentes', label: 'Minhas pendências' }, { key: 'todas', label: 'Todas' }, ...(op.dados?.capacidades.ver && !embutido ? [{ key: 'esperadas', label: 'Esperadas e não recebidas' }] : [])]}
+          active={aba} onChange={(k) => f.definir(ABA, k)} />
         <div className="flex flex-wrap gap-2.5 mb-4">
           {aba !== 'esperadas' && <SearchBox value={f.valores.q} onChange={(v) => f.definir('q', v)} placeholder="Número, fornecedor ou contrato" />}
           {aba === 'todas' && <Select label="Situação" value={f.valores.status} onChange={(v) => f.definir('status', v)}><option value="">Todas</option>{Object.entries(MAPA_STATUS_NOTA).map(([k, v]) => <option key={k} value={k}>{v.rotulo}</option>)}</Select>}

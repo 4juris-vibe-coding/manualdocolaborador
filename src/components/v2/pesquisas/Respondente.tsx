@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Callout, Card, Icon, Logo, Progress } from '@/components/ui'
 import { CampoPergunta } from './CampoPergunta'
-import { perguntasVisiveis, validarRespostas, type PerguntaPesquisa, type Respostas } from '@/domain/v2/pesquisaTipos'
+import { paginasDeResposta, perguntasVisiveis, validarRespostas, type PerguntaPesquisa, type Respostas } from '@/domain/v2/pesquisaTipos'
 
 export interface DadosResposta {
   pesquisaId?: string
@@ -44,13 +44,17 @@ export function Respondente({ dados, previa, onEnviar, onProgresso, chaveLocal }
   })
   const [idx, setIdx] = useState(-1) // -1 = introdução
   const [erro, setErro] = useState<string>()
+  const [errosCampo, setErrosCampo] = useState<Record<string, string>>({})
   const [enviando, setEnviando] = useState(false)
   const [final, setFinal] = useState<string | null>(null)
   const topo = useRef<HTMLHeadingElement>(null)
 
   const visiveis = useMemo(() => perguntasVisiveis(dados.perguntas, respostas), [dados.perguntas, respostas])
-  const atual = idx >= 0 ? visiveis[Math.min(idx, visiveis.length - 1)] : undefined
-  const ultima = idx >= visiveis.length - 1
+  const paginas = useMemo(() => paginasDeResposta(visiveis), [visiveis])
+  const pagina = idx >= 0 ? paginas[Math.min(idx, paginas.length - 1)] : undefined
+  const ultima = idx >= paginas.length - 1
+  const porPagina = paginas.some((pg) => pg.perguntas.length > 1)
+  const paginaDe = (perguntaId: string) => paginas.findIndex((pg) => pg.perguntas.some((q) => q.id === perguntaId))
 
   useEffect(() => { topo.current?.focus() }, [idx, final])
   useEffect(() => {
@@ -58,17 +62,21 @@ export function Respondente({ dados, previa, onEnviar, onProgresso, chaveLocal }
     try { localStorage.setItem(chaveLocal, JSON.stringify(respostas)) } catch { /* sem armazenamento */ }
   }, [respostas, chaveLocal, previa, final])
 
-  const mudar = (id: string, v: Respostas[string]) => { setRespostas((r) => ({ ...r, [id]: v })); setErro(undefined) }
+  const mudar = (id: string, v: Respostas[string]) => { setRespostas((r) => ({ ...r, [id]: v })); setErro(undefined); setErrosCampo((e) => { if (!e[id]) return e; const { [id]: _, ...resto } = e; return resto }) }
 
+  /** Valida todas as perguntas da página atual; os erros aparecem junto de cada pergunta. */
   function validarAtual(): boolean {
-    if (!atual) return true
-    const v = respostas[atual.id]
-    if (vazio(v)) {
-      if (atual.obrigatoria) { setErro('Esta pergunta é obrigatória.'); return false }
-      return true
+    if (!pagina) return true
+    const e: Record<string, string> = {}
+    for (const q of pagina.perguntas) {
+      const v = respostas[q.id]
+      if (vazio(v)) { if (q.obrigatoria) e[q.id] = 'Esta pergunta é obrigatória.'; continue }
+      const r = validarRespostas([{ ...q, condicao: undefined }], { [q.id]: v })
+      if (r.erros[q.id]) e[q.id] = r.erros[q.id]
     }
-    const r = validarRespostas([{ ...atual, condicao: undefined }], { [atual.id]: v })
-    if (r.erros[atual.id]) { setErro(r.erros[atual.id]); return false }
+    setErrosCampo(e)
+    const n = Object.keys(e).length
+    if (n) { setErro(pagina.perguntas.length > 1 ? `Revise ${n === 1 ? 'a pergunta indicada' : `as ${n} perguntas indicadas`}.` : Object.values(e)[0]); return false }
     return true
   }
 
@@ -81,17 +89,17 @@ export function Respondente({ dados, previa, onEnviar, onProgresso, chaveLocal }
   async function enviar() {
     if (!validarAtual()) return
     const { erros, limpas } = validarRespostas(dados.perguntas, respostas)
-    const primeiroErro = visiveis.findIndex((p) => erros[p.id])
-    if (primeiroErro >= 0) { setIdx(primeiroErro); setErro(erros[visiveis[primeiroErro].id]); return }
+    const primeiroErro = visiveis.find((p) => erros[p.id])
+    if (primeiroErro) { setIdx(paginaDe(primeiroErro.id)); setErrosCampo(erros); setErro(erros[primeiroErro.id]); return }
     if (previa) { setErro('Pré-visualização: nada foi enviado.'); return }
     setEnviando(true)
     try {
       const r = await onEnviar!(limpas)
       if (r.ok) { setFinal(r.mensagemFinal || 'Obrigado por responder!'); if (chaveLocal) { try { localStorage.removeItem(chaveLocal) } catch { /* ok */ } } }
       else {
-        const k = r.campos ? visiveis.findIndex((p) => r.campos![p.id]) : -1
-        if (k >= 0) setIdx(k)
-        setErro(r.campos && k >= 0 ? r.campos[visiveis[k].id] : r.erro ?? 'Não foi possível enviar. Tente novamente.')
+        const q = r.campos ? visiveis.find((p) => r.campos![p.id]) : undefined
+        if (q) { setIdx(paginaDe(q.id)); setErrosCampo(r.campos!) }
+        setErro(q ? r.campos![q.id] : r.erro ?? 'Não foi possível enviar. Tente novamente.')
       }
     } finally { setEnviando(false) }
   }
@@ -139,28 +147,38 @@ export function Respondente({ dados, previa, onEnviar, onProgresso, chaveLocal }
     )
   }
 
-  const pct = ((idx + 1) / Math.max(1, visiveis.length)) * 100
+  const pct = ((idx + 1) / Math.max(1, paginas.length)) * 100
+  const rotuloEtapa = `${porPagina ? 'Página' : 'Pergunta'} ${idx + 1} de ${paginas.length}`
+  const umaSo = pagina?.perguntas.length === 1
   return casca(
     <Card className="p-5 sm:p-8">
-      {dados.barraProgresso && (
-        <div className="mb-6" aria-label={`Pergunta ${idx + 1} de ${visiveis.length}`}>
-          <div className="flex justify-between text-[12px] text-muted mb-1.5"><span>Pergunta {idx + 1} de {visiveis.length}</span><span>{Math.round(pct)}%</span></div>
+      {dados.barraProgresso && paginas.length > 1 && (
+        <div className="mb-6" aria-label={rotuloEtapa}>
+          <div className="flex justify-between text-[12px] text-muted mb-1.5"><span>{rotuloEtapa}</span><span>{Math.round(pct)}%</span></div>
           <Progress value={pct} />
         </div>
       )}
-      {atual && (
-        <fieldset className="border-0 p-0 m-0 min-w-0">
-          <legend className="w-full">
-            <h2 ref={topo} tabIndex={-1} className="text-[18px] sm:text-[20px] font-bold text-ink leading-snug outline-none">{atual.texto}{atual.obrigatoria && <span className="text-danger ml-1" aria-hidden>*</span>}</h2>
-            {atual.descricao && <p className="text-[13px] text-muted mt-1.5">{atual.descricao}</p>}
-            {!atual.obrigatoria && <p className="text-[12px] text-muted mt-1">Opcional</p>}
-          </legend>
-          <div className="mt-5"><CampoPergunta pergunta={atual} valor={respostas[atual.id]} onChange={(v) => mudar(atual.id, v)} /></div>
-        </fieldset>
+      {pagina?.secao && !umaSo && <h2 ref={topo} tabIndex={-1} className="text-[13px] font-bold uppercase tracking-wide text-brand mb-5 outline-none">{pagina.secao}</h2>}
+      {pagina && (
+        <div className={umaSo ? '' : 'space-y-8'}>
+          {pagina.perguntas.map((q, k) => (
+            <fieldset key={q.id} className="border-0 p-0 m-0 min-w-0" aria-invalid={!!errosCampo[q.id]}>
+              <legend className="w-full">
+                {pagina.secao && umaSo && <div className="text-[12px] font-bold uppercase tracking-wide text-brand mb-2">{pagina.secao}</div>}
+                {/* O foco vai para o título da seção (se houver) ou para a primeira pergunta. */}
+                <h2 ref={k === 0 && (umaSo || !pagina.secao) ? topo : undefined} tabIndex={-1} className={`${umaSo ? 'text-[18px] sm:text-[20px]' : 'text-[16px] sm:text-[17px]'} font-bold text-ink leading-snug outline-none`}>{q.texto}{q.obrigatoria && <span className="text-danger ml-1" aria-hidden>*</span>}</h2>
+                {q.descricao && <p className="text-[13px] text-muted mt-1.5">{q.descricao}</p>}
+                {!q.obrigatoria && <p className="text-[12px] text-muted mt-1">Opcional</p>}
+              </legend>
+              <div className={umaSo ? 'mt-5' : 'mt-3'}><CampoPergunta pergunta={q} valor={respostas[q.id]} onChange={(v) => mudar(q.id, v)} /></div>
+              {!umaSo && errosCampo[q.id] && <p className="text-[12.5px] text-danger font-medium mt-2">{errosCampo[q.id]}</p>}
+            </fieldset>
+          ))}
+        </div>
       )}
       {erro && <p role="alert" className="text-[13px] text-danger font-medium mt-4">{erro}</p>}
       <div className="mt-8 flex items-center justify-between gap-3">
-        <Button variant="ghost" icon="ArrowLeft" onClick={() => { setErro(undefined); setIdx((i) => i - 1) }}>Voltar</Button>
+        <Button variant="ghost" icon="ArrowLeft" onClick={() => { setErro(undefined); setErrosCampo({}); setIdx((i) => i - 1) }}>Voltar</Button>
         {ultima
           ? <Button size="lg" icon="Send" onClick={enviar} disabled={enviando}>{enviando ? 'Enviando…' : 'Enviar respostas'}</Button>
           : <Button size="lg" icon="ArrowRight" onClick={avancar}>Próxima</Button>}

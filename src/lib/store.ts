@@ -129,7 +129,7 @@ interface AppState extends DB {
   setPreview: (v: boolean) => void
   // ----- pessoas
   salvarPessoa: (input: PessoaInput, id?: string) => Resultado
-  atualizarMeuPerfil: (patch: Partial<Pick<Colaborador, 'nomeSocial' | 'telefone' | 'cidade' | 'uf' | 'nascimento' | 'banco' | 'agencia' | 'conta' | 'pixTipo' | 'pixChave' | 'emergenciaNome' | 'emergenciaTelefone' | 'emergenciaParentesco' | 'endereco' | 'celular' | 'emailPessoal' | 'escolaridade' | 'curso' | 'tamanhoCamisa' | 'fusoHorario'>>) => Resultado
+  atualizarMeuPerfil: (patch: Partial<Pick<Colaborador, 'nomeSocial' | 'telefone' | 'cidade' | 'uf' | 'nascimento' | 'banco' | 'agencia' | 'conta' | 'pixTipo' | 'pixChave' | 'emergenciaNome' | 'emergenciaTelefone' | 'emergenciaParentesco' | 'endereco' | 'celular' | 'emailPessoal' | 'escolaridade' | 'curso' | 'tamanhoCamisa' | 'fusoHorario' | 'preferencias'>>) => Resultado
   salvarDiversidade: (d: Diversidade) => Resultado
   salvarPerfilComportamental: (pessoaId: string, perfil: PerfilComportamental | null) => Resultado
   salvarDependente: (d: Omit<Dependente, 'id'>, id?: string) => Resultado
@@ -1163,6 +1163,7 @@ export const useStore = create<AppState>()(
           if (id && c.funcaoSuperiorId === id) return ERRO('A função não pode ser superior a si mesma.')
           if (c.faixaValor?.min != null && c.faixaValor?.max != null && c.faixaValor.max < c.faixaValor.min) return ERRO('O valor máximo da faixa deve ser maior que o mínimo.')
           if (c.codigoCBO && !/^\d{4}-?\d{2}$/.test(c.codigoCBO.trim())) return ERRO('CBO no formato 0000-00.')
+          if (c.valorPadrao != null && !(c.valorPadrao > 0)) return ERRO('O valor padrão deve ser maior que zero (ou deixe em branco).')
           const rec = { ...c, nome: c.nome.trim() }
           const novoId = id ?? uid('g')
           if (id) d.cargos = d.cargos.map((x) => (x.id === id ? { ...x, ...rec } : x))

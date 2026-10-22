@@ -28,6 +28,9 @@ import { Dropdown } from '@/components/Dropdown'
 import { MODO_API } from '@/data/config'
 import { api, ErroApi, useApi } from '@/data/v2/api'
 import { ListaDocumentos } from '@/components/v2/financeiro/Documentos'
+import { useTem } from '@/data/v2/acesso'
+import { executar } from '@/data/v2/api'
+import { recarregarEstado } from '@/data/sync'
 import { BadgeContrato, dinheiro } from '@/components/v2/financeiro/comum'
 
 const STATUS_CONTRATO: Record<Contrato['status'], { label: string; tone: string }> = {
@@ -162,7 +165,7 @@ export default function PessoaDetalhe() {
         </Card>
       )}
 
-      {tab === 'contrato' && (MODO_API ? <ContratosV2 pessoaId={id} /> : <ContratosTab pessoaId={id} contratos={contratos} />)}
+      {tab === 'contrato' && (MODO_API ? <div className="space-y-4"><SalarioV2 pessoaId={id} /><ContratosV2 pessoaId={id} /></div> : <ContratosTab pessoaId={id} contratos={contratos} />)}
       {tab === 'documentos' && (MODO_API ? <ListaDocumentos filtro={`pessoa=${id}`} vinculo={{ pessoaId: id }} podeEnviar titulo="Documentos da pessoa" /> : <DocumentosTab pessoaId={id} docs={docs} />)}
       {tab === 'jornadas' && (
         <div className="space-y-4">
@@ -279,6 +282,68 @@ function EncerrarModal({ pessoaId, onClose }: { pessoaId: string; onClose: () =>
         {MODO_API && !!pend?.contratosAtivos.length && <Toggle checked={encerrarContratos} onChange={setEncerrarContratos} label={`Encerrar também ${pend.contratosAtivos.length} contrato(s) em vigor nesta data`} />}
       </div>
     </Modal>
+  )
+}
+
+interface Salario {
+  cargo: { id: string; nome: string | null; valorPadrao: number | null } | null
+  contrato: { id: string; numero: string; valor: number; inicio: string; status: string } | null
+  outrosContratos: number
+  historico: { numero: number; vigenciaInicio: string; valorAnterior: number | null; valorNovo: number | null; motivo: string; por: string | null; em: string }[]
+}
+
+/** Salário da pessoa (valor do contrato mensal) × valor padrão da função. Pessoas da mesma função podem ter valores diferentes. */
+function SalarioV2({ pessoaId }: { pessoaId: string }) {
+  const r = useApi<Salario>(`pessoas/${encodeURIComponent(pessoaId)}/salario`)
+  const podeAjustar = useTem('fin:cadastrar')
+  const [aberto, setAberto] = useState<{ valor: string } | null>(null)
+  const [vig, setVig] = useState(hojeISO())
+  const [motivo, setMotivo] = useState('')
+  const [ocupado, setOcupado] = useState(false)
+  const d = r.dados
+  if (!d) return r.erro ? <Callout tone="danger" icon="AlertTriangle">{r.erro.message}</Callout> : <Card><p className="p-5 text-[13px] text-muted">Carregando salário…</p></Card>
+  const valor = d.contrato?.valor ?? 0
+  const padrao = d.cargo?.valorPadrao ?? null
+  const aDefinir = !!d.contrato && valor === 0
+  const salvar = async () => {
+    const v = Number(aberto!.valor.replace(/\./g, '').replace(',', '.'))
+    setOcupado(true)
+    const ok = await executar(() => api.post(`pessoas/${encodeURIComponent(pessoaId)}/salario`, { valor: v, vigenciaInicio: vig, motivo: motivo.trim() || undefined }), 'Salário atualizado.')
+    setOcupado(false)
+    if (ok) { setAberto(null); setMotivo(''); r.recarregar(); void recarregarEstado() }
+  }
+  return (
+    <Card>
+      <CardHead title="Salário" sub="Valor mensal desta pessoa. Começa no padrão da função e pode ser ajustado individualmente; cada ajuste fica no histórico."
+        action={podeAjustar && d.contrato && <Button size="sm" icon="Pencil" onClick={() => setAberto({ valor: String(valor || padrao || '') })}>Ajustar</Button>} />
+      <div className="px-5 pb-4 grid sm:grid-cols-3 gap-4">
+        <div><div className="text-[11px] font-bold uppercase text-muted">Salário atual</div><div className="text-[18px] font-bold text-ink tabular-nums">{!d.contrato ? '—' : aDefinir ? 'A definir' : dinheiro(valor)}</div>{d.contrato && <div className="text-[11.5px] text-muted">Contrato {d.contrato.numero}</div>}</div>
+        <div><div className="text-[11px] font-bold uppercase text-muted">Padrão da função</div><div className="text-[15px] font-semibold text-ink tabular-nums">{padrao != null ? dinheiro(padrao) : '—'}</div><div className="text-[11.5px] text-muted">{d.cargo?.nome ?? 'Sem função'}</div></div>
+        <div className="text-[12.5px] text-ink-2 self-center">
+          {!d.contrato ? 'Sem contrato mensal em vigor: gere o contrato-base (Financeiro › Kanban) ou cadastre um contrato.'
+            : aDefinir ? (padrao == null ? 'A função ainda não tem valor padrão. Defina-o em Funções ou ajuste aqui.' : 'Será preenchido com o padrão da função.')
+            : padrao == null ? 'Função sem valor padrão.'
+            : valor === padrao ? 'Igual ao padrão da função.'
+            : <>{valor > padrao ? 'Acima' : 'Abaixo'} do padrão em {dinheiro(Math.abs(valor - padrao))}.{podeAjustar && <> <button type="button" className="font-semibold text-brand hover:underline" onClick={() => setAberto({ valor: String(padrao) })}>Aplicar o padrão</button></>}</>}
+          {d.outrosContratos > 0 && <div className="text-warning mt-1">Há {d.outrosContratos} outro(s) contrato(s) mensal(is) em vigor — o ajuste aqui fica bloqueado; use Financeiro › Contratos.</div>}
+        </div>
+      </div>
+      {d.historico.length > 0 && (
+        <ul className="border-t border-line divide-y divide-line">{d.historico.map((h) => (
+          <li key={h.numero} className="px-5 py-2.5 text-[12.5px] flex flex-wrap gap-x-3"><span className="tabular-nums font-semibold">{dinheiro(h.valorAnterior ?? 0)} → {dinheiro(h.valorNovo ?? 0)}</span><span className="text-muted">a partir de {fmtDate(h.vigenciaInicio)}{h.por ? ` · ${h.por}` : ''}</span><span className="text-ink-2">{h.motivo}</span></li>
+        ))}</ul>
+      )}
+      <Modal open={!!aberto} onClose={() => setAberto(null)} title="Ajustar salário" subtitle={aDefinir ? 'Primeira definição do valor.' : 'O valor anterior fica registrado no histórico (aditivo de valor do contrato).'}
+        footer={<><Button variant="ghost" onClick={() => setAberto(null)}>Cancelar</Button><Button icon="Check" disabled={ocupado} onClick={salvar}>Salvar</Button></>}>
+        {aberto && (
+          <div className="grid sm:grid-cols-2 gap-x-4">
+            <Field label="Salário mensal (R$)" required htmlFor="sal-v" hint={padrao != null ? `Padrão da função: ${dinheiro(padrao)}` : undefined}><input id="sal-v" className="input" inputMode="decimal" value={aberto.valor} onChange={(e) => setAberto({ valor: e.target.value })} /></Field>
+            {!aDefinir && <Field label="A partir de" required htmlFor="sal-d"><input id="sal-d" type="date" className="input" value={vig} onChange={(e) => setVig(e.target.value)} /></Field>}
+            {!aDefinir && <Field label="Motivo" required htmlFor="sal-m" className="sm:col-span-2"><input id="sal-m" className="input" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: promoção, reajuste anual, negociação" /></Field>}
+          </div>
+        )}
+      </Modal>
+    </Card>
   )
 }
 

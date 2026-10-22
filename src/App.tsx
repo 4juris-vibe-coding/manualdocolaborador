@@ -6,6 +6,7 @@ import { ErroPagina } from '@/components/ErroPagina'
 import Login from '@/pages/Login'
 import { TelaCarregamento } from '@/components/TelaCarregamento'
 import RedefinirSenha from '@/pages/RedefinirSenha'
+import { MODO_API } from '@/data/config'
 
 // Páginas carregadas sob demanda (reduz o tamanho do carregamento inicial).
 const Dashboard = lazy(() => import('@/pages/Dashboard'))
@@ -52,6 +53,7 @@ const RHMetricas = lazy(() => import('@/pages/rh/Metricas'))
 const RHRotatividade = lazy(() => import('@/pages/rh/Rotatividade'))
 const RHEncerramentos = lazy(() => import('@/pages/rh/Encerramentos'))
 const RHFaturamento = lazy(() => import('@/pages/rh/Faturamento'))
+const RHRelatorios = lazy(() => import('@/pages/rh/Relatorios'))
 const AdminConfig = lazy(() => import('@/pages/admin/Configuracoes'))
 const MinhasAvaliacoes = lazy(() => import('@/pages/Avaliacoes'))
 const Cultura = lazy(() => import('@/pages/Cultura'))
@@ -182,7 +184,7 @@ export function App() {
             <Route path="/rh/documentos" element={<RHDocumentos />} />
             <Route path="/rh/disponibilidade" element={<RHDisponibilidade />} />
             <Route path="/rh/gamificacao" element={<RHGamificacao />} />
-            <Route path="/rh/pesquisas" element={<RHPesquisas />} />
+            <Route path="/rh/pesquisas" element={MODO_API ? <Navigate to="/pesquisas-rh" replace /> : <RHPesquisas />} />
             <Route path="/rh/estrutura" element={<RHEstrutura />} />
             <Route path="/rh/funcoes" element={<RHFuncoes />} />
             <Route path="/rh/registros" element={<RHRegistros />} />
@@ -200,6 +202,7 @@ export function App() {
             <Route path="/rh/rotatividade" element={<RHRotatividade />} />
             <Route path="/rh/encerramentos" element={<RHEncerramentos />} />
             <Route path="/rh/faturamento" element={<RHFaturamento />} />
+            <Route path="/rh/relatorios" element={<RHRelatorios />} />
             <Route path="/avaliacoes" element={<MinhasAvaliacoes />} />
             <Route path="/sugestoes" element={<Sugestoes />} />
             <Route path="/canva" element={<Apresentacoes />} />

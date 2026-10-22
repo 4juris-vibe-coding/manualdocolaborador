@@ -19,12 +19,23 @@ export type Regime = 'PJ' | 'MEI' | 'autonomo'
 export type PixTipo = 'CNPJ' | 'CPF' | 'E-mail' | 'Telefone' | 'Aleatória'
 
 export interface PreferenciasPrivacidade {
-  /** Exibe dia e mês do aniversário para a comunidade (nunca o ano). */
+  /** Legado: o aniversário (dia e mês, nunca o ano) aparece para toda a comunidade; o campo não é mais consultado. */
   mostrarAniversario: boolean
   /** Exibe aniversários de parceria (ex.: "2 anos de 4JURIS"). */
   mostrarMarcos: boolean
   /** Aparece em destaques da gamificação. */
   aparecerEmDestaques: boolean
+}
+
+/** Preferências para celebrações: a pessoa preenche no perfil e a comunidade vê nas celebrações. */
+export interface PreferenciasCelebracao {
+  boloFavorito?: string
+  docePreferido?: string
+  comidaFavorita?: string
+  bebidaFavorita?: string
+  hobby?: string
+  /** Algo que a pessoa adoraria ganhar ou fazer no dia (texto livre). */
+  mimo?: string
 }
 
 export interface Colaborador {
@@ -41,8 +52,10 @@ export interface Colaborador {
   status: StatusParceria
   /** Início da parceria. */
   dataEntrada: string
-  /** Opcional — usado apenas para celebração, conforme preferências. */
+  /** Opcional — usado nas celebrações (dia e mês para a comunidade; o ano nunca é exibido). */
   nascimento?: string
+  /** Gostos que a própria pessoa informa para as celebrações (bolo favorito etc.). Visíveis à comunidade. */
+  preferencias?: PreferenciasCelebracao
   cidade: string
   uf: string
   // Dados da prestação de serviços
@@ -210,6 +223,9 @@ export interface Cargo {
   habilidades?: string[]
   requisitos?: string[]
   responsaveisIds?: string[]
+  /** Valor padrão (mensal) desta função: preenche o salário de quem entra nela. Não é piso nem faixa;
+   *  cada pessoa pode ter o próprio valor (ajustado na ficha). Mudar o padrão não altera quem já tem valor. */
+  valorPadrao?: number
   /** Faixa de valor de referência para contratos desta função. */
   faixaValor?: { min?: number; max?: number; visivel: boolean }
   /** Perfil comportamental ideal da função. */

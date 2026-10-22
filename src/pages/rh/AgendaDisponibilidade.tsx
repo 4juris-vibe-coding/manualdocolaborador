@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useStore } from '@/lib/store'
 import type { PoliticaDisponibilidade } from '@/lib/types'
-import { PageHeader, Card, CardHead, Button, Field, Toggle, Select, Badge, Callout, Tabela, TH, TD } from '@/components/ui'
+import { PageHeader, Card, CardHead, Button, Field, Toggle, Select, Badge, Callout, Tabela, TH, TD, Icon } from '@/components/ui'
 import { feedback, toast } from '@/components/toast'
 import { AgendaTimeline } from '@/components/AgendaTimeline'
+import { CalendarioPeriodos } from '@/components/calendario/CalendarioPeriodos'
+import { cn } from '@/lib/utils'
 import { STATUS_PERIODO } from '../Disponibilidade'
 import { fmtDate } from '@/lib/utils'
 import { hojeISO, somarDias, diasEntre } from '@/domain/datas'
@@ -16,6 +18,7 @@ export default function AgendaDisponibilidade() {
   const [setor, setSetor] = useState('todos')
   const [inicio, setInicio] = useState(hoje)
   const [pol, setPol] = useState<PoliticaDisponibilidade>(s.config.disponibilidade)
+  const [formato, setFormato] = useState<'linha' | 'calendario'>('linha')
   const pessoas = s.colaboradores.filter((c) => c.status !== 'encerrado' && (setor === 'todos' || c.setorId === setor)).sort((a, b) => a.setorId.localeCompare(b.setorId) || a.nome.localeCompare(b.nome))
   const ids = new Set(pessoas.map((c) => c.id))
   const fimJanela = somarDias(inicio, 41)
@@ -45,9 +48,17 @@ export default function AgendaDisponibilidade() {
             <Button size="sm" variant="ghost" onClick={() => setInicio(hoje)}>Hoje</Button>
             <Button size="sm" variant="ghost" onClick={() => setInicio(somarDias(inicio, 42))}>6 sem. →</Button>
           </div>
-          <span className="text-[12px] text-muted ml-auto pb-3">{fmtDate(inicio)} → {fmtDate(fimJanela)}</span>
+          <span className="text-[12px] text-muted ml-auto pb-3">{formato === 'linha' && <>{fmtDate(inicio)} → {fmtDate(fimJanela)}</>}</span>
+          <div className="pb-0.5"><div className="inline-flex rounded-xl bg-surface-2 border border-line p-0.5" role="group" aria-label="Formato da agenda">
+            {([['linha', 'Linha do tempo', 'CalendarRange'], ['calendario', 'Calendário', 'CalendarDays']] as const).map(([k, rot, ic]) => (
+              <button key={k} type="button" aria-pressed={formato === k} onClick={() => setFormato(k)}
+                className={cn('h-8 px-2.5 rounded-[10px] text-[12.5px] font-semibold flex items-center gap-1.5 transition outline-none focus-visible:ring-2 focus-visible:ring-brand', formato === k ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink')}>
+                <Icon name={ic} className="h-4 w-4" /><span className="hidden sm:inline">{rot}</span>
+              </button>
+            ))}
+          </div></div>
         </div>
-        <AgendaTimeline pessoas={pessoas} periodos={periodos} inicio={inicio} />
+        {formato === 'linha' ? <AgendaTimeline pessoas={pessoas} periodos={periodos} inicio={inicio} /> : <CalendarioPeriodos pessoas={pessoas} periodos={periodos} />}
       </Card>
 
       <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 [&>*]:min-w-0">
