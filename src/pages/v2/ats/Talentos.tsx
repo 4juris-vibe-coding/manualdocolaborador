@@ -7,6 +7,7 @@ import { Paginacao } from '@/components/v2/Paginacao'
 import { useAtraso, useTitulo } from '@/components/v2/ats/comuns'
 import { api, executar, qs, useApi } from '@/data/v2/api'
 import { dataBR, dataHoraBR } from '@/lib/fmt'
+import { Dropdown } from '@/components/Dropdown'
 
 export default function Talentos() {
   useTitulo('Banco de talentos · 4JURIS Pessoas')
@@ -72,7 +73,7 @@ function Contato({ t, onClose, onFeito }: { t: any; onClose: () => void; onFeito
   return (
     <Modal open onClose={onClose} title="Registrar contato" subtitle={t.nome}
       footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={async () => { if (await executar(() => api.post(`ats/talentos/${t.candidatoId}/contatos`, f), 'Contato registrado.')) onFeito() }}>Salvar</Button></>}>
-      <Field label="Canal" htmlFor="ct-c"><select id="ct-c" className="input" value={f.canal} onChange={(e) => setF({ ...f, canal: e.target.value })}><option>e-mail</option><option>telefone</option><option>WhatsApp</option><option>LinkedIn</option><option>presencial</option></select></Field>
+      <Field label="Canal" htmlFor="ct-c"><Dropdown id="ct-c" className="input" value={f.canal} onChange={(e) => setF({ ...f, canal: e.target.value })}><option>e-mail</option><option>telefone</option><option>WhatsApp</option><option>LinkedIn</option><option>presencial</option></Dropdown></Field>
       <Field label="Anotação" htmlFor="ct-n"><input id="ct-n" className="input" value={f.nota} onChange={(e) => setF({ ...f, nota: e.target.value })} /></Field>
     </Modal>
   )

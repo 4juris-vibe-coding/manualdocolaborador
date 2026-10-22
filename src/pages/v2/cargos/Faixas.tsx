@@ -11,6 +11,7 @@ import { useTem } from '@/data/v2/acesso'
 import { useStore } from '@/lib/store'
 import { dataBR, moeda } from '@/lib/fmt'
 import { toast } from '@/components/toast'
+import { Dropdown } from '@/components/Dropdown'
 
 interface Faixa { id: string; cargoId: string; cargoNome: string; nivelId: string | null; nivelNome: string | null; unidadeId: string | null; criterio: string | null; minimo: number; referencia: number | null; maximo: number; moeda: string; vigenciaInicio: string; vigenciaFim: string | null; status: string; situacao: string; revisaoDe: string | null }
 interface Form { id?: string; revisaoDe?: string; cargoId: string; nivelId: string; unidadeId: string; criterio: string; minimo: string; referencia: string; maximo: string; moeda: string; vigenciaInicio: string; vigenciaFim: string }
@@ -115,10 +116,10 @@ function Lista({ gerencia }: { gerencia: boolean }) {
         {f && (
           <form className="grid sm:grid-cols-2 gap-x-4" onSubmit={(e) => { e.preventDefault(); void salvar() }}>
             <Field label="Cargo" required htmlFor="fx-c" erro={erros.cargoId} className="sm:col-span-2">
-              <select id="fx-c" className="input" disabled={!!f.id || !!f.revisaoDe} value={f.cargoId} onChange={(e) => setF({ ...f, cargoId: e.target.value })}><option value="">Escolha…</option>{cat.dados?.itens.map((c) => <option key={c.cargoId} value={c.cargoId}>{c.nome}</option>)}</select>
+              <Dropdown id="fx-c" className="input" disabled={!!f.id || !!f.revisaoDe} value={f.cargoId} onChange={(e) => setF({ ...f, cargoId: e.target.value })}><option value="">Escolha…</option>{cat.dados?.itens.map((c) => <option key={c.cargoId} value={c.cargoId}>{c.nome}</option>)}</Dropdown>
             </Field>
-            <Field label="Nível (opcional)" htmlFor="fx-n" erro={erros.nivelId}><select id="fx-n" className="input" value={f.nivelId} onChange={(e) => setF({ ...f, nivelId: e.target.value })}><option value="">Todos</option>{niveis.map((n) => <option key={n.id} value={n.id}>{n.trilha} · {n.nome}</option>)}</select></Field>
-            <Field label="Unidade (opcional)" htmlFor="fx-u" erro={erros.unidadeId}><select id="fx-u" className="input" value={f.unidadeId} onChange={(e) => setF({ ...f, unidadeId: e.target.value })}><option value="">Todas</option>{unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}</select></Field>
+            <Field label="Nível (opcional)" htmlFor="fx-n" erro={erros.nivelId}><Dropdown id="fx-n" className="input" value={f.nivelId} onChange={(e) => setF({ ...f, nivelId: e.target.value })}><option value="">Todos</option>{niveis.map((n) => <option key={n.id} value={n.id}>{n.trilha} · {n.nome}</option>)}</Dropdown></Field>
+            <Field label="Unidade (opcional)" htmlFor="fx-u" erro={erros.unidadeId}><Dropdown id="fx-u" className="input" value={f.unidadeId} onChange={(e) => setF({ ...f, unidadeId: e.target.value })}><option value="">Todas</option>{unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}</Dropdown></Field>
             <Field label="Critério (opcional)" htmlFor="fx-k" hint="Ex.: capital, interior." className="sm:col-span-2"><input id="fx-k" className="input" value={f.criterio} onChange={(e) => setF({ ...f, criterio: e.target.value })} /></Field>
             {num('minimo', 'Mínimo')}{num('referencia', 'Referência (ponto médio)', false)}{num('maximo', 'Máximo')}
             <Field label="Moeda" required htmlFor="fx-m" erro={erros.moeda}><input id="fx-m" className="input" maxLength={3} value={f.moeda} onChange={(e) => setF({ ...f, moeda: e.target.value.toUpperCase() })} /></Field>

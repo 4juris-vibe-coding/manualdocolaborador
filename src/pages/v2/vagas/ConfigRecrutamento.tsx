@@ -6,6 +6,7 @@ import { useOpcoes } from '@/components/v2/vagas/comum'
 import { api, executar, useApi } from '@/data/v2/api'
 import { useTem } from '@/data/v2/acesso'
 import { ROTULO_PRIORIDADE, ROTULO_TIPO, TIPOS_VAGA, type FluxoAprovacao, type PassoFluxo } from '@/domain/v2/vagas'
+import { Dropdown } from '@/components/Dropdown'
 
 interface Config { fluxos: FluxoAprovacao[]; etapas: { nome: string; tipo: string }[]; canais: { chave: string; nome: string }[]; tipos: { chave: string; nome: string }[] }
 const ABAS = [{ key: 'fluxos', label: 'Fluxos de aprovação' }, { key: 'etapas', label: 'Etapas padrão' }, { key: 'canais', label: 'Canais de divulgação' }, { key: 'tipos', label: 'Tipos de vaga' }]
@@ -71,8 +72,8 @@ function Fluxos({ inicial, edita, opcoes, onSalvo }: { inicial: FluxoAprovacao[]
                 {f.passos.map((p, k) => (
                   <li key={k} className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1.4fr_90px_auto] gap-2 items-end">
                     <label><span className="text-[11.5px] text-muted">Nome do passo</span><input className="input" disabled={!edita} value={p.rotulo} maxLength={80} onChange={(e) => attPasso(i, k, { rotulo: e.target.value })} /></label>
-                    <label><span className="text-[11.5px] text-muted">Tipo</span><select className="input" disabled={!edita} value={p.tipo} onChange={(e) => attPasso(i, k, { tipo: e.target.value as PassoFluxo['tipo'], ref: '' })}><option value="papel">Papel</option><option value="funcao">Função adicional</option><option value="pessoa">Pessoa</option></select></label>
-                    <label><span className="text-[11.5px] text-muted">Aprovador</span><select className="input" disabled={!edita} value={p.ref} onChange={(e) => attPasso(i, k, { ref: e.target.value })}><option value="">Selecione…</option>{refs(p.tipo).map((o) => <option key={o.v} value={o.v}>{o.n}</option>)}</select></label>
+                    <label><span className="text-[11.5px] text-muted">Tipo</span><Dropdown className="input" disabled={!edita} value={p.tipo} onChange={(e) => attPasso(i, k, { tipo: e.target.value as PassoFluxo['tipo'], ref: '' })}><option value="papel">Papel</option><option value="funcao">Função adicional</option><option value="pessoa">Pessoa</option></Dropdown></label>
+                    <label><span className="text-[11.5px] text-muted">Aprovador</span><Dropdown className="input" disabled={!edita} value={p.ref} onChange={(e) => attPasso(i, k, { ref: e.target.value })}><option value="">Selecione…</option>{refs(p.tipo).map((o) => <option key={o.v} value={o.v}>{o.n}</option>)}</Dropdown></label>
                     <label><span className="text-[11.5px] text-muted">Prazo (dias)</span><input type="number" min={1} max={60} className="input" disabled={!edita} value={p.prazoDias ?? ''} onChange={(e) => attPasso(i, k, { prazoDias: e.target.value ? Number(e.target.value) : undefined })} /></label>
                     {edita && <Button size="icon-sm" variant="danger" icon="Trash2" aria-label={`Remover passo ${p.rotulo}`} onClick={() => att(i, { passos: f.passos.filter((_, j) => j !== k) })} />}
                   </li>

@@ -7,6 +7,7 @@ import { SliderBipolar } from '@/components/inputs'
 import { BarrasDisc } from '@/components/charts'
 import { cn } from '@/lib/utils'
 import { CATEGORIAS_DISC, TRACOS, DISC_NEUTRO, aderenciaDisc, aderenciaIndicador, mediaDisc, compatibilidadeFuncao, ranquear, comPerfilConsentido, type CategoriaDisc } from '@/domain/perfil'
+import { Dropdown } from '@/components/Dropdown'
 
 export default function BuscaPerfil() {
   const s = useStore()
@@ -45,7 +46,7 @@ export default function BuscaPerfil() {
             <p className="text-[11.5px] text-muted mt-2">Aderência = 100 − média das diferenças entre o alvo e o perfil.</p>
           </>}
           {modo === 'indicador' && <>
-            <Field label="Indicador (traço)" htmlFor="bp-t"><select id="bp-t" className="input" value={traco} onChange={(e) => setTraco(e.target.value)}>{TRACOS.map((x) => <option key={x.chave} value={x.chave}>{x.esquerda} ↔ {x.direita}</option>)}</select></Field>
+            <Field label="Indicador (traço)" htmlFor="bp-t"><Dropdown id="bp-t" className="input" value={traco} onChange={(e) => setTraco(e.target.value)}>{TRACOS.map((x) => <option key={x.chave} value={x.chave}>{x.esquerda} ↔ {x.direita}</option>)}</Dropdown></Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Mínimo aceito" htmlFor="bp-mi"><input id="bp-mi" type="number" min={0} max={100} className="input" value={faixa.min} onChange={(e) => setFaixa({ ...faixa, min: Math.min(Number(e.target.value), faixa.max) })} /></Field>
               <Field label="Máximo aceito" htmlFor="bp-ma"><input id="bp-ma" type="number" min={0} max={100} className="input" value={faixa.max} onChange={(e) => setFaixa({ ...faixa, max: Math.max(Number(e.target.value), faixa.min) })} /></Field>

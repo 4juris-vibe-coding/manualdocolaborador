@@ -10,6 +10,7 @@ import { cnpjValido, cpfValido, emailValido, mascaraCNPJ, mascaraCPF } from '@/d
 import { hojeISO } from '@/domain/datas'
 import { PAPEL_LABEL, can } from '@/domain/permissions'
 import { REGIME_LABEL } from '@/lib/utils'
+import { Dropdown } from '@/components/Dropdown'
 
 export function PessoaForm({ pessoa, onClose, onSalvo }: { pessoa?: Colaborador; onClose: () => void; onSalvo?: (id: string) => void }) {
   const s = useStore()
@@ -81,13 +82,13 @@ export function PessoaForm({ pessoa, onClose, onSalvo }: { pessoa?: Colaborador;
             </div>
             <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-3 mt-2">Formação e dados adicionais</h4>
             <div className="grid sm:grid-cols-2 gap-x-4">
-              <Field label="Escolaridade" htmlFor="pf-esc"><select id="pf-esc" className="input" value={f.escolaridade ?? ''} onChange={(x) => set({ escolaridade: (x.target.value || undefined) as Escolaridade | undefined })}><option value="">Não informada</option>{Object.entries(ESCOLARIDADE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+              <Field label="Escolaridade" htmlFor="pf-esc"><Dropdown id="pf-esc" className="input" value={f.escolaridade ?? ''} onChange={(x) => set({ escolaridade: (x.target.value || undefined) as Escolaridade | undefined })}><option value="">Não informada</option>{Object.entries(ESCOLARIDADE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Dropdown></Field>
               <Field label="Curso" htmlFor="pf-cur"><input id="pf-cur" className="input" value={f.curso} onChange={(x) => set({ curso: x.target.value })} /></Field>
-              <Field label="Responsável direto (ponto focal)" htmlFor="pf-resp" hint="Usado nas avaliações 90°/180°/360°."><select id="pf-resp" className="input" value={f.responsavelId} onChange={(x) => set({ responsavelId: x.target.value })}><option value="">Lideranças da área</option>{s.colaboradores.filter((c) => c.status !== 'encerrado' && c.id !== pessoa?.id).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></Field>
+              <Field label="Responsável direto (ponto focal)" htmlFor="pf-resp" hint="Usado nas avaliações 90°/180°/360°."><Dropdown id="pf-resp" className="input" value={f.responsavelId} onChange={(x) => set({ responsavelId: x.target.value })}><option value="">Lideranças da área</option>{s.colaboradores.filter((c) => c.status !== 'encerrado' && c.id !== pessoa?.id).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</Dropdown></Field>
               <Field label="Matrícula / código interno" htmlFor="pf-mat"><input id="pf-mat" className="input" value={f.matricula} onChange={(x) => set({ matricula: x.target.value })} /></Field>
               <Field label="Código externo (integrações)" htmlFor="pf-cod"><input id="pf-cod" className="input" value={f.codigoExterno} onChange={(x) => set({ codigoExterno: x.target.value })} /></Field>
-              <Field label="Fuso horário" htmlFor="pf-fuso"><select id="pf-fuso" className="input" value={f.fusoHorario} onChange={(x) => set({ fusoHorario: x.target.value })}>{[['America/Noronha', 'Fernando de Noronha (UTC-2)'], ['America/Sao_Paulo', 'Brasília (UTC-3)'], ['America/Manaus', 'Amazonas (UTC-4)'], ['America/Rio_Branco', 'Acre (UTC-5)']].map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></Field>
-              <Field label="Tamanho de camiseta (kits)" htmlFor="pf-cam"><select id="pf-cam" className="input" value={f.tamanhoCamisa} onChange={(x) => set({ tamanhoCamisa: x.target.value })}><option value="">—</option>{['PP', 'P', 'M', 'G', 'GG', 'XG'].map((t) => <option key={t}>{t}</option>)}</select></Field>
+              <Field label="Fuso horário" htmlFor="pf-fuso"><Dropdown id="pf-fuso" className="input" value={f.fusoHorario} onChange={(x) => set({ fusoHorario: x.target.value })}>{[['America/Noronha', 'Fernando de Noronha (UTC-2)'], ['America/Sao_Paulo', 'Brasília (UTC-3)'], ['America/Manaus', 'Amazonas (UTC-4)'], ['America/Rio_Branco', 'Acre (UTC-5)']].map(([v, t]) => <option key={v} value={v}>{t}</option>)}</Dropdown></Field>
+              <Field label="Tamanho de camiseta (kits)" htmlFor="pf-cam"><Dropdown id="pf-cam" className="input" value={f.tamanhoCamisa} onChange={(x) => set({ tamanhoCamisa: x.target.value })}><option value="">—</option>{['PP', 'P', 'M', 'G', 'GG', 'XG'].map((t) => <option key={t}>{t}</option>)}</Dropdown></Field>
             </div>
           </>
         )}
@@ -107,27 +108,27 @@ export function PessoaForm({ pessoa, onClose, onSalvo }: { pessoa?: Colaborador;
 
         <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-3 mt-2">Atuação</h4>
         <div className="grid sm:grid-cols-2 gap-x-4">
-          <Field label="Área" required htmlFor="pf-area"><select id="pf-area" className="input" value={f.setorId} onChange={(x) => set({ setorId: x.target.value, cargoId: '' })}>{s.setores.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</select></Field>
-          <Field label="Função" htmlFor="pf-func" hint={cargos.length ? undefined : 'Cadastre funções da área em Estrutura.'}><select id="pf-func" className="input" value={f.cargoId} onChange={(x) => set({ cargoId: x.target.value })}><option value="">—</option>{cargos.map((g) => <option key={g.id} value={g.id}>{g.nome} · {g.nivel}</option>)}</select></Field>
-          <Field label="Unidade" htmlFor="pf-un"><select id="pf-un" className="input" value={f.unidadeId} onChange={(x) => set({ unidadeId: x.target.value })}><option value="">—</option>{s.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}</select></Field>
+          <Field label="Área" required htmlFor="pf-area"><Dropdown id="pf-area" className="input" value={f.setorId} onChange={(x) => set({ setorId: x.target.value, cargoId: '' })}>{s.setores.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</Dropdown></Field>
+          <Field label="Função" htmlFor="pf-func" hint={cargos.length ? undefined : 'Cadastre funções da área em Estrutura.'}><Dropdown id="pf-func" className="input" value={f.cargoId} onChange={(x) => set({ cargoId: x.target.value })}><option value="">—</option>{cargos.map((g) => <option key={g.id} value={g.id}>{g.nome} · {g.nivel}</option>)}</Dropdown></Field>
+          <Field label="Unidade" htmlFor="pf-un"><Dropdown id="pf-un" className="input" value={f.unidadeId} onChange={(x) => set({ unidadeId: x.target.value })}><option value="">—</option>{s.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}</Dropdown></Field>
           <Field label="Início da parceria" required htmlFor="pf-ini"><input id="pf-ini" type="date" className="input" value={f.dataEntrada} onChange={(x) => set({ dataEntrada: x.target.value })} /></Field>
           {!pessoa || pessoa.status !== 'encerrado' ? (
-            <Field label="Situação" htmlFor="pf-st"><select id="pf-st" className="input" value={f.status} onChange={(x) => set({ status: x.target.value as Colaborador['status'] })}>
+            <Field label="Situação" htmlFor="pf-st"><Dropdown id="pf-st" className="input" value={f.status} onChange={(x) => set({ status: x.target.value as Colaborador['status'] })}>
               <option value="integracao">Em integração</option><option value="ativo">Ativo</option><option value="pendente">Cadastro pendente</option>
-            </select></Field>
+            </Dropdown></Field>
           ) : <Field label="Situação"><p className="text-[13px] text-muted h-11 flex items-center">Encerrada — use “Reativar parceria”.</p></Field>}
           <Field label="Papel de acesso" htmlFor="pf-papel" hint={podePapel ? undefined : 'Alterado apenas pela Administração.'}>
-            <select id="pf-papel" className="input" value={f.papel} disabled={!podePapel} onChange={(x) => set({ papel: x.target.value as Papel })}>
+            <Dropdown id="pf-papel" className="input" value={f.papel} disabled={!podePapel} onChange={(x) => set({ papel: x.target.value as Papel })}>
               {(Object.keys(PAPEL_LABEL) as Papel[]).map((p) => <option key={p} value={p}>{PAPEL_LABEL[p]}</option>)}
-            </select>
+            </Dropdown>
           </Field>
         </div>
 
         <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-3 mt-2">Prestação de serviços</h4>
         <div className="grid sm:grid-cols-2 gap-x-4">
-          <Field label="Forma de contratação" htmlFor="pf-reg"><select id="pf-reg" className="input" value={f.regime} onChange={(x) => set({ regime: x.target.value as Colaborador['regime'] })}>
+          <Field label="Forma de contratação" htmlFor="pf-reg"><Dropdown id="pf-reg" className="input" value={f.regime} onChange={(x) => set({ regime: x.target.value as Colaborador['regime'] })}>
             {Object.entries(REGIME_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select></Field>
+          </Dropdown></Field>
           {pj ? <>
             <Field label="CNPJ" required erro={e('cnpj')} htmlFor="pf-cnpj"><input id="pf-cnpj" className="input" inputMode="numeric" value={f.cnpj} onBlur={() => toque('cnpj')} onChange={(x) => set({ cnpj: mascaraCNPJ(x.target.value) })} placeholder="00.000.000/0000-00" aria-invalid={!!e('cnpj')} /></Field>
             <Field label="Razão social" required erro={e('razaoSocial')} htmlFor="pf-rs" className="sm:col-span-2"><input id="pf-rs" className="input" value={f.razaoSocial} onBlur={() => toque('razaoSocial')} onChange={(x) => set({ razaoSocial: x.target.value })} /></Field>

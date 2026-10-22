@@ -8,6 +8,7 @@ import { feedback } from '@/components/toast'
 import { fmtDate, uid } from '@/lib/utils'
 import { hojeISO } from '@/domain/datas'
 import { progresso, prazoItem, RESPONSAVEL_LABEL_ADMIN } from '@/domain/jornada'
+import { Dropdown } from '@/components/Dropdown'
 
 export default function Jornadas() {
   const s = useStore()
@@ -102,8 +103,8 @@ function IniciarModal({ onClose }: { onClose: () => void }) {
   const [modelo, setModelo] = useState(s.checklists[0]?.id ?? '')
   return (
     <Modal open onClose={onClose} title="Iniciar processo" footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Play" onClick={() => { if (!pessoa) { feedback({ ok: false, erro: 'Escolha a pessoa.' }, ''); return } if (feedback(s.iniciarJornada(pessoa, modelo), 'Processo iniciado.')) onClose() }}>Iniciar</Button></>}>
-      <Field label="Pessoa" required htmlFor="ij-p"><select id="ij-p" className="input" value={pessoa} onChange={(e) => setPessoa(e.target.value)}><option value="">Selecione…</option>{s.colaboradores.filter((c) => c.status !== 'encerrado').map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></Field>
-      <Field label="Checklist" htmlFor="ij-m"><select id="ij-m" className="input" value={modelo} onChange={(e) => setModelo(e.target.value)}>{s.checklists.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</select></Field>
+      <Field label="Pessoa" required htmlFor="ij-p"><Dropdown id="ij-p" className="input" value={pessoa} onChange={(e) => setPessoa(e.target.value)}><option value="">Selecione…</option>{s.colaboradores.filter((c) => c.status !== 'encerrado').map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</Dropdown></Field>
+      <Field label="Checklist" htmlFor="ij-m"><Dropdown id="ij-m" className="input" value={modelo} onChange={(e) => setModelo(e.target.value)}>{s.checklists.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</Dropdown></Field>
     </Modal>
   )
 }
@@ -120,7 +121,7 @@ function ModeloModal({ m, onClose }: { m?: ChecklistModelo; onClose: () => void 
       footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Check" onClick={() => { if (feedback(s.salvarChecklistModelo({ nome: nome.trim(), tipo, itens: itens.map((i) => ({ ...i, titulo: i.titulo.trim() })) }, m?.id), 'Checklist salvo.')) onClose() }}>Salvar</Button></>}>
       <div className="grid sm:grid-cols-[1fr_200px] gap-x-4">
         <Field label="Nome" required htmlFor="cm-n"><input id="cm-n" className="input" value={nome} onChange={(e) => setNome(e.target.value)} /></Field>
-        <Field label="Tipo" htmlFor="cm-t"><select id="cm-t" className="input" value={tipo} onChange={(e) => setTipo(e.target.value as TipoJornada)}><option value="integracao">Integração</option><option value="encerramento">Encerramento</option></select></Field>
+        <Field label="Tipo" htmlFor="cm-t"><Dropdown id="cm-t" className="input" value={tipo} onChange={(e) => setTipo(e.target.value as TipoJornada)}><option value="integracao">Integração</option><option value="encerramento">Encerramento</option></Dropdown></Field>
       </div>
       <fieldset>
         <legend className="label">Itens</legend>
@@ -128,7 +129,7 @@ function ModeloModal({ m, onClose }: { m?: ChecklistModelo; onClose: () => void 
           {itens.map((i, idx) => (
             <li key={i.id} className="grid grid-cols-[1fr_130px_80px_auto] gap-2 items-center">
               <input aria-label={`Título do item ${idx + 1}`} className="input" value={i.titulo} onChange={(e) => upd(i.id, { titulo: e.target.value })} placeholder="Descrição do passo" />
-              <select aria-label="Responsável" className="input" value={i.responsavel} onChange={(e) => upd(i.id, { responsavel: e.target.value as ResponsavelItem })}>{(['pessoa', 'lideranca', 'rh'] as const).map((r) => <option key={r} value={r}>{RESPONSAVEL_LABEL_ADMIN[r]}</option>)}</select>
+              <Dropdown aria-label="Responsável" className="input" value={i.responsavel} onChange={(e) => upd(i.id, { responsavel: e.target.value as ResponsavelItem })}>{(['pessoa', 'lideranca', 'rh'] as const).map((r) => <option key={r} value={r}>{RESPONSAVEL_LABEL_ADMIN[r]}</option>)}</Dropdown>
               <input aria-label="Prazo em dias" type="number" min={0} className="input" value={i.prazoDias ?? ''} onChange={(e) => upd(i.id, { prazoDias: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="dias" />
               <div className="flex">
                 <Button size="icon-sm" variant="subtle" icon="ArrowUp" aria-label="Mover para cima" disabled={idx === 0} onClick={() => mover(idx, -1)} />

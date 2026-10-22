@@ -7,6 +7,7 @@ import { Button, Field, Callout } from '@/components/ui'
 import { feedback } from '@/components/toast'
 import { validarPeriodo, sobreposicoesNaArea } from '@/domain/disponibilidade'
 import { diasEntre, hojeISO, somarDias } from '@/domain/datas'
+import { Dropdown } from '@/components/Dropdown'
 
 export function PeriodoForm({ open, onClose, editar }: { open: boolean; onClose: () => void; editar?: PeriodoIndisponibilidade | null }) {
   const s = useStore()
@@ -67,10 +68,10 @@ export function PeriodoForm({ open, onClose, editar }: { open: boolean; onClose:
         </Field>
         <div className="grid sm:grid-cols-2 gap-x-4">
           <Field label="Contato para continuidade (opcional)" htmlFor="p-contato">
-            <select id="p-contato" className="input" value={f.contatoContinuidadeId} onChange={(e) => set({ contatoContinuidadeId: e.target.value })}>
+            <Dropdown id="p-contato" className="input" value={f.contatoContinuidadeId} onChange={(e) => set({ contatoContinuidadeId: e.target.value })}>
               <option value="">Ninguém específico</option>
               {colegas.map((c) => <option key={c.id} value={c.id}>{c.nome}{c.setorId === me.setorId ? ' · sua área' : ''}</option>)}
-            </select>
+            </Dropdown>
           </Field>
           <Field label="Plano de continuidade (opcional)" htmlFor="p-plano" hint="Como as entregas seguem durante o período.">
             <input id="p-plano" className="input" value={f.planoContinuidade} onChange={(e) => set({ planoContinuidade: e.target.value })} placeholder="Ex.: Entregas antecipadas para o dia 10." />

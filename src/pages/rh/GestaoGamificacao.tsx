@@ -8,6 +8,7 @@ import { fmtDate, cn } from '@/lib/utils'
 import { hojeISO, somarDias } from '@/domain/datas'
 import { ACAO_LABEL } from '@/domain/gamificacao'
 import { gerarCSV, baixarArquivo } from '@/domain/csv'
+import { Dropdown } from '@/components/Dropdown'
 
 const ACOES_DESAFIO: AcaoPontuavel[] = ['participacao_evento', 'reconhecimento_enviado', 'reconhecimento_recebido', 'conteudo_concluido', 'pesquisa_respondida', 'iniciativa_concluida']
 
@@ -99,7 +100,7 @@ function DesafiosAdmin() {
             <div className="grid grid-cols-2 gap-3">
               <Field label="Início" htmlFor="ds-i"><input id="ds-i" name="inicio" type="date" className="input" defaultValue={form.d?.inicio ?? hojeISO()} /></Field>
               <Field label="Fim" htmlFor="ds-f"><input id="ds-f" name="fim" type="date" className="input" defaultValue={form.d?.fim ?? somarDias(hojeISO(), 30)} /></Field>
-              <Field label="Ação que conta" htmlFor="ds-a"><select id="ds-a" name="acao" className="input" defaultValue={form.d?.criterio.acao ?? 'participacao_evento'}>{ACOES_DESAFIO.map((a) => <option key={a} value={a}>{ACAO_LABEL[a]}</option>)}</select></Field>
+              <Field label="Ação que conta" htmlFor="ds-a"><Dropdown id="ds-a" name="acao" className="input" defaultValue={form.d?.criterio.acao ?? 'participacao_evento'}>{ACOES_DESAFIO.map((a) => <option key={a} value={a}>{ACAO_LABEL[a]}</option>)}</Dropdown></Field>
               <Field label="Meta (vezes)" htmlFor="ds-m"><input id="ds-m" name="meta" type="number" min={1} className="input" defaultValue={form.d?.criterio.meta ?? 2} /></Field>
               <Field label="Pontos de bônus" htmlFor="ds-b"><input id="ds-b" name="bonus" type="number" min={0} max={1000} className="input" defaultValue={form.d?.pontosBonus ?? 100} /></Field>
             </div>
@@ -218,7 +219,7 @@ function Historico() {
       <Modal open={conceder} onClose={() => setConceder(false)} title="Concessão manual de pontos" subtitle="Para situações não cobertas pelas regras. Fica registrada com justificativa."
         footer={<><Button variant="ghost" onClick={() => setConceder(false)}>Cancelar</Button><Button icon="Check" onClick={() => { if (!pessoa) { feedback({ ok: false, erro: 'Escolha a pessoa.' }, ''); return } if (feedback(s.concederPontos(pessoa, Number(pts), motivo), 'Pontos concedidos.')) setConceder(false) }}>Conceder</Button></>}>
         <div className="grid grid-cols-[1fr_110px] gap-3">
-          <Field label="Pessoa" required htmlFor="cp-p"><select id="cp-p" className="input" value={pessoa} onChange={(e) => setPessoa(e.target.value)}><option value="">Selecione…</option>{s.colaboradores.filter((c) => c.status !== 'encerrado').map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></Field>
+          <Field label="Pessoa" required htmlFor="cp-p"><Dropdown id="cp-p" className="input" value={pessoa} onChange={(e) => setPessoa(e.target.value)}><option value="">Selecione…</option>{s.colaboradores.filter((c) => c.status !== 'encerrado').map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</Dropdown></Field>
           <Field label="Pontos" htmlFor="cp-n"><input id="cp-n" type="number" min={1} max={500} className="input" value={pts} onChange={(e) => setPts(e.target.value)} /></Field>
         </div>
         <Field label="Justificativa" required htmlFor="cp-m"><textarea id="cp-m" rows={2} className="input !h-auto py-2.5" value={motivo} onChange={(e) => setMotivo(e.target.value)} /></Field>

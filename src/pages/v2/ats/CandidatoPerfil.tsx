@@ -12,6 +12,7 @@ import { useStore } from '@/lib/store'
 import { ROTULO_ORIGEM, ROTULO_STATUS_CANDIDATURA, ROTULO_STATUS_COMUNICACAO, ROTULO_STATUS_ENTREVISTA, ROTULO_STATUS_PROPOSTA } from '@/domain/v2/ats'
 import { dataBR, dataHoraBR, moeda, numero } from '@/lib/fmt'
 import { toast } from '@/components/toast'
+import { Dropdown } from '@/components/Dropdown'
 
 export default function CandidatoPerfil() {
   const { candidaturaId = '' } = useParams()
@@ -38,10 +39,10 @@ export default function CandidatoPerfil() {
               actions={<>
                 {x.candidatura.curriculo && <a className="inline-flex items-center h-10 px-4 rounded-xl border border-line text-[13.5px] font-semibold text-ink hover:bg-surface-2" href={api.url(`ats/candidaturas/${x.candidatura.id}/curriculo`)}>Baixar currículo</a>}
                 {p.gerenciar && x.candidatura.status === 'ativa' && (
-                  <select aria-label="Mover para etapa" className="input w-auto" value="" onChange={(e) => { const v = e.target.value; e.target.value = ''; if (v) void mover({ etapaId: v }, 'Etapa atualizada.') }}>
+                  <Dropdown aria-label="Mover para etapa" className="input w-auto" value="" onChange={(e) => { const v = e.target.value; e.target.value = ''; if (v) void mover({ etapaId: v }, 'Etapa atualizada.') }}>
                     <option value="">Mover para…</option>
                     {x.etapas.filter((e: any) => e.id !== x.candidatura.etapaId && e.tipo !== 'contratado').map((e: any) => <option key={e.id} value={e.id}>{e.nome}</option>)}
-                  </select>
+                  </Dropdown>
                 )}
                 {p.gerenciar && x.candidatura.status === 'ativa' && <Button variant="danger" onClick={() => setMotivo('reprovado')}>Reprovar</Button>}
                 {p.gerenciar && ['reprovado', 'desistiu', 'cancelada', 'encerrada'].includes(x.candidatura.status) && <Button variant="soft" onClick={() => mover({ status: 'ativa', etapaId: x.etapas[0]?.id }, 'Candidatura reativada.')}>Reativar</Button>}
@@ -208,8 +209,8 @@ function AgendarModal({ candidaturaId, onClose, onFeito }: { candidaturaId: stri
   return (
     <Modal open onClose={onClose} wide title="Agendar entrevista" footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={salvar}>Agendar</Button></>}>
       <div className="grid sm:grid-cols-2 gap-x-4">
-        <Field label="Tipo" htmlFor="ag-t"><select id="ag-t" className="input" value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })}>{[['rh', 'RH'], ['tecnica', 'Técnica'], ['gestor', 'Gestor'], ['final', 'Final'], ['outra', 'Outra']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
-        <Field label="Modalidade" htmlFor="ag-m"><select id="ag-m" className="input" value={f.modalidade} onChange={(e) => setF({ ...f, modalidade: e.target.value })}><option value="online">Online</option><option value="presencial">Presencial</option><option value="telefone">Telefone</option></select></Field>
+        <Field label="Tipo" htmlFor="ag-t"><Dropdown id="ag-t" className="input" value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })}>{[['rh', 'RH'], ['tecnica', 'Técnica'], ['gestor', 'Gestor'], ['final', 'Final'], ['outra', 'Outra']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Dropdown></Field>
+        <Field label="Modalidade" htmlFor="ag-m"><Dropdown id="ag-m" className="input" value={f.modalidade} onChange={(e) => setF({ ...f, modalidade: e.target.value })}><option value="online">Online</option><option value="presencial">Presencial</option><option value="telefone">Telefone</option></Dropdown></Field>
         <Field label="Início" required erro={erros.inicio} htmlFor="ag-i"><input id="ag-i" type="datetime-local" className="input" value={f.inicio} onChange={(e) => setF({ ...f, inicio: e.target.value })} /></Field>
         <Field label="Fim" erro={erros.fim} htmlFor="ag-f"><input id="ag-f" type="datetime-local" className="input" value={f.fim} onChange={(e) => setF({ ...f, fim: e.target.value })} /></Field>
         <Field label="Local ou link" htmlFor="ag-l" className="sm:col-span-2"><input id="ag-l" className="input" value={f.localOuLink} onChange={(e) => setF({ ...f, localOuLink: e.target.value })} /></Field>
@@ -224,8 +225,8 @@ function ResultadoModal({ e, onClose, onFeito }: { e: any; onClose: () => void; 
   const salvar = async () => { if (await executar(() => api.patch(`ats/entrevistas/${e.id}`, { acao: 'registrar', ...f }), 'Resultado registrado.')) onFeito() }
   return (
     <Modal open onClose={onClose} title="Registrar resultado da entrevista" footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={salvar}>Salvar</Button></>}>
-      <Field label="Situação" htmlFor="rs-s"><select id="rs-s" className="input" value={f.status} onChange={(v) => setF({ ...f, status: v.target.value })}><option value="realizada">Realizada</option><option value="nao_compareceu">Candidato não compareceu</option></select></Field>
-      {f.status === 'realizada' && <Field label="Resultado" htmlFor="rs-r"><select id="rs-r" className="input" value={f.resultado} onChange={(v) => setF({ ...f, resultado: v.target.value })}><option value="aprovado">Aprovado(a)</option><option value="indeciso">Indeciso</option><option value="reprovado">Reprovado(a)</option></select></Field>}
+      <Field label="Situação" htmlFor="rs-s"><Dropdown id="rs-s" className="input" value={f.status} onChange={(v) => setF({ ...f, status: v.target.value })}><option value="realizada">Realizada</option><option value="nao_compareceu">Candidato não compareceu</option></Dropdown></Field>
+      {f.status === 'realizada' && <Field label="Resultado" htmlFor="rs-r"><Dropdown id="rs-r" className="input" value={f.resultado} onChange={(v) => setF({ ...f, resultado: v.target.value })}><option value="aprovado">Aprovado(a)</option><option value="indeciso">Indeciso</option><option value="reprovado">Reprovado(a)</option></Dropdown></Field>}
       <Field label="Parecer" htmlFor="rs-p" hint="Acesso restrito: aparece só para quem gerencia o processo e para os entrevistadores."><textarea id="rs-p" className={TEXTAREA} value={f.parecer} onChange={(v) => setF({ ...f, parecer: v.target.value })} /></Field>
     </Modal>
   )
@@ -260,7 +261,7 @@ function Avaliacoes({ x, recarregar }: { x: any; recarregar: () => void }) {
                       </label>))}</div>
                   </fieldset>
                 ))}
-                <Field label="Recomendação" htmlFor="av-rec"><select id="av-rec" className="input" value={rec} onChange={(e) => setRec(e.target.value)}><option value="">Sem recomendação</option><option value="avancar">Avançar</option><option value="manter">Manter em análise</option><option value="nao_avancar">Não avançar</option></select></Field>
+                <Field label="Recomendação" htmlFor="av-rec"><Dropdown id="av-rec" className="input" value={rec} onChange={(e) => setRec(e.target.value)}><option value="">Sem recomendação</option><option value="avancar">Avançar</option><option value="manter">Manter em análise</option><option value="nao_avancar">Não avançar</option></Dropdown></Field>
                 <Field label="Parecer" htmlFor="av-par"><textarea id="av-par" className={TEXTAREA} value={parecer} onChange={(e) => setParecer(e.target.value)} /></Field>
                 <Button onClick={salvar} disabled={Object.keys(notas).length === 0}>Registrar avaliação</Button>
               </>
@@ -298,7 +299,7 @@ function Notas({ x, recarregar }: { x: any; recarregar: () => void }) {
     <div className="grid lg:grid-cols-2 gap-5">
       <Card className="p-5">
         <Field label="Nova nota interna" htmlFor="nt-t"><textarea id="nt-t" className={TEXTAREA} value={texto} onChange={(e) => setTexto(e.target.value)} /></Field>
-        {x.permissoes.notasRh && <Field label="Quem pode ler" htmlFor="nt-v"><select id="nt-v" className="input" value={vis} onChange={(e) => setVis(e.target.value)}><option value="rh">Somente RH e recrutadores</option><option value="banca">RH, recrutadores e gestor/entrevistadores da vaga</option></select></Field>}
+        {x.permissoes.notasRh && <Field label="Quem pode ler" htmlFor="nt-v"><Dropdown id="nt-v" className="input" value={vis} onChange={(e) => setVis(e.target.value)}><option value="rh">Somente RH e recrutadores</option><option value="banca">RH, recrutadores e gestor/entrevistadores da vaga</option></Dropdown></Field>}
         <Button onClick={salvar} disabled={!texto.trim()}>Registrar nota</Button>
       </Card>
       <div className="space-y-3">
@@ -379,7 +380,7 @@ function Comunicacao({ x, recarregar }: { x: any; recarregar: () => void }) {
     <div className="grid lg:grid-cols-3 gap-5">
       <Card className="p-5">
         <Field label="Enviar mensagem a partir de um modelo" htmlFor="cm-t">
-          <select id="cm-t" className="input" value={chave} onChange={(e) => setChave(e.target.value)}><option value="">Escolha um modelo…</option>{(t.dados?.itens ?? []).map((i) => <option key={i.chave} value={i.chave}>{i.nome}</option>)}</select>
+          <Dropdown id="cm-t" className="input" value={chave} onChange={(e) => setChave(e.target.value)}><option value="">Escolha um modelo…</option>{(t.dados?.itens ?? []).map((i) => <option key={i.chave} value={i.chave}>{i.nome}</option>)}</Dropdown>
         </Field>
         <Button onClick={enviar} disabled={!chave || enviando}>{enviando ? 'Enviando…' : 'Enviar'}</Button>
         <p className="text-[11.5px] text-muted mt-3">O status só aparece como “Enviada” depois da confirmação do provedor de e-mail. Edite os modelos em Comunicação.</p>

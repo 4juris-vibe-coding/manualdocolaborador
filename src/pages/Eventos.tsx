@@ -9,6 +9,7 @@ import { hojeISO, parseDia } from '@/domain/datas'
 import { eventoVisivel, podeGerenciarEvento, areasLideradas } from '@/domain/visibilidade'
 import { aniversariosDoMes } from '@/domain/aniversarios'
 import { can } from '@/domain/permissions'
+import { Dropdown } from '@/components/Dropdown'
 
 export const CATEGORIAS: CategoriaEvento[] = ['Integração', 'Celebração', 'Aprendizado', 'Reunião aberta', 'Bem-estar', 'Data comemorativa']
 const CAT_TONE: Record<string, string> = {
@@ -333,7 +334,7 @@ function EventoForm({ evento, onClose }: { evento?: Evento; onClose: () => void 
         <Field label="Descrição" htmlFor="ev-d"><textarea id="ev-d" className="input !h-auto py-2.5" rows={3} value={f.descricao} onChange={(e) => set({ descricao: e.target.value })} /></Field>
         <div className="grid sm:grid-cols-2 gap-x-4">
           <Field label="Categoria" htmlFor="ev-c">
-            <select id="ev-c" className="input" value={f.categoria} onChange={(e) => set({ categoria: e.target.value as CategoriaEvento })}>{CATEGORIAS.map((c) => <option key={c}>{c}</option>)}</select>
+            <Dropdown id="ev-c" className="input" value={f.categoria} onChange={(e) => set({ categoria: e.target.value as CategoriaEvento })}>{CATEGORIAS.map((c) => <option key={c}>{c}</option>)}</Dropdown>
           </Field>
           <Field label="Data" required htmlFor="ev-dt"><input id="ev-dt" type="date" className="input" value={f.data} onChange={(e) => set({ data: e.target.value })} /></Field>
           <Field label="Início" required htmlFor="ev-h"><input id="ev-h" type="time" className="input" value={f.hora} onChange={(e) => set({ hora: e.target.value })} /></Field>
@@ -342,9 +343,9 @@ function EventoForm({ evento, onClose }: { evento?: Evento; onClose: () => void 
           <Field label="Link (opcional)" htmlFor="ev-k"><input id="ev-k" type="url" className="input" value={f.link} onChange={(e) => set({ link: e.target.value })} placeholder="https://" /></Field>
           <Field label="Vagas (opcional)" htmlFor="ev-v"><input id="ev-v" type="number" min={1} className="input" value={f.capacidade} onChange={(e) => set({ capacidade: e.target.value })} /></Field>
           <Field label="Quem vê o evento" htmlFor="ev-vis" hint={somenteArea ? 'Lideranças publicam eventos para as próprias áreas.' : undefined}>
-            <select id="ev-vis" className="input" value={f.visibilidade} disabled={somenteArea} onChange={(e) => set({ visibilidade: e.target.value as 'todos' | 'setores' })}>
+            <Dropdown id="ev-vis" className="input" value={f.visibilidade} disabled={somenteArea} onChange={(e) => set({ visibilidade: e.target.value as 'todos' | 'setores' })}>
               <option value="todos">Toda a comunidade</option><option value="setores">Áreas específicas</option>
-            </select>
+            </Dropdown>
           </Field>
         </div>
         {f.visibilidade === 'setores' && (

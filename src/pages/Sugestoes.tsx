@@ -6,6 +6,7 @@ import { Modal, ConfirmModal } from '@/components/Modal'
 import { feedback } from '@/components/toast'
 import { SugestaoForm, CATEGORIAS_SUG } from '@/components/SugestaoForm'
 import { cn, fmtDate } from '@/lib/utils'
+import { Dropdown } from '@/components/Dropdown'
 
 const COLUNAS: { key: StatusSugestao; titulo: string; icon: string; cor: string; vazio: string }[] = [
   { key: 'aguardando', titulo: 'Aguardando análise', icon: 'Hourglass', cor: 'text-warning', vazio: 'Nenhuma sugestão aguardando.' },
@@ -110,9 +111,9 @@ export default function Sugestoes() {
                             <Button size="icon-sm" variant="subtle" icon="Trash2" aria-label="Excluir sugestão" onClick={() => setExcluir(x)} />
                           </>}
                           {moderador && (
-                            <select aria-label={`Mover "${x.titulo}"`} className="h-8 rounded-lg border border-line bg-surface text-[11.5px] font-semibold px-1.5" value={x.status} onChange={(e) => mover(x, e.target.value as StatusSugestao)}>
+                            <Dropdown aria-label={`Mover "${x.titulo}"`} className="h-8 rounded-lg border border-line bg-surface text-[11.5px] font-semibold px-1.5" value={x.status} onChange={(e) => mover(x, e.target.value as StatusSugestao)}>
                               {COLUNAS.map((c) => <option key={c.key} value={c.key}>{c.titulo}</option>)}
-                            </select>
+                            </Dropdown>
                           )}
                         </div>
                       </div>

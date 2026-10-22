@@ -7,6 +7,7 @@ import { fmtDateTime } from '@/lib/utils'
 import { hojeISO } from '@/domain/datas'
 import { gerarCSV, baixarArquivo } from '@/domain/csv'
 import { exportarDadosTitular } from '@/domain/lgpd'
+import { Dropdown } from '@/components/Dropdown'
 
 const MEDIDAS = [
   'Minimização: sem CTPS, PIS, raça, estado civil, dependentes ou dados de saúde; nascimento é opcional.',
@@ -75,7 +76,7 @@ export default function Seguranca() {
         <div className="grid lg:grid-cols-2 gap-6">
           <Card className="p-5 sm:p-6">
             <h3 className="text-[15px] font-bold text-ink mb-4">Atender a uma solicitação</h3>
-            <Field label="Titular" htmlFor="tt-p"><select id="tt-p" className="input" value={pessoa} onChange={(e) => setPessoa(e.target.value)}><option value="">Selecione…</option>{s.colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome}{c.status === 'encerrado' ? ' (encerrada)' : ''}</option>)}</select></Field>
+            <Field label="Titular" htmlFor="tt-p"><Dropdown id="tt-p" className="input" value={pessoa} onChange={(e) => setPessoa(e.target.value)}><option value="">Selecione…</option>{s.colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome}{c.status === 'encerrado' ? ' (encerrada)' : ''}</option>)}</Dropdown></Field>
             <div className="flex flex-wrap gap-2">
               <Button variant="ghost" icon="Download" disabled={!alvo} onClick={() => { if (!alvo) return; baixarArquivo(JSON.stringify(exportarDadosTitular(s, alvo.id), null, 2), `dados-titular-${alvo.id}.json`, 'application/json'); toast('Cópia dos dados gerada.') }}>Exportar dados (JSON)</Button>
               <Button variant="danger" icon="UserX" disabled={!alvo || alvo.status !== 'encerrado'} onClick={() => setAnonimizar(true)}>Anonimizar</Button>

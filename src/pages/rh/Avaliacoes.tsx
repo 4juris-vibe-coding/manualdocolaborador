@@ -10,6 +10,7 @@ import { feedback } from '@/components/toast'
 import { cn, fmtDate } from '@/lib/utils'
 import { hojeISO, somarDias } from '@/domain/datas'
 import { ROTULOS_ESCALA, TIPO_RELACAO_INFO, rotulos, elegiveis, competenciasDe, resultadoIndividual, responsaveisDe, notaPonderada } from '@/domain/avaliacoes'
+import { Dropdown } from '@/components/Dropdown'
 
 const STATUS: Record<CicloAvaliativo['status'], { label: string; tone: string }> = { rascunho: { label: 'Rascunho', tone: 'neutral' }, ativo: { label: 'Em andamento', tone: 'brand' }, encerrado: { label: 'Encerrado', tone: 'success' } }
 
@@ -117,7 +118,7 @@ function Wizard({ id: idInicial, onClose }: { id?: string; onClose: () => void }
         <div className="grid md:grid-cols-2 gap-6">
           <div>
             <Field label="Níveis da escala"><div className="flex gap-2">{([5, 4] as const).map((n) => <button key={n} type="button" aria-pressed={f.niveisEscala === n} onClick={() => set({ niveisEscala: n })} className={cn('chip', f.niveisEscala === n && 'chip-active')}>{n} níveis</button>)}</div></Field>
-            <Field label="Rótulos sugeridos" htmlFor="cv-r"><select id="cv-r" className="input" value={f.rotuloEscala} onChange={(e) => set({ rotuloEscala: e.target.value as RotuloEscala })}>{(Object.keys(ROTULOS_ESCALA) as RotuloEscala[]).map((k) => <option key={k} value={k}>{ROTULOS_ESCALA[k].titulo}</option>)}</select></Field>
+            <Field label="Rótulos sugeridos" htmlFor="cv-r"><Dropdown id="cv-r" className="input" value={f.rotuloEscala} onChange={(e) => set({ rotuloEscala: e.target.value as RotuloEscala })}>{(Object.keys(ROTULOS_ESCALA) as RotuloEscala[]).map((k) => <option key={k} value={k}>{ROTULOS_ESCALA[k].titulo}</option>)}</Dropdown></Field>
             <div className="space-y-3">
               <Toggle checked={!!f.comentarioCompetenciaMostrar} onChange={(v) => set({ comentarioCompetenciaMostrar: v, comentarioCompetenciaObrigatorio: v ? f.comentarioCompetenciaObrigatorio : false })} label="Permitir comentário por competência" />
               <Toggle checked={!!f.comentarioCompetenciaObrigatorio} disabled={!f.comentarioCompetenciaMostrar} onChange={(v) => set({ comentarioCompetenciaObrigatorio: v })} label="Comentário por competência obrigatório" />
@@ -145,8 +146,8 @@ function Wizard({ id: idInicial, onClose }: { id?: string; onClose: () => void }
           <Toggle checked={!!f.autoavaliacao} onChange={(v) => set({ autoavaliacao: v })} label="Incluir autoavaliação" />
           <div className="grid sm:grid-cols-3 gap-x-4 mt-4">
             <Field label="Parcerias iniciadas até" htmlFor="cv-ia" hint="Opcional"><input id="cv-ia" type="date" className="input" value={f.iniciadosAte ?? ''} onChange={(e) => set({ iniciadosAte: e.target.value || undefined })} /></Field>
-            <Field label="Recorte da estrutura" htmlFor="cv-ne"><select id="cv-ne" className="input" value={f.nivelEstrutura ?? ''} onChange={(e) => set({ nivelEstrutura: (e.target.value || undefined) as CicloAvaliativo['nivelEstrutura'], opcaoEstruturaId: undefined })}><option value="">Toda a comunidade</option><option value="unidade">Unidade</option><option value="area">Área</option><option value="funcao">Função</option></select></Field>
-            {f.nivelEstrutura && <Field label="Qual" htmlFor="cv-oe"><select id="cv-oe" className="input" value={f.opcaoEstruturaId ?? ''} onChange={(e) => set({ opcaoEstruturaId: e.target.value || undefined })}><option value="">Selecione…</option>{opcoesEstrutura.map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}</select></Field>}
+            <Field label="Recorte da estrutura" htmlFor="cv-ne"><Dropdown id="cv-ne" className="input" value={f.nivelEstrutura ?? ''} onChange={(e) => set({ nivelEstrutura: (e.target.value || undefined) as CicloAvaliativo['nivelEstrutura'], opcaoEstruturaId: undefined })}><option value="">Toda a comunidade</option><option value="unidade">Unidade</option><option value="area">Área</option><option value="funcao">Função</option></Dropdown></Field>
+            {f.nivelEstrutura && <Field label="Qual" htmlFor="cv-oe"><Dropdown id="cv-oe" className="input" value={f.opcaoEstruturaId ?? ''} onChange={(e) => set({ opcaoEstruturaId: e.target.value || undefined })}><option value="">Selecione…</option>{opcoesEstrutura.map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}</Dropdown></Field>}
           </div>
           <fieldset><legend className="label">Formas de contratação (vazio = todas)</legend>
             <div className="flex gap-2">{(['PJ', 'MEI', 'autonomo'] as Regime[]).map((r) => { const on = f.regimes?.includes(r); return <button key={r} type="button" aria-pressed={on} onClick={() => set({ regimes: on ? f.regimes!.filter((x) => x !== r) : [...(f.regimes ?? []), r] })} className={cn('chip', on && 'chip-active')}>{r === 'autonomo' ? 'Autônomo' : r}</button> })}</div>
@@ -161,8 +162,8 @@ function Wizard({ id: idInicial, onClose }: { id?: string; onClose: () => void }
             <Button size="sm" variant="ghost" icon="RefreshCw" onClick={() => id && feedback(s.gerarParticipantesCiclo(id), 'Participantes gerados novamente.')}>Gerar automaticamente</Button>
           </div>
           <div className="flex flex-wrap items-end gap-2 mb-4 p-3 rounded-xl bg-surface-2 border border-line">
-            <div className="flex-1 min-w-[160px]"><span className="label">Avaliador</span><select aria-label="Avaliador" className="input" value={novoPar.avaliador} onChange={(e) => setNovoPar({ ...novoPar, avaliador: e.target.value })}><option value="">Selecione…</option>{ativos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select></div>
-            <div className="flex-1 min-w-[160px]"><span className="label">Avaliado</span><select aria-label="Avaliado" className="input" value={novoPar.avaliado} onChange={(e) => setNovoPar({ ...novoPar, avaliado: e.target.value })}><option value="">Selecione…</option>{ativos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select></div>
+            <div className="flex-1 min-w-[160px]"><span className="label">Avaliador</span><Dropdown aria-label="Avaliador" className="input" value={novoPar.avaliador} onChange={(e) => setNovoPar({ ...novoPar, avaliador: e.target.value })}><option value="">Selecione…</option>{ativos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</Dropdown></div>
+            <div className="flex-1 min-w-[160px]"><span className="label">Avaliado</span><Dropdown aria-label="Avaliado" className="input" value={novoPar.avaliado} onChange={(e) => setNovoPar({ ...novoPar, avaliado: e.target.value })}><option value="">Selecione…</option>{ativos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</Dropdown></div>
             <Button icon="Plus" onClick={() => { if (id && feedback(s.adicionarParticipante(id, novoPar.avaliador, novoPar.avaliado), 'Par adicionado.')) setNovoPar({ avaliador: '', avaliado: '' }) }}>Adicionar</Button>
           </div>
           {porAvaliado.length === 0 ? <EmptyState icon="Users" title="Nenhum participante" desc="Gere automaticamente ou adicione pares manualmente." /> : (

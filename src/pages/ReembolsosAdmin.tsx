@@ -5,6 +5,7 @@ import { toast, feedback } from '@/components/toast'
 import { ConfirmModal } from '@/components/Modal'
 import { brl, fmtDate, STATUS_SOLIC, REEMBOLSO_ETAPAS, cn } from '@/lib/utils'
 import type { StatusSolicitacao } from '@/lib/types'
+import { Dropdown } from '@/components/Dropdown'
 
 const STATUS_OPCOES: StatusSolicitacao[] = ['pendente', 'aprovado', 'pagamento', 'pago', 'recusado']
 
@@ -17,13 +18,13 @@ function StatusSelect({ value, onChange, className }: { value: StatusSolicitacao
   }
   return (
     <div className={cn('relative', className)}>
-      <select
+      <Dropdown
         value={value}
         onChange={(e) => onChange(e.target.value as StatusSolicitacao)}
         className={cn('appearance-none w-full h-9 pl-3 pr-8 rounded-lg border text-[12.5px] font-semibold cursor-pointer outline-none transition focus:ring-1 focus:ring-brand', toneCls[tone])}
       >
         {STATUS_OPCOES.map((st) => <option key={st} value={st}>{STATUS_SOLIC[st].label}</option>)}
-      </select>
+      </Dropdown>
       <Icon name="ChevronsUpDown" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 opacity-60" />
     </div>
   )
@@ -138,18 +139,18 @@ export default function ReembolsosAdmin({ onVerColaborador }: { onVerColaborador
       {view === 'lista' && (
         <div className="animate-fade-in">
           <div className="flex flex-wrap items-center gap-3 mb-4">
-            <select className="input w-auto min-w-[170px]" value={colabF} onChange={(e) => setColabF(e.target.value)}>
+            <Dropdown className="input w-auto min-w-[170px]" value={colabF} onChange={(e) => setColabF(e.target.value)}>
               <option value="todos">Todos os colaboradores</option>
               {s.colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
-            <select className="input w-auto min-w-[160px]" value={catF} onChange={(e) => setCatF(e.target.value)}>
+            </Dropdown>
+            <Dropdown className="input w-auto min-w-[160px]" value={catF} onChange={(e) => setCatF(e.target.value)}>
               <option value="todas">Todas as categorias</option>
               {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select className="input w-auto min-w-[150px]" value={statusF} onChange={(e) => setStatusF(e.target.value)}>
+            </Dropdown>
+            <Dropdown className="input w-auto min-w-[150px]" value={statusF} onChange={(e) => setStatusF(e.target.value)}>
               <option value="todos">Todos os status</option>
               {STATUS_OPCOES.map((st) => <option key={st} value={st}>{STATUS_SOLIC[st].label}</option>)}
-            </select>
+            </Dropdown>
             <span className="ml-auto text-[12.5px] text-muted">{lista.length} solicitação(ões)</span>
           </div>
           <Card>

@@ -9,6 +9,7 @@ import { feedback, toast } from '@/components/toast'
 import { fmtDate } from '@/lib/utils'
 import { hojeISO, somarDias, diasEntre } from '@/domain/datas'
 import { gerarCSV, baixarArquivo } from '@/domain/csv'
+import { Dropdown } from '@/components/Dropdown'
 
 export const TIPOS_EXIGENCIA: TipoExigencia[] = ['Exame exigido por cliente', 'Certificação técnica', 'Treinamento de segurança (NR)', 'Certidão', 'Registro profissional', 'Seguro de responsabilidade', 'Outro']
 export const SITUACAO_EX: Record<SituacaoExigencia, { label: string; tone: string }> = { regular: { label: 'Regular', tone: 'success' }, com_ressalvas: { label: 'Com ressalvas', tone: 'warning' }, irregular: { label: 'Irregular', tone: 'danger' } }
@@ -102,15 +103,15 @@ export function ExigenciaForm({ e, onClose, pessoaFixa }: { e?: Exigencia; onClo
     <Modal open onClose={onClose} wide title={e ? 'Editar exigência' : 'Nova exigência'} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Check" type="submit" form="exForm">Salvar</Button></>}>
       <form id="exForm" onSubmit={salvar}>
         <div className="grid sm:grid-cols-2 gap-x-4">
-          {!pessoaFixa && <Field label="Pessoa" required htmlFor="ex-p"><select id="ex-p" name="colaboradorId" className="input" defaultValue={e?.colaboradorId ?? ''} required><option value="" disabled>Selecione…</option>{s.colaboradores.filter((c) => c.status !== 'encerrado').map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></Field>}
-          <Field label="Tipo" htmlFor="ex-t"><select id="ex-t" name="tipo" className="input" defaultValue={e?.tipo ?? 'Certificação técnica'}>{TIPOS_EXIGENCIA.map((t) => <option key={t}>{t}</option>)}</select></Field>
+          {!pessoaFixa && <Field label="Pessoa" required htmlFor="ex-p"><Dropdown id="ex-p" name="colaboradorId" className="input" defaultValue={e?.colaboradorId ?? ''} required><option value="" disabled>Selecione…</option>{s.colaboradores.filter((c) => c.status !== 'encerrado').map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</Dropdown></Field>}
+          <Field label="Tipo" htmlFor="ex-t"><Dropdown id="ex-t" name="tipo" className="input" defaultValue={e?.tipo ?? 'Certificação técnica'}>{TIPOS_EXIGENCIA.map((t) => <option key={t}>{t}</option>)}</Dropdown></Field>
           <Field label="Descrição" required htmlFor="ex-d" className="sm:col-span-2"><input id="ex-d" name="descricao" className="input" defaultValue={e?.descricao} /></Field>
           <Field label="Data de emissão/realização" htmlFor="ex-dt"><input id="ex-dt" name="data" type="date" className="input" defaultValue={e?.data ?? hojeISO()} /></Field>
           <Field label="Validade" htmlFor="ex-v"><input id="ex-v" name="validade" type="date" className="input" defaultValue={e?.validade ?? somarDias(hojeISO(), 365)} /></Field>
-          <Field label="Situação" htmlFor="ex-s"><select id="ex-s" name="situacao" className="input" defaultValue={e?.situacao ?? 'regular'}>{Object.entries(SITUACAO_EX).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></Field>
+          <Field label="Situação" htmlFor="ex-s"><Dropdown id="ex-s" name="situacao" className="input" defaultValue={e?.situacao ?? 'regular'}>{Object.entries(SITUACAO_EX).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</Dropdown></Field>
           <Field label="Emissor / instituição" htmlFor="ex-e"><input id="ex-e" name="emissor" className="input" defaultValue={e?.emissor} /></Field>
           <Field label="Nº de registro" htmlFor="ex-r"><input id="ex-r" name="registro" className="input" defaultValue={e?.registro} /></Field>
-          <Field label="Documento comprobatório" htmlFor="ex-doc"><select id="ex-doc" name="documentoId" className="input" defaultValue={e?.documentoId ?? ''}><option value="">Nenhum</option>{docs.map((d) => <option key={d.id} value={d.id}>{d.nome}</option>)}</select></Field>
+          <Field label="Documento comprobatório" htmlFor="ex-doc"><Dropdown id="ex-doc" name="documentoId" className="input" defaultValue={e?.documentoId ?? ''}><option value="">Nenhum</option>{docs.map((d) => <option key={d.id} value={d.id}>{d.nome}</option>)}</Dropdown></Field>
         </div>
         <Field label="Observações" htmlFor="ex-o" hint="Não registre diagnósticos ou detalhes de saúde."><textarea id="ex-o" name="observacoes" rows={2} className="input !h-auto py-2.5" defaultValue={e?.observacoes} /></Field>
       </form>

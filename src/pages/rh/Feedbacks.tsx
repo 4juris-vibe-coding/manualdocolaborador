@@ -10,6 +10,7 @@ import { hojeISO, somarDias } from '@/domain/datas'
 import { gerarCSV, baixarArquivo } from '@/domain/csv'
 import { areasLideradas } from '@/domain/visibilidade'
 import { can } from '@/domain/permissions'
+import { Dropdown } from '@/components/Dropdown'
 
 export const CLASS_FB: Record<ClassificacaoFeedback, { label: string; tone: string; icon: string }> = {
   positivo: { label: 'Positivo', tone: 'success', icon: 'ThumbsUp' }, para_melhorar: { label: 'Para melhorar', tone: 'warning', icon: 'TrendingUp' }, neutro: { label: 'Neutro', tone: 'neutral', icon: 'Minus' },
@@ -111,10 +112,10 @@ export function FeedbackForm({ f, pessoas, onClose, pessoaFixa }: { f?: Feedback
   return (
     <Modal open onClose={onClose} title={f ? 'Editar feedback' : 'Novo feedback'} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Check" type="submit" form="fbForm">Salvar</Button></>}>
       <form id="fbForm" onSubmit={salvar}>
-        {!pessoaFixa && <Field label="Pessoa" required htmlFor="fb-p"><select id="fb-p" name="colaboradorId" className="input" defaultValue={f?.colaboradorId ?? ''} required><option value="" disabled>Selecione…</option>{pessoas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></Field>}
+        {!pessoaFixa && <Field label="Pessoa" required htmlFor="fb-p"><Dropdown id="fb-p" name="colaboradorId" className="input" defaultValue={f?.colaboradorId ?? ''} required><option value="" disabled>Selecione…</option>{pessoas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</Dropdown></Field>}
         <div className="grid sm:grid-cols-2 gap-x-4">
           <Field label="Data" htmlFor="fb-d"><input id="fb-d" name="data" type="date" className="input" defaultValue={f?.data ?? hojeISO()} /></Field>
-          <Field label="Classificação" htmlFor="fb-c"><select id="fb-c" name="classificacao" className="input" defaultValue={f?.classificacao ?? 'positivo'}>{Object.entries(CLASS_FB).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></Field>
+          <Field label="Classificação" htmlFor="fb-c"><Dropdown id="fb-c" name="classificacao" className="input" defaultValue={f?.classificacao ?? 'positivo'}>{Object.entries(CLASS_FB).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</Dropdown></Field>
         </div>
         <Field label="Comentário" required htmlFor="fb-x" hint="Seja específico(a) sobre a entrega e o combinado."><textarea id="fb-x" name="comentario" rows={4} className="input !h-auto py-2.5" defaultValue={f?.comentario} /></Field>
         <Toggle checked={visivel} onChange={setVisivel} label={visivel ? 'Visível para a pessoa (recomendado)' : 'Interno (só RH e autor)'} />

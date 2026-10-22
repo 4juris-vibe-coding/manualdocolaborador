@@ -9,6 +9,7 @@ import { api, executar, qs, useApi } from '@/data/v2/api'
 import { useTem } from '@/data/v2/acesso'
 import { ROTULO_STATUS_ENTREVISTA } from '@/domain/v2/ats'
 import { dataHoraBR } from '@/lib/fmt'
+import { Dropdown } from '@/components/Dropdown'
 
 export default function Entrevistas() {
   useTitulo('Entrevistas · 4JURIS Pessoas')
@@ -66,8 +67,8 @@ function Resultado({ e, onClose, onFeito }: { e: any; onClose: () => void; onFei
   return (
     <Modal open onClose={onClose} title="Registrar resultado" subtitle={e.candidatoNome}
       footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={async () => { if (await executar(() => api.patch(`ats/entrevistas/${e.id}`, { acao: 'registrar', ...f }), 'Resultado registrado.')) onFeito() }}>Salvar</Button></>}>
-      <Field label="Situação" htmlFor="er-s"><select id="er-s" className="input" value={f.status} onChange={(v) => setF({ ...f, status: v.target.value })}><option value="realizada">Realizada</option><option value="nao_compareceu">Candidato não compareceu</option></select></Field>
-      {f.status === 'realizada' && <Field label="Resultado" htmlFor="er-r"><select id="er-r" className="input" value={f.resultado} onChange={(v) => setF({ ...f, resultado: v.target.value })}><option value="aprovado">Aprovado(a)</option><option value="indeciso">Indeciso</option><option value="reprovado">Reprovado(a)</option></select></Field>}
+      <Field label="Situação" htmlFor="er-s"><Dropdown id="er-s" className="input" value={f.status} onChange={(v) => setF({ ...f, status: v.target.value })}><option value="realizada">Realizada</option><option value="nao_compareceu">Candidato não compareceu</option></Dropdown></Field>
+      {f.status === 'realizada' && <Field label="Resultado" htmlFor="er-r"><Dropdown id="er-r" className="input" value={f.resultado} onChange={(v) => setF({ ...f, resultado: v.target.value })}><option value="aprovado">Aprovado(a)</option><option value="indeciso">Indeciso</option><option value="reprovado">Reprovado(a)</option></Dropdown></Field>}
       <Field label="Parecer" htmlFor="er-p"><textarea id="er-p" className={TEXTAREA} value={f.parecer} onChange={(v) => setF({ ...f, parecer: v.target.value })} /></Field>
     </Modal>
   )

@@ -8,6 +8,7 @@ import { api, lerBase64, useApi } from '@/data/v2/api'
 import { MODO_API } from '@/data/config'
 import { toast } from '@/components/toast'
 import { ORIGENS_PUBLICAS } from '@/domain/v2/ats'
+import { Dropdown } from '@/components/Dropdown'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const EXT = /\.(pdf|docx?|odt)$/i
@@ -142,9 +143,9 @@ export default function Candidatar() {
                     return (
                       <Field key={p.id} label={p.texto} required={p.obrigatoria} erro={erros[k]} htmlFor={id}>
                         {p.tipo === 'sim_nao' ? (
-                          <select id={id} className={cls(k)} value={f.respostas[p.id] ?? ''} onChange={(e) => set('respostas', { ...f.respostas, [p.id]: e.target.value })} {...ar(k)}><option value="">Selecione…</option><option value="sim">Sim</option><option value="nao">Não</option></select>
+                          <Dropdown id={id} className={cls(k)} value={f.respostas[p.id] ?? ''} onChange={(e) => set('respostas', { ...f.respostas, [p.id]: e.target.value })} {...ar(k)}><option value="">Selecione…</option><option value="sim">Sim</option><option value="nao">Não</option></Dropdown>
                         ) : p.tipo === 'opcoes' ? (
-                          <select id={id} className={cls(k)} value={f.respostas[p.id] ?? ''} onChange={(e) => set('respostas', { ...f.respostas, [p.id]: e.target.value })} {...ar(k)}><option value="">Selecione…</option>{(p.opcoes ?? []).map((o: string) => <option key={o}>{o}</option>)}</select>
+                          <Dropdown id={id} className={cls(k)} value={f.respostas[p.id] ?? ''} onChange={(e) => set('respostas', { ...f.respostas, [p.id]: e.target.value })} {...ar(k)}><option value="">Selecione…</option>{(p.opcoes ?? []).map((o: string) => <option key={o}>{o}</option>)}</Dropdown>
                         ) : (
                           <textarea id={id} className={`${TEXTAREA} ${erros[k] ? 'border-danger' : ''}`} value={f.respostas[p.id] ?? ''} onChange={(e) => set('respostas', { ...f.respostas, [p.id]: e.target.value })} {...ar(k)} />
                         )}

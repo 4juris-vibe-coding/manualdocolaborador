@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Badge, Button, Callout, Field, Icon, Toggle } from '@/components/ui'
 import { cn } from '@/lib/utils'
+import { Dropdown } from '@/components/Dropdown'
 import {
   ROTULO_TIPO, TIPOS, tipoNumerico, tipoTemOpcoes, validarPergunta, validarEstrutura,
   type Operador, type PerguntaPesquisa, type TipoPergunta,
@@ -91,9 +92,9 @@ export function EditorPerguntas({ perguntas, onChange, desabilitado }: Props) {
                       <input className="input" value={p.texto} maxLength={500} onChange={(e) => atualizar(i, { texto: e.target.value })} />
                     </Field>
                     <Field label="Tipo de resposta">
-                      <select className="input" value={p.tipo} onChange={(e) => mudarTipo(i, e.target.value as TipoPergunta)}>
+                      <Dropdown className="input" value={p.tipo} onChange={(e) => mudarTipo(i, e.target.value as TipoPergunta)}>
                         {TIPOS.map((t) => <option key={t.tipo} value={t.tipo}>{t.rotulo}</option>)}
-                      </select>
+                      </Dropdown>
                     </Field>
                   </div>
                   <Field label="Texto de apoio (opcional)"><input className="input" value={p.descricao ?? ''} maxLength={500} onChange={(e) => atualizar(i, { descricao: e.target.value || undefined })} /></Field>
@@ -141,23 +142,23 @@ export function EditorPerguntas({ perguntas, onChange, desabilitado }: Props) {
                     {p.condicao && (
                       <div className="grid gap-2 mt-3 sm:grid-cols-[1fr_190px_1fr] items-end">
                         <Field label="Mostrar se a pergunta" className="!mb-0">
-                          <select className="input" value={p.condicao.perguntaId} onChange={(e) => atualizar(i, { condicao: { ...p.condicao!, perguntaId: e.target.value, valor: undefined } })}>
+                          <Dropdown className="input" value={p.condicao.perguntaId} onChange={(e) => atualizar(i, { condicao: { ...p.condicao!, perguntaId: e.target.value, valor: undefined } })}>
                             {!origem && <option value={p.condicao.perguntaId}>(pergunta indisponível)</option>}
                             {anteriores.map((a, k) => <option key={a.id} value={a.id}>{k + 1}. {a.texto.slice(0, 50) || 'sem enunciado'}</option>)}
-                          </select>
+                          </Dropdown>
                         </Field>
                         <Field label="Condição" className="!mb-0">
-                          <select className="input" value={p.condicao.operador} onChange={(e) => atualizar(i, { condicao: { ...p.condicao!, operador: e.target.value as Operador } })}>
+                          <Dropdown className="input" value={p.condicao.operador} onChange={(e) => atualizar(i, { condicao: { ...p.condicao!, operador: e.target.value as Operador } })}>
                             {OPERADORES.map((o) => <option key={o.v} value={o.v}>{o.r}</option>)}
-                          </select>
+                          </Dropdown>
                         </Field>
                         {p.condicao.operador !== 'respondida' && (
                           <Field label="Valor" className="!mb-0">
                             {origem && (origem.tipo === 'sim_nao' || tipoTemOpcoes(origem.tipo))
-                              ? <select className="input" value={String(p.condicao.valor ?? '')} onChange={(e) => atualizar(i, { condicao: { ...p.condicao!, valor: e.target.value } })}>
+                              ? <Dropdown className="input" value={String(p.condicao.valor ?? '')} onChange={(e) => atualizar(i, { condicao: { ...p.condicao!, valor: e.target.value } })}>
                                   <option value="">Escolha…</option>
                                   {origem.tipo === 'sim_nao' ? <><option value="sim">Sim</option><option value="nao">Não</option></> : (origem.opcoes ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
-                                </select>
+                                </Dropdown>
                               : <input className="input" type={origem && tipoNumerico(origem.tipo) ? 'number' : 'text'} value={String(p.condicao.valor ?? '')}
                                   onChange={(e) => atualizar(i, { condicao: { ...p.condicao!, valor: origem && tipoNumerico(origem.tipo) && e.target.value !== '' ? Number(e.target.value) : e.target.value } })} />}
                           </Field>
@@ -174,9 +175,9 @@ export function EditorPerguntas({ perguntas, onChange, desabilitado }: Props) {
       </ol>
       {!desabilitado && (
         <div className="flex flex-wrap gap-2 items-center pt-1">
-          <select aria-label="Tipo da nova pergunta" className="input w-auto min-w-[200px]" value={novoTipo} onChange={(e) => setNovoTipo(e.target.value as TipoPergunta)}>
+          <Dropdown aria-label="Tipo da nova pergunta" className="input w-auto min-w-[200px]" value={novoTipo} onChange={(e) => setNovoTipo(e.target.value as TipoPergunta)}>
             {TIPOS.map((t) => <option key={t.tipo} value={t.tipo}>{t.rotulo}</option>)}
-          </select>
+          </Dropdown>
           <Button icon="Plus" onClick={adicionar}>Adicionar pergunta</Button>
           <span className="text-[12px] text-muted">{TIPOS.find((t) => t.tipo === novoTipo)?.desc}</span>
         </div>

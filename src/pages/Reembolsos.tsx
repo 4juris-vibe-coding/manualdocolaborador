@@ -7,6 +7,7 @@ import { brl, fmtDate, STATUS_SOLIC, cn, podeVerReembolsosView } from '@/lib/uti
 import ReembolsosAdmin from './ReembolsosAdmin'
 import { can } from '@/domain/permissions'
 import { hojeISO } from '@/domain/datas'
+import { Dropdown } from '@/components/Dropdown'
 
 const CATEGORIAS = ['Software & Ferramentas', 'Viagem & Deslocamento', 'Alimentação', 'Material de escritório', 'Cursos & Educação', 'Outros']
 
@@ -110,10 +111,10 @@ function ReembolsosColaborador() {
         footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button icon="Send" type="submit" form="reembForm">Enviar solicitação</Button></>}>
         <form id="reembForm" onSubmit={submit}>
           <Field label="Categoria" required>
-            <select name="categoria" className="input" defaultValue="">
+            <Dropdown name="categoria" className="input" defaultValue="">
               <option value="" disabled>Selecione...</option>
               {CATEGORIAS.map((c) => <option key={c}>{c}</option>)}
-            </select>
+            </Dropdown>
           </Field>
           <Field label="Descrição" required><input name="descricao" className="input" placeholder="Ex.: Assinatura de ferramenta" /></Field>
           <div className="grid grid-cols-2 gap-4">

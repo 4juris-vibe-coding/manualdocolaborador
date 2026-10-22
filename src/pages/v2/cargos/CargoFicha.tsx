@@ -9,6 +9,7 @@ import { TelaCargos, STATUS_FICHA, STATUS_FAIXA, type Taxonomia } from '@/compon
 import { api, executar, useApi, ErroApi } from '@/data/v2/api'
 import { dataBR, dataHoraBR, moeda } from '@/lib/fmt'
 import { toast } from '@/components/toast'
+import { Dropdown } from '@/components/Dropdown'
 
 interface Ficha {
   codigo: string | null; familiaId: string | null; subfamiliaId: string | null; area: string | null; trilhaId: string | null; nivelId: string | null
@@ -234,8 +235,8 @@ function AbaCompetencias({ cargoId, podeEditar }: { cargoId: string; podeEditar:
             {itens.map((i) => (
               <div key={i.competenciaId} className="grid gap-3 sm:grid-cols-[1.4fr_120px_130px_1.6fr_auto] items-end border border-line rounded-xl p-3">
                 <div><div className="label">Competência</div><div className="text-[13.5px] font-semibold text-ink py-2">{i.nome ?? todas.dados?.competencias.find((c) => c.id === i.competenciaId)?.nome ?? i.competenciaId}</div></div>
-                <Field label="Nível" className="!mb-0"><select aria-label="Nível esperado" className="input" disabled={!podeEditar} value={i.nivelEsperado} onChange={(e) => mudar(i.competenciaId, { nivelEsperado: Number(e.target.value) })}>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</select></Field>
-                <Field label="Tipo" className="!mb-0"><select aria-label="Obrigatória ou desejável" className="input" disabled={!podeEditar} value={i.obrigatoria ? 's' : 'n'} onChange={(e) => mudar(i.competenciaId, { obrigatoria: e.target.value === 's' })}><option value="s">Obrigatória</option><option value="n">Desejável</option></select></Field>
+                <Field label="Nível" className="!mb-0"><Dropdown aria-label="Nível esperado" className="input" disabled={!podeEditar} value={i.nivelEsperado} onChange={(e) => mudar(i.competenciaId, { nivelEsperado: Number(e.target.value) })}>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</Dropdown></Field>
+                <Field label="Tipo" className="!mb-0"><Dropdown aria-label="Obrigatória ou desejável" className="input" disabled={!podeEditar} value={i.obrigatoria ? 's' : 'n'} onChange={(e) => mudar(i.competenciaId, { obrigatoria: e.target.value === 's' })}><option value="s">Obrigatória</option><option value="n">Desejável</option></Dropdown></Field>
                 <Field label="Critério de avaliação" className="!mb-0"><input className="input" disabled={!podeEditar} value={i.criterio ?? ''} onChange={(e) => mudar(i.competenciaId, { criterio: e.target.value })} /></Field>
                 {podeEditar && <Button variant="subtle" size="icon-sm" icon="Trash2" aria-label="Remover competência" onClick={() => setItens((l) => l.filter((x) => x.competenciaId !== i.competenciaId))} />}
               </div>

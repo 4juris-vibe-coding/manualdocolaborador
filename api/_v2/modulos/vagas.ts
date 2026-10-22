@@ -5,7 +5,7 @@
    ============================================================ */
 import { randomBytes } from 'node:crypto'
 import {
-  auditar, camel, cargos, conflito, dataISO, enumerado, escopoVagas, hojeISO, idsComFuncao, idsComPapel, inteiro, invalido, lista, listaTexto,
+  auditar, camel, cargos, conflito, qualquerArea, dataISO, enumerado, escopoVagas, hojeISO, idsComFuncao, idsComPapel, inteiro, invalido, lista, listaTexto,
   naoEncontrado, notificar, ok, paginacao, pessoaPorId, pessoas, proibido, setores, texto, unidades,
   type Ctx, type Executor, type Res, type Rota, type Usuario,
 } from '../nucleo.js'
@@ -157,7 +157,7 @@ function validarRefs(l: Lido, org: Org, u: Usuario) {
     const id = String(v)
     const existe = e.ref === 'setor' ? org.setor.has(id) : e.ref === 'unidade' ? org.unidade.has(id) : e.ref === 'cargo' ? org.cargo.has(id) : org.pessoa.has(id) && org.pessoa.get(id)!.status !== 'encerrado'
     if (!existe) throw invalido(`${e.campo}: registro não encontrado no cadastro.`, { [e.campo]: 'Selecione um item do cadastro' })
-    if (e.campo === 'setorId' && !u.caps.has('vagas:gerenciar') && !u.setoresLiderados.includes(id)) throw proibido('Você só pode abrir vagas para áreas que lidera.')
+    if (e.campo === 'setorId' && !qualquerArea(u) && !u.setoresLiderados.includes(id)) throw proibido('Você só pode abrir vagas para áreas que lidera.')
   }
 }
 
@@ -640,7 +640,7 @@ export const rotas: Rota[] = [
       const recr = (await db.query("select colaborador_id from acl_funcoes where funcao = 'recrutador'")).rows.map((r) => r.colaborador_id as string)
       const ativos = gente.filter((p) => p.status !== 'encerrado')
       return ok({
-        setores: setoresL.filter((s) => gestao || u.setoresLiderados.includes(s.id)).map((s) => ({ id: s.id, nome: s.nome })),
+        setores: setoresL.filter((s) => qualquerArea(u) || u.setoresLiderados.includes(s.id)).map((s) => ({ id: s.id, nome: s.nome })),
         todosSetores: setoresL.map((s) => ({ id: s.id, nome: s.nome })),
         unidades: unidadesL.map((x) => ({ id: x.id, nome: x.nome })),
         cargos: cargosL.map((x) => ({ id: x.id, nome: x.nome, setorId: x.setorId, nivel: x.nivel ?? null })),
@@ -779,7 +779,7 @@ export const rotas: Rota[] = [
       const l = lerCampos({ ...corpo, titulo: corpo.titulo ?? '' }, u, cfg)
       if (!l.valores.titulo) throw invalido('Informe o título da vaga.', { titulo: 'Obrigatório' })
       validarRefs(l, org, u)
-      if (!l.valores.setor_id && u.setoresLiderados.length === 1 && !u.caps.has('vagas:gerenciar')) l.valores.setor_id = u.setoresLiderados[0]
+      if (!l.valores.setor_id && u.setoresLiderados.length === 1 && !qualquerArea(u)) l.valores.setor_id = u.setoresLiderados[0]
       if (!l.valores.gestor_solicitante_id) l.valores.gestor_solicitante_id = u.colaboradorId
       if (l.valores.cargo_id && !l.valores.senioridade) l.valores.senioridade = org.cargo.get(String(l.valores.cargo_id))?.nivel ?? null
       if (l.valores.salario_min != null && l.valores.salario_max != null && Number(l.valores.salario_max) < Number(l.valores.salario_min)) throw invalido('O salário máximo não pode ser menor que o mínimo.', { salarioMax: 'Menor que o mínimo' })
@@ -889,7 +889,7 @@ export const rotas: Rota[] = [
           valores[col] = COLUNAS_JSON.has(col) ? JSON.stringify(v[col]) : v[col]
         }
         valores.gestor_solicitante_id = u.colaboradorId
-        if (!u.caps.has('vagas:gerenciar')) valores.setor_id = v.setor_id && u.setoresLiderados.includes(v.setor_id) ? v.setor_id : u.setoresLiderados[0] ?? null
+        if (!qualquerArea(u)) valores.setor_id = v.setor_id && u.setoresLiderados.includes(v.setor_id) ? v.setor_id : u.setoresLiderados[0] ?? null
         else valores.recrutador_id = v.recrutador_id
         const { codigo, slug } = await gerarCodigoESlug(t, String(valores.titulo), agora)
         const vid = await inserirVaga(t, valores, { codigo, slug, criadoPor: u.colaboradorId })

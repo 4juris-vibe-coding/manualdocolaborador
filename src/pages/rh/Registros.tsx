@@ -9,6 +9,7 @@ import { feedback, toast } from '@/components/toast'
 import { brl, fmtDate } from '@/lib/utils'
 import { hojeISO, somarDias } from '@/domain/datas'
 import { gerarCSV, baixarArquivo } from '@/domain/csv'
+import { Dropdown } from '@/components/Dropdown'
 
 export const CLASS_REG: Record<ClassificacaoRegistro, { label: string; tone: string }> = {
   positivo: { label: 'Positivo', tone: 'success' }, negativo: { label: 'Negativo', tone: 'danger' }, neutro: { label: 'Neutro', tone: 'neutral' },
@@ -112,11 +113,11 @@ export function RegistroForm({ r, onClose, pessoaFixa }: { r?: RegistroAdministr
   return (
     <Modal open onClose={onClose} title={r ? 'Editar registro' : 'Novo registro administrativo'} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Check" type="submit" form="regAdmForm">Salvar</Button></>}>
       <form id="regAdmForm" onSubmit={salvar}>
-        {!pessoaFixa && <Field label="Pessoa" required htmlFor="ra-p"><select id="ra-p" name="colaboradorId" className="input" defaultValue={r?.colaboradorId ?? ''} required><option value="" disabled>Selecione…</option>{s.colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></Field>}
+        {!pessoaFixa && <Field label="Pessoa" required htmlFor="ra-p"><Dropdown id="ra-p" name="colaboradorId" className="input" defaultValue={r?.colaboradorId ?? ''} required><option value="" disabled>Selecione…</option>{s.colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</Dropdown></Field>}
         <div className="grid sm:grid-cols-2 gap-x-4">
-          <Field label="Tipo" htmlFor="ra-t"><select id="ra-t" name="tipoId" className="input" defaultValue={r?.tipoId}>{s.tiposRegistro.filter((t) => t.ativo || t.id === r?.tipoId).map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}</select></Field>
+          <Field label="Tipo" htmlFor="ra-t"><Dropdown id="ra-t" name="tipoId" className="input" defaultValue={r?.tipoId}>{s.tiposRegistro.filter((t) => t.ativo || t.id === r?.tipoId).map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}</Dropdown></Field>
           <Field label="Data" htmlFor="ra-d"><input id="ra-d" name="data" type="date" className="input" defaultValue={r?.data ?? hojeISO()} /></Field>
-          <Field label="Classificação" htmlFor="ra-c"><select id="ra-c" name="classificacao" className="input" defaultValue={r?.classificacao ?? 'neutro'}>{Object.entries(CLASS_REG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></Field>
+          <Field label="Classificação" htmlFor="ra-c"><Dropdown id="ra-c" name="classificacao" className="input" defaultValue={r?.classificacao ?? 'neutro'}>{Object.entries(CLASS_REG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</Dropdown></Field>
           <Field label="Valor ou quantidade (opcional)" htmlFor="ra-q" hint={`Ex.: valor de um aditivo (${brl(1500)})`}><input id="ra-q" name="quantidade" type="number" step="any" min={0} className="input" defaultValue={r?.quantidade} /></Field>
         </div>
         <Field label="Descrição" required htmlFor="ra-x" hint="Fatos objetivos. Não inclua dados de saúde ou outros dados sensíveis."><textarea id="ra-x" name="descricao" rows={3} className="input !h-auto py-2.5" defaultValue={r?.descricao} /></Field>

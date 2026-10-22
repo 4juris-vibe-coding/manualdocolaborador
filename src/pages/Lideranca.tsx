@@ -13,6 +13,7 @@ import { areasLideradas, podeAlinharPeriodo } from '@/domain/visibilidade'
 import { sobreposicoesNaArea } from '@/domain/disponibilidade'
 import { progresso, prazoItem } from '@/domain/jornada'
 import { can } from '@/domain/permissions'
+import { Dropdown } from '@/components/Dropdown'
 
 export default function Lideranca() {
   const s = useStore()
@@ -269,16 +270,16 @@ function Objetivos({ areas }: { areas: { id: string; nome: string }[] }) {
             <Field label="Título" required htmlFor="o-t"><input id="o-t" name="titulo" className="input" defaultValue={form.o?.titulo} required /></Field>
             <Field label="Descrição" htmlFor="o-d"><input id="o-d" name="descricao" className="input" defaultValue={form.o?.descricao} /></Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Área" htmlFor="o-s"><select id="o-s" name="setorId" className="input" defaultValue={form.o?.setorId ?? areas[0]?.id}>{areas.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</select></Field>
+              <Field label="Área" htmlFor="o-s"><Dropdown id="o-s" name="setorId" className="input" defaultValue={form.o?.setorId ?? areas[0]?.id}>{areas.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</Dropdown></Field>
               <Field label="Mês" htmlFor="o-p"><input id="o-p" name="periodo" type="month" className="input" defaultValue={form.o?.periodo ?? periodo} /></Field>
               <Field label="Meta" required htmlFor="o-m"><input id="o-m" name="meta" type="number" min={0} step="any" className="input" defaultValue={form.o?.meta} /></Field>
               <Field label="Valor atual" htmlFor="o-a"><input id="o-a" name="atual" type="number" min={0} step="any" className="input" defaultValue={form.o?.atual ?? 0} /></Field>
               <Field label="Unidade" htmlFor="o-u"><input id="o-u" name="unidade" className="input" defaultValue={form.o?.unidadeMedida} placeholder="ex.: leads" /></Field>
               <Field label="Ponto focal (opcional)" htmlFor="o-r">
-                <select id="o-r" name="responsavelId" className="input" defaultValue={form.o?.responsavelId ?? ''}>
+                <Dropdown id="o-r" name="responsavelId" className="input" defaultValue={form.o?.responsavelId ?? ''}>
                   <option value="">—</option>
                   {s.colaboradores.filter((c) => c.status !== 'encerrado' && areas.some((a) => a.id === c.setorId)).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
+                </Dropdown>
               </Field>
             </div>
           </form>

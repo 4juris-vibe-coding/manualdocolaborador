@@ -11,6 +11,7 @@ import { MODO_DEMO, MODO_API } from '@/data/config'
 import { listarAcessos, salvarAcesso, salvarAgora, type AcessoUsuario } from '@/data/sync'
 import { gerarSenha } from '@/components/AcessoPortal'
 import { hojeISO } from '@/domain/datas'
+import { Dropdown } from '@/components/Dropdown'
 
 const CAP_LABEL: Partial<Record<Capacidade, string>> = {
   'portal:usar': 'Área pessoal', 'lideranca:painel': 'Painel da liderança', 'lideranca:ver_disponibilidade_equipe': 'Ver disponibilidade da equipe',
@@ -110,10 +111,10 @@ export default function Admin() {
                     <td className={TD}>{s.setorNome(c.setorId)}</td>
                     <td className={TD}><Badge tone={STATUS_COLAB[c.status].tone} dot>{STATUS_COLAB[c.status].label}</Badge></td>
                     <td className={TD}>
-                      <select aria-label={`Papel de ${c.nome}`} className="input !h-9 w-auto" value={c.papel} disabled={c.id === me.id}
+                      <Dropdown aria-label={`Papel de ${c.nome}`} className="input !h-9 w-auto" value={c.papel} disabled={c.id === me.id}
                         onChange={(e) => feedback(s.alterarPapel(c.id, e.target.value as Papel), `Papel de ${c.nome.split(' ')[0]} alterado para ${PAPEL_LABEL[e.target.value as Papel]}.`)}>
                         {PAPEIS.map((p) => <option key={p} value={p}>{PAPEL_LABEL[p]}</option>)}
-                      </select>
+                      </Dropdown>
                       {c.id === me.id && <span className="text-[11px] text-muted ml-2">você</span>}
                     </td>
                     {MODO_API && (

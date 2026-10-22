@@ -14,6 +14,7 @@ import {
   MODALIDADES_VAGA, MOEDAS, MOTIVOS_VAGA, PRIORIDADES_VAGA, ROTULO_ETAPA, ROTULO_MODALIDADE, ROTULO_MOTIVO, ROTULO_PRIORIDADE, ROTULO_REMUNERACAO, TIPOS_ETAPA, TIPOS_REMUNERACAO, camposFaltantes,
 } from '@/domain/v2/vagas'
 import { hojeISO } from '@/lib/fmt'
+import { Dropdown } from '@/components/Dropdown'
 
 const PASSOS = ['Informações gerais', 'Estrutura', 'Local e remuneração', 'Perfil profissional', 'Triagem', 'Divulgação', 'Revisão']
 const PASSO_DO_CAMPO: Record<string, number> = {
@@ -190,10 +191,10 @@ export default function VagaForm() {
   )
   const sel = (k: string, label: string, opts: { v: string; n: string }[], p: { vazio?: string; required?: boolean; hint?: string } = {}) => (
     <Field label={label} required={p.required} hint={p.hint} erro={E(k)} htmlFor={`f-${k}`}>
-      <select id={`f-${k}`} className="input" value={form[k] ?? ''} onChange={(e) => set(k, e.target.value)} aria-invalid={!!E(k)} disabled={!editavel}>
+      <Dropdown id={`f-${k}`} className="input" value={form[k] ?? ''} onChange={(e) => set(k, e.target.value)} aria-invalid={!!E(k)} disabled={!editavel}>
         {p.vazio !== undefined && <option value="">{p.vazio}</option>}
         {opts.map((o) => <option key={o.v} value={o.v}>{o.n}</option>)}
-      </select>
+      </Dropdown>
     </Field>
   )
   const tags = (k: string, label: string, placeholder?: string) => (
@@ -222,11 +223,11 @@ export default function VagaForm() {
       {sel('unidadeId', 'Unidade', (op?.unidades ?? []).map((s) => ({ v: s.id, n: s.nome })), { vazio: 'Não definida' })}
       {txt('equipe', 'Equipe', { max: 120, placeholder: 'Ex.: Contencioso' })}
       <Field label="Cargo (catálogo)" htmlFor="f-cargoId" erro={E('cargoId')} hint="Vem do cadastro de cargos: não é criado um novo aqui.">
-        <select id="f-cargoId" className="input" value={form.cargoId ?? ''} disabled={!editavel} onChange={(e) => { const c = op?.cargos.find((x) => x.id === e.target.value); set('cargoId', e.target.value); if (c?.nivel && !form.senioridade) set('senioridade', c.nivel) }}>
+        <Dropdown id="f-cargoId" className="input" value={form.cargoId ?? ''} disabled={!editavel} onChange={(e) => { const c = op?.cargos.find((x) => x.id === e.target.value); set('cargoId', e.target.value); if (c?.nivel && !form.senioridade) set('senioridade', c.nivel) }}>
           <option value="">Não definido</option>
           {cargosDaArea.length > 0 && <optgroup label={form.setorId ? 'Cargos da área' : 'Cargos'}>{cargosDaArea.map((c) => <option key={c.id} value={c.id}>{c.nome}{c.nivel ? ` · ${c.nivel}` : ''}</option>)}</optgroup>}
           {cargosOutros.length > 0 && <optgroup label="Cargos de outras áreas">{cargosOutros.map((c) => <option key={c.id} value={c.id}>{c.nome}{c.nivel ? ` · ${c.nivel}` : ''}</option>)}</optgroup>}
-        </select>
+        </Dropdown>
       </Field>
       {txt('senioridade', 'Nível ou senioridade', { max: 60, placeholder: 'Júnior, Pleno, Sênior…' })}
       {sel('gestorSolicitanteId', 'Gestor(a) solicitante', pessoas, { vazio: 'Não definido' })}
@@ -374,9 +375,9 @@ function Triagem({ valor, onChange, desabilitado }: { valor: Form[]; onChange: (
             <div className="grid grid-cols-1 md:grid-cols-[1fr_180px] gap-3">
               <Field label={`Pergunta ${i + 1}`} htmlFor={`q-${i}`}><input id={`q-${i}`} className="input" maxLength={300} value={q.texto ?? ''} disabled={desabilitado} onChange={(e) => atualizar(i, { texto: e.target.value })} /></Field>
               <Field label="Tipo de resposta" htmlFor={`qt-${i}`}>
-                <select id={`qt-${i}`} className="input" value={q.tipo ?? 'texto'} disabled={desabilitado} onChange={(e) => atualizar(i, { tipo: e.target.value })}>
+                <Dropdown id={`qt-${i}`} className="input" value={q.tipo ?? 'texto'} disabled={desabilitado} onChange={(e) => atualizar(i, { tipo: e.target.value })}>
                   <option value="texto">Texto livre</option><option value="sim_nao">Sim ou não</option><option value="opcoes">Múltipla escolha</option>
-                </select>
+                </Dropdown>
               </Field>
             </div>
             {q.tipo === 'opcoes' && <Field label="Opções" htmlFor={`qo-${i}`}><TagInput label="Opções da pergunta" valor={q.opcoes ?? []} onChange={(o) => atualizar(i, { opcoes: o })} placeholder="Digite uma opção e pressione Enter" /></Field>}

@@ -16,6 +16,7 @@ import {
   type CriteriosPublico, type PerguntaPesquisa,
 } from '@/domain/v2/pesquisaTipos'
 import { dataBR, hojeISO } from '@/lib/fmt'
+import { Dropdown } from '@/components/Dropdown'
 
 interface Pesquisa {
   id: string; titulo: string; descricao?: string; objetivo?: string; categoria: string; modo: 'anonima' | 'identificada'; status: string
@@ -50,10 +51,10 @@ function NovaPesquisa() {
       <SoComBanco>
         <Card className="p-6 max-w-2xl">
           <Field label="Modelo" hint="Você poderá editar tudo depois.">
-            <select className="input" value={modelo} onChange={(e) => setModelo(e.target.value)}>
+            <Dropdown className="input" value={modelo} onChange={(e) => setModelo(e.target.value)}>
               <option value="">Em branco (sem perguntas)</option>
               {CATEGORIAS_MODELO.map((c) => <optgroup key={c} label={c}>{MODELOS.filter((x) => x.categoria === c && x.perguntas.length).map((x) => <option key={x.chave} value={x.chave}>{x.titulo}</option>)}</optgroup>)}
-            </select>
+            </Dropdown>
           </Field>
           {m && <Callout tone="brand" icon="Info" className="mb-4">{m.objetivo} <b>{m.perguntas.length} perguntas</b> · ~{m.tempoMin} min.</Callout>}
           <Field label="Título" hint={m ? 'Deixe em branco para usar o título do modelo.' : undefined} required={!m}>
@@ -243,9 +244,9 @@ function Editor({ id }: { id: string }) {
             </div>
             <div>
               <Field label="Tipo de pesquisa" hint={publicada ? 'Não pode mudar depois da primeira publicação.' : undefined}>
-                <select className="input" disabled={publicada} value={f.modo} onChange={(e) => alterar({ modo: e.target.value as 'anonima' | 'identificada' })}>
+                <Dropdown className="input" disabled={publicada} value={f.modo} onChange={(e) => alterar({ modo: e.target.value as 'anonima' | 'identificada' })}>
                   <option value="anonima">Anônima</option><option value="identificada">Identificada</option>
-                </select>
+                </Dropdown>
               </Field>
               <Callout tone={f.modo === 'anonima' ? 'success' : 'warning'} icon={f.modo === 'anonima' ? 'ShieldCheck' : 'Eye'} className="mb-4">{MODOS_AJUDA[f.modo]}</Callout>
               {f.modo === 'anonima' ? (

@@ -6,6 +6,7 @@ import { PageHeader, Card, CardHead, Button, Field, Tabs, Badge, Icon, Toggle, E
 import { Modal, ConfirmModal } from '@/components/Modal'
 import { feedback } from '@/components/toast'
 import { cn } from '@/lib/utils'
+import { Dropdown } from '@/components/Dropdown'
 
 const ICONES = ['Sparkles', 'Cpu', 'Target', 'Scale', 'Wallet', 'HeartHandshake', 'Megaphone', 'Rocket', 'Briefcase', 'Building2']
 const CORES = ['#0032D2', '#0891b2', '#0f9d6b', '#7c3aed', '#c98a12', '#db2777', '#ea580c', '#122029']
@@ -66,7 +67,7 @@ function Areas() {
           <>
             <div className="grid sm:grid-cols-2 gap-x-4">
               <Field label="Nome" required htmlFor="ar-n"><input id="ar-n" className="input" value={form.nome ?? ''} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></Field>
-              <Field label="Unidade" htmlFor="ar-u"><select id="ar-u" className="input" value={form.unidadeId ?? ''} onChange={(e) => setForm({ ...form, unidadeId: e.target.value })}><option value="">—</option>{s.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}</select></Field>
+              <Field label="Unidade" htmlFor="ar-u"><Dropdown id="ar-u" className="input" value={form.unidadeId ?? ''} onChange={(e) => setForm({ ...form, unidadeId: e.target.value })}><option value="">—</option>{s.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}</Dropdown></Field>
               <Field label="Descrição" htmlFor="ar-d" className="sm:col-span-2"><input id="ar-d" className="input" value={form.descricao ?? ''} onChange={(e) => setForm({ ...form, descricao: e.target.value })} /></Field>
               <Field label="Localização" htmlFor="ar-l"><input id="ar-l" className="input" value={form.localizacao ?? ''} onChange={(e) => setForm({ ...form, localizacao: e.target.value })} placeholder="Ex.: 3º andar" /></Field>
               <Field label="E-mail da área" htmlFor="ar-e"><input id="ar-e" type="email" className="input" value={form.email ?? ''} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
@@ -119,7 +120,7 @@ function Funcoes() {
             </ul>
             <form className="flex gap-2 p-4 border-t border-line" onSubmit={(e) => { e.preventDefault(); if (feedback(s.addCargo({ nome: f.nome, setorId: a.id, nivel: f.nivel }), 'Função adicionada.')) setNovo({ ...novo, [a.id]: { nome: '', nivel: 'Pleno' } }) }}>
               <input aria-label={`Nova função em ${a.nome}`} className="input flex-1" placeholder="Nova função" value={f.nome} onChange={(e) => setNovo({ ...novo, [a.id]: { ...f, nome: e.target.value } })} />
-              <select aria-label="Senioridade" className="input w-32" value={f.nivel} onChange={(e) => setNovo({ ...novo, [a.id]: { ...f, nivel: e.target.value as Senioridade } })}>{NIVEIS.map((n) => <option key={n}>{n}</option>)}</select>
+              <Dropdown aria-label="Senioridade" className="input w-32" value={f.nivel} onChange={(e) => setNovo({ ...novo, [a.id]: { ...f, nivel: e.target.value as Senioridade } })}>{NIVEIS.map((n) => <option key={n}>{n}</option>)}</Dropdown>
               <Button type="submit" icon="Plus" size="icon" aria-label="Adicionar função" />
             </form>
           </Card>

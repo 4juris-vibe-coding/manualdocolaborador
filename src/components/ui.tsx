@@ -4,6 +4,7 @@
 import { type ReactNode, type ButtonHTMLAttributes, forwardRef } from 'react'
 import { cn } from '@/lib/utils'
 import { ICONES } from './icons'
+import { Dropdown } from './Dropdown'
 import logo4juris from '@/LOGO4JURIS.jpg'
 
 /* ---------- Ícone dinâmico por nome ---------- */
@@ -320,9 +321,9 @@ export function Callout({ tone = 'brand', icon = 'Info', children, className }: 
 /* ---------- Select nativo com rótulo acessível ---------- */
 export function Select({ value, onChange, children, className, label, id, disabled }: { value: string; onChange: (v: string) => void; children: ReactNode; className?: string; label: string; id?: string; disabled?: boolean }) {
   return (
-    <select aria-label={label} id={id} disabled={disabled} className={cn('input w-full sm:w-auto sm:min-w-[150px]', className)} value={value} onChange={(e) => onChange(e.target.value)}>
+    <Dropdown aria-label={label} id={id} disabled={disabled} className={cn('w-full sm:w-auto sm:min-w-[150px]', className)} value={value} onChange={(e) => onChange(e.target.value)}>
       {children}
-    </select>
+    </Dropdown>
   )
 }
 

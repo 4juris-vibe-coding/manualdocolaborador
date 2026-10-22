@@ -24,6 +24,7 @@ import { ESCOLARIDADE_LABEL } from '@/domain/metricas'
 import { BarrasDisc } from '@/components/charts'
 import { CATEGORIAS_DISC } from '@/domain/perfil'
 import { TIPO_BEN } from './Beneficios'
+import { Dropdown } from '@/components/Dropdown'
 
 const STATUS_CONTRATO: Record<Contrato['status'], { label: string; tone: string }> = {
   rascunho: { label: 'Rascunho', tone: 'neutral' }, vigente: { label: 'Vigente', tone: 'success' },
@@ -239,7 +240,7 @@ function EncerrarModal({ pessoaId, onClose }: { pessoaId: string; onClose: () =>
       <Callout tone="warning" icon="AlertTriangle" className="mb-4">O contrato vigente é encerrado na data informada, períodos futuros de indisponibilidade são cancelados e o acesso à plataforma é desativado.</Callout>
       <div className="grid sm:grid-cols-2 gap-x-4">
         <Field label="Data de encerramento" required htmlFor="enc-d"><input id="enc-d" type="date" className="input" value={data} onChange={(e) => setData(e.target.value)} /></Field>
-        <Field label="Motivo" required htmlFor="enc-m"><select id="enc-m" className="input" value={motivo} onChange={(e) => setMotivo(e.target.value)}><option value="">Selecione…</option>{s.motivosEncerramento.filter((m) => m.ativo).map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</select></Field>
+        <Field label="Motivo" required htmlFor="enc-m"><Dropdown id="enc-m" className="input" value={motivo} onChange={(e) => setMotivo(e.target.value)}><option value="">Selecione…</option>{s.motivosEncerramento.filter((m) => m.ativo).map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</Dropdown></Field>
       </div>
       <Field label="Observação (opcional)" htmlFor="enc-o" hint="Evite registrar dados pessoais sensíveis."><textarea id="enc-o" className="input !h-auto py-2.5" rows={2} value={obs} onChange={(e) => setObs(e.target.value)} /></Field>
       <Toggle checked={checklist} onChange={setChecklist} label="Iniciar o checklist de encerramento" />
@@ -290,9 +291,9 @@ function ContratosTab({ pessoaId, contratos }: { pessoaId: string; contratos: Co
           <form id="ctrForm" onSubmit={salvar}>
             <div className="grid sm:grid-cols-2 gap-x-4">
               <Field label="Número" htmlFor="k-n"><input id="k-n" name="numero" className="input" defaultValue={form.k?.numero ?? `CPS-${new Date().getFullYear()}-`} /></Field>
-              <Field label="Situação" htmlFor="k-s"><select id="k-s" name="status" className="input" defaultValue={form.k?.status ?? 'vigente'}>{Object.entries(STATUS_CONTRATO).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></Field>
+              <Field label="Situação" htmlFor="k-s"><Dropdown id="k-s" name="status" className="input" defaultValue={form.k?.status ?? 'vigente'}>{Object.entries(STATUS_CONTRATO).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</Dropdown></Field>
               <Field label="Objeto" required htmlFor="k-o" className="sm:col-span-2"><input id="k-o" name="objeto" className="input" defaultValue={form.k?.objeto} /></Field>
-              <Field label="Modalidade" htmlFor="k-m"><select id="k-m" name="modalidade" className="input" defaultValue={form.k?.modalidade ?? 'mensal'}><option value="mensal">Valor mensal fixo</option><option value="por-projeto">Por projeto</option></select></Field>
+              <Field label="Modalidade" htmlFor="k-m"><Dropdown id="k-m" name="modalidade" className="input" defaultValue={form.k?.modalidade ?? 'mensal'}><option value="mensal">Valor mensal fixo</option><option value="por-projeto">Por projeto</option></Dropdown></Field>
               <Field label="Valor de referência (R$)" required htmlFor="k-v"><input id="k-v" name="valor" className="input" inputMode="decimal" defaultValue={form.k?.valorMensal ?? ''} /></Field>
               <Field label="Início" required htmlFor="k-i"><input id="k-i" name="inicio" type="date" className="input" defaultValue={form.k?.inicio ?? hojeISO()} /></Field>
               <Field label="Término (opcional)" htmlFor="k-f"><input id="k-f" name="fim" type="date" className="input" defaultValue={form.k?.fim} /></Field>
@@ -338,7 +339,7 @@ function DocumentosTab({ pessoaId, docs }: { pessoaId: string; docs: Documento[]
         <form id="docRh" onSubmit={enviar}>
           <Field label="Arquivo" required htmlFor="dr-a"><input id="dr-a" name="arquivo" type="file" className="input py-2" accept=".pdf,image/*" /></Field>
           <div className="grid sm:grid-cols-2 gap-x-4">
-            <Field label="Tipo" htmlFor="dr-t"><select id="dr-t" name="tipo" className="input">{TIPOS_DOC.map((t) => <option key={t}>{t}</option>)}</select></Field>
+            <Field label="Tipo" htmlFor="dr-t"><Dropdown id="dr-t" name="tipo" className="input">{TIPOS_DOC.map((t) => <option key={t}>{t}</option>)}</Dropdown></Field>
             <Field label="Validade" htmlFor="dr-v"><input id="dr-v" name="validade" type="date" className="input" /></Field>
           </div>
           <Field label="Nome de exibição" htmlFor="dr-n"><input id="dr-n" name="nome" className="input" /></Field>

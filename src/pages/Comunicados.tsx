@@ -6,6 +6,7 @@ import { toast, feedback } from '@/components/toast'
 import { comunicadoVisivel } from '@/domain/visibilidade'
 import { fmtDate, cn } from '@/lib/utils'
 import type { Comunicado, AlvoComunicado } from '@/lib/types'
+import { Dropdown } from '@/components/Dropdown'
 
 const CATS = ['Todos', 'Geral', 'Financeiro', 'Políticas', 'Eventos', 'Novidades']
 const CATEGORIAS: Comunicado['categoria'][] = ['Geral', 'Financeiro', 'Políticas', 'Eventos', 'Novidades']
@@ -133,9 +134,9 @@ export default function Comunicados() {
           <Field label="Conteúdo" required><textarea name="corpo" className="input !h-auto py-2.5" rows={4} placeholder="Escreva o comunicado completo..." /></Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Categoria">
-              <select name="categoria" className="input" defaultValue="Geral">
+              <Dropdown name="categoria" className="input" defaultValue="Geral">
                 {CATEGORIAS.map((c) => <option key={c}>{c}</option>)}
-              </select>
+              </Dropdown>
             </Field>
             <Field label="Destaque">
               <label className="flex items-center gap-2 h-8 text-[13px] text-ink-2 cursor-pointer select-none">

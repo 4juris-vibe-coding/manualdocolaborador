@@ -18,6 +18,7 @@ import { baixarArquivo } from '@/domain/csv'
 import { PAPEL_LABEL } from '@/domain/permissions'
 import { CONFIG } from '@/data/config'
 import { exportarDadosTitular } from '@/domain/lgpd'
+import { Dropdown } from '@/components/Dropdown'
 
 export const TIPOS_DOC: TipoDocumento[] = ['Contrato', 'Aditivo', 'Cartão CNPJ', 'Certidão', 'Documento pessoal', 'Comprovante', 'Certificado', 'Outro']
 
@@ -278,9 +279,9 @@ export default function Perfil() {
           <div className="grid sm:grid-cols-2 gap-x-4">
             <Field label="Complemento" htmlFor="pf-co"><input id="pf-co" name="complemento" className="input" defaultValue={user.endereco?.complemento} /></Field>
             <Field label="Bairro" htmlFor="pf-ba"><input id="pf-ba" name="bairro" className="input" defaultValue={user.endereco?.bairro} /></Field>
-            <Field label="Escolaridade" htmlFor="pf-es"><select id="pf-es" name="escolaridade" className="input" defaultValue={user.escolaridade ?? ''}><option value="">Prefiro não informar</option>{Object.entries(ESCOLARIDADE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+            <Field label="Escolaridade" htmlFor="pf-es"><Dropdown id="pf-es" name="escolaridade" className="input" defaultValue={user.escolaridade ?? ''}><option value="">Prefiro não informar</option>{Object.entries(ESCOLARIDADE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Dropdown></Field>
             <Field label="Curso" htmlFor="pf-cu"><input id="pf-cu" name="curso" className="input" defaultValue={user.curso} /></Field>
-            <Field label="Tamanho de camiseta (kits)" htmlFor="pf-tc"><select id="pf-tc" name="tamanhoCamisa" className="input" defaultValue={user.tamanhoCamisa ?? ''}><option value="">—</option>{['PP', 'P', 'M', 'G', 'GG', 'XG'].map((t) => <option key={t}>{t}</option>)}</select></Field>
+            <Field label="Tamanho de camiseta (kits)" htmlFor="pf-tc"><Dropdown id="pf-tc" name="tamanhoCamisa" className="input" defaultValue={user.tamanhoCamisa ?? ''}><option value="">—</option>{['PP', 'P', 'M', 'G', 'GG', 'XG'].map((t) => <option key={t}>{t}</option>)}</Dropdown></Field>
           </div>
           <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-3 mt-2">Emergência</h4>
           <div className="grid sm:grid-cols-3 gap-x-4">
@@ -294,7 +295,7 @@ export default function Perfil() {
             <Field label="Agência" htmlFor="pf-ag"><input id="pf-ag" name="agencia" className="input" defaultValue={user.agencia} /></Field>
             <Field label="Conta" htmlFor="pf-ct"><input id="pf-ct" name="conta" className="input" defaultValue={user.conta} /></Field>
             <Field label="Tipo de chave PIX" htmlFor="pf-pt">
-              <select id="pf-pt" name="pixTipo" className="input" defaultValue={user.pixTipo}>{['CNPJ', 'CPF', 'E-mail', 'Telefone', 'Aleatória'].map((t) => <option key={t}>{t}</option>)}</select>
+              <Dropdown id="pf-pt" name="pixTipo" className="input" defaultValue={user.pixTipo}>{['CNPJ', 'CPF', 'E-mail', 'Telefone', 'Aleatória'].map((t) => <option key={t}>{t}</option>)}</Dropdown>
             </Field>
             <Field label="Chave PIX" htmlFor="pf-pc" className="sm:col-span-2"><input id="pf-pc" name="pixChave" className="input" defaultValue={user.pixChave} maxLength={120} /></Field>
           </div>
@@ -307,7 +308,7 @@ export default function Perfil() {
         <form id="docForm" onSubmit={enviarDoc}>
           <Field label="Arquivo" required hint="PDF ou imagem, até 10 MB." htmlFor="dc-a"><input id="dc-a" name="arquivo" type="file" accept=".pdf,image/*" className="input py-2" required /></Field>
           <div className="grid sm:grid-cols-2 gap-x-4">
-            <Field label="Tipo" htmlFor="dc-t"><select id="dc-t" name="tipo" className="input" defaultValue="Certidão">{TIPOS_DOC.map((t) => <option key={t}>{t}</option>)}</select></Field>
+            <Field label="Tipo" htmlFor="dc-t"><Dropdown id="dc-t" name="tipo" className="input" defaultValue="Certidão">{TIPOS_DOC.map((t) => <option key={t}>{t}</option>)}</Dropdown></Field>
             <Field label="Validade (se houver)" htmlFor="dc-v"><input id="dc-v" name="validade" type="date" className="input" /></Field>
           </div>
           <Field label="Nome de exibição (opcional)" htmlFor="dc-n"><input id="dc-n" name="nome" className="input" placeholder="Ex.: Certidão negativa federal" /></Field>
@@ -333,10 +334,10 @@ function DiversidadeCard() {
       </label>
       {d.consentimento && (
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-4">
-          <Field label="Gênero" htmlFor="dv-g"><select id="dv-g" className="input" value={d.genero ?? ''} onChange={(e) => setD({ ...d, genero: (e.target.value || undefined) as Diversidade['genero'] })}><option value="">—</option>{Object.entries(GENERO_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-          <Field label="Raça/etnia" htmlFor="dv-r"><select id="dv-r" className="input" value={d.racaEtnia ?? ''} onChange={(e) => setD({ ...d, racaEtnia: (e.target.value || undefined) as Diversidade['racaEtnia'] })}><option value="">—</option>{Object.entries(RACA_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-          <Field label="Estado civil" htmlFor="dv-e"><select id="dv-e" className="input" value={d.estadoCivil ?? ''} onChange={(e) => setD({ ...d, estadoCivil: (e.target.value || undefined) as Diversidade['estadoCivil'] })}><option value="">—</option>{Object.entries(ESTADO_CIVIL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-          <Field label="Pessoa com deficiência" htmlFor="dv-p"><select id="dv-p" className="input" value={d.pcd == null ? '' : d.pcd ? 's' : 'n'} onChange={(e) => setD({ ...d, pcd: e.target.value === '' ? undefined : e.target.value === 's' })}><option value="">Prefiro não informar</option><option value="s">Sim</option><option value="n">Não</option></select></Field>
+          <Field label="Gênero" htmlFor="dv-g"><Dropdown id="dv-g" className="input" value={d.genero ?? ''} onChange={(e) => setD({ ...d, genero: (e.target.value || undefined) as Diversidade['genero'] })}><option value="">—</option>{Object.entries(GENERO_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Dropdown></Field>
+          <Field label="Raça/etnia" htmlFor="dv-r"><Dropdown id="dv-r" className="input" value={d.racaEtnia ?? ''} onChange={(e) => setD({ ...d, racaEtnia: (e.target.value || undefined) as Diversidade['racaEtnia'] })}><option value="">—</option>{Object.entries(RACA_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Dropdown></Field>
+          <Field label="Estado civil" htmlFor="dv-e"><Dropdown id="dv-e" className="input" value={d.estadoCivil ?? ''} onChange={(e) => setD({ ...d, estadoCivil: (e.target.value || undefined) as Diversidade['estadoCivil'] })}><option value="">—</option>{Object.entries(ESTADO_CIVIL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Dropdown></Field>
+          <Field label="Pessoa com deficiência" htmlFor="dv-p"><Dropdown id="dv-p" className="input" value={d.pcd == null ? '' : d.pcd ? 's' : 'n'} onChange={(e) => setD({ ...d, pcd: e.target.value === '' ? undefined : e.target.value === 's' })}><option value="">Prefiro não informar</option><option value="s">Sim</option><option value="n">Não</option></Dropdown></Field>
           {d.pcd && <Field label="Tipo (opcional)" htmlFor="dv-t" className="sm:col-span-2"><input id="dv-t" className="input" value={d.tipoDeficiencia ?? ''} onChange={(e) => setD({ ...d, tipoDeficiencia: e.target.value })} placeholder="Ex.: auditiva — ajuda a planejar acessibilidade" /></Field>}
         </div>
       )}
@@ -364,7 +365,7 @@ export function PerfilComportamentalEditor({ pessoaId }: { pessoaId: string }) {
           <h4 className="text-[12px] font-bold uppercase text-muted mb-2">DISC</h4>
           {CATEGORIAS_DISC.map((d) => <SliderBipolar key={d.chave} esquerda={`${d.label}: ${disc[d.chave]}`} valor={disc[d.chave]} cor={d.cor} onChange={(v) => setDisc({ ...disc, [d.chave]: v })} />)}
           <div className="mt-4"><BarrasDisc compacto valores={CATEGORIAS_DISC.map((d) => ({ rotulo: d.label, valor: disc[d.chave], cor: d.cor }))} /></div>
-          {!proprio && <Field label="Fonte" htmlFor="pc-f" className="mt-4"><select id="pc-f" className="input" value={fonte} onChange={(e) => setFonte(e.target.value as typeof fonte)}><option value="assessment">Assessment aplicado</option><option value="autodeclarado">Autodeclarado</option></select></Field>}
+          {!proprio && <Field label="Fonte" htmlFor="pc-f" className="mt-4"><Dropdown id="pc-f" className="input" value={fonte} onChange={(e) => setFonte(e.target.value as typeof fonte)}><option value="assessment">Assessment aplicado</option><option value="autodeclarado">Autodeclarado</option></Dropdown></Field>}
         </div>
         <div className="max-h-[420px] overflow-y-auto pr-1">
           <h4 className="text-[12px] font-bold uppercase text-muted mb-2">Traços (24)</h4>
@@ -407,7 +408,7 @@ export function DependentesLista({ pessoaId }: { pessoaId: string }) {
         <form id="depForm" onSubmit={salvar}>
           <Field label="Nome" required htmlFor="dp-n"><input id="dp-n" name="nome" className="input" required /></Field>
           <div className="grid sm:grid-cols-3 gap-x-4">
-            <Field label="Parentesco" htmlFor="dp-p"><select id="dp-p" name="parentesco" className="input">{['Cônjuge', 'Companheiro(a)', 'Filho(a)', 'Enteado(a)', 'Pai/Mãe', 'Outro'].map((p) => <option key={p}>{p}</option>)}</select></Field>
+            <Field label="Parentesco" htmlFor="dp-p"><Dropdown id="dp-p" name="parentesco" className="input">{['Cônjuge', 'Companheiro(a)', 'Filho(a)', 'Enteado(a)', 'Pai/Mãe', 'Outro'].map((p) => <option key={p}>{p}</option>)}</Dropdown></Field>
             <Field label="Nascimento" htmlFor="dp-d"><input id="dp-d" name="nascimento" type="date" max={hojeISO()} className="input" /></Field>
             <Field label="CPF (se exigido)" htmlFor="dp-c"><input id="dp-c" name="cpf" className="input" inputMode="numeric" /></Field>
           </div>

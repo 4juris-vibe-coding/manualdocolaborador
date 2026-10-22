@@ -11,6 +11,7 @@ import { useTem } from '@/data/v2/acesso'
 import { ORIGENS, ROTULO_ORIGEM, ROTULO_STATUS_CANDIDATURA } from '@/domain/v2/ats'
 import { cn } from '@/lib/utils'
 import { numero } from '@/lib/fmt'
+import { Dropdown } from '@/components/Dropdown'
 
 interface Cartao {
   id: string; nome: string; email: string; cidade?: string; uf?: string; etapaId: string; status: string; origem: string
@@ -199,12 +200,12 @@ function CartaoKanban({ c, etapas, gerenciar, podeSalario, aoArrastar, aoSoltar,
         {!c.temCurriculo && <span className="text-muted-2">sem currículo</span>}
       </div>
       {gerenciar && (
-        <select aria-label={`Mover ${c.nome} para outra etapa`} className="mt-2.5 w-full h-8 rounded-lg border border-line bg-surface-2 text-[12px] text-ink-2 px-2"
+        <Dropdown aria-label={`Mover ${c.nome} para outra etapa`} className="mt-2.5 w-full h-8 rounded-lg border border-line bg-surface-2 text-[12px] text-ink-2 px-2"
           value="" onChange={(e) => { aoMover(e.target.value); e.target.value = '' }}>
           <option value="">Mover para…</option>
           <optgroup label="Etapas">{etapas.filter((e) => e.id !== c.etapaId).map((e) => <option key={e.id} value={e.id}>{e.nome}</option>)}</optgroup>
           <optgroup label="Encerrar">{STATUS_SAIDA.map((s) => <option key={s.v} value={s.v}>{s.r}</option>)}</optgroup>
-        </select>
+        </Dropdown>
       )}
     </article>
   )

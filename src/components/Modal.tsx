@@ -20,7 +20,7 @@ export function Modal({
     const anterior = document.activeElement as HTMLElement | null
     // Foco inicial no primeiro campo (ou no próprio diálogo).
     const t = setTimeout(() => {
-      const alvo = caixa.current?.querySelector<HTMLElement>('input:not([type=hidden]):not([disabled]):not(.sr-only), select, textarea, button[data-autofocus]')
+      const alvo = caixa.current?.querySelector<HTMLElement>('input:not([type=hidden]):not([disabled]):not(.sr-only), select, textarea, button[data-dropdown]:not([disabled]), button[data-autofocus]')
       ;(alvo ?? caixa.current)?.focus()
     }, 30)
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()

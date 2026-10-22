@@ -1,5 +1,6 @@
 import { Badge, Button } from '@/components/ui'
 import { ROTULO_ETAPA, TIPOS_ETAPA } from '@/domain/v2/vagas'
+import { Dropdown } from '@/components/Dropdown'
 
 /* ---------- editor de etapas (compartilhado com o detalhe) ---------- */
 export function EditorEtapas({ etapas, onChange, onSalvar, desabilitado, erro }: {
@@ -18,9 +19,9 @@ export function EditorEtapas({ etapas, onChange, onSalvar, desabilitado, erro }:
               <span className="w-6 text-center text-[12px] font-bold text-muted">{i + 1}</span>
               <input aria-label={`Nome da etapa ${i + 1}`} className="input flex-1 min-w-[180px]" maxLength={80} value={e.nome} disabled={desabilitado} onChange={(ev) => onChange(etapas.map((x, j) => (j === i ? { ...x, nome: ev.target.value } : x)))} />
               {fixa ? <Badge>{ROTULO_ETAPA[e.tipo as keyof typeof ROTULO_ETAPA] ?? e.tipo}</Badge> : (
-                <select aria-label={`Tipo da etapa ${i + 1}`} className="input w-auto" value={e.tipo} disabled={desabilitado} onChange={(ev) => onChange(etapas.map((x, j) => (j === i ? { ...x, tipo: ev.target.value } : x)))}>
+                <Dropdown aria-label={`Tipo da etapa ${i + 1}`} className="input w-auto" value={e.tipo} disabled={desabilitado} onChange={(ev) => onChange(etapas.map((x, j) => (j === i ? { ...x, tipo: ev.target.value } : x)))}>
                   {TIPOS_ETAPA.filter((t) => t !== 'nova' && t !== 'contratado').map((t) => <option key={t} value={t}>{ROTULO_ETAPA[t]}</option>)}
-                </select>
+                </Dropdown>
               )}
               {!!e.ativas && <Badge tone="brand">{e.ativas} candidato(s)</Badge>}
               {!fixa && <>

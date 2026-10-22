@@ -8,6 +8,7 @@ import { SeletorPessoas } from '@/components/inputs'
 import { feedback, toast } from '@/components/toast'
 import { brl, fmtDate } from '@/lib/utils'
 import { gerarCSV, baixarArquivo } from '@/domain/csv'
+import { Dropdown } from '@/components/Dropdown'
 
 export const TIPO_BEN: Record<TipoBeneficio, string> = {
   plano_saude: 'Plano de saúde', plano_odontologico: 'Plano odontológico', seguro_vida: 'Seguro de vida', auxilio_educacao: 'Auxílio educação',
@@ -124,15 +125,15 @@ function BeneficioForm({ b, onClose }: { b?: Beneficio; onClose: () => void }) {
     <Modal open onClose={onClose} wide title={b ? 'Editar benefício' : 'Novo benefício'} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Check" onClick={() => { if (feedback(s.salvarBeneficio({ ...f, nome: f.nome.trim() }, b?.id), 'Benefício salvo.')) onClose() }}>Salvar</Button></>}>
       <div className="grid sm:grid-cols-2 gap-x-4">
         <Field label="Nome" required htmlFor="bn-n"><input id="bn-n" className="input" value={f.nome} onChange={(e) => set({ nome: e.target.value })} /></Field>
-        <Field label="Tipo" htmlFor="bn-t"><select id="bn-t" className="input" value={f.tipo} onChange={(e) => set({ tipo: e.target.value as TipoBeneficio })}>{Object.entries(TIPO_BEN).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+        <Field label="Tipo" htmlFor="bn-t"><Dropdown id="bn-t" className="input" value={f.tipo} onChange={(e) => set({ tipo: e.target.value as TipoBeneficio })}>{Object.entries(TIPO_BEN).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Dropdown></Field>
         <Field label="Fornecedor" htmlFor="bn-f"><input id="bn-f" className="input" value={f.fornecedor} onChange={(e) => set({ fornecedor: e.target.value })} /></Field>
-        <Field label="Categoria no portal" htmlFor="bn-c"><select id="bn-c" className="input" value={f.categoria} onChange={(e) => set({ categoria: e.target.value as Beneficio['categoria'] })}>{['Bem-estar', 'Saúde', 'Educação', 'Desconto'].map((c) => <option key={c}>{c}</option>)}</select></Field>
+        <Field label="Categoria no portal" htmlFor="bn-c"><Dropdown id="bn-c" className="input" value={f.categoria} onChange={(e) => set({ categoria: e.target.value as Beneficio['categoria'] })}>{['Bem-estar', 'Saúde', 'Educação', 'Desconto'].map((c) => <option key={c}>{c}</option>)}</Dropdown></Field>
         <Field label="Valor do benefício" htmlFor="bn-v"><input id="bn-v" type="number" min={0} step="any" className="input" value={f.valor ?? ''} onChange={(e) => set({ valor: e.target.value === '' ? undefined : Number(e.target.value) })} /></Field>
-        <Field label="Aplicado como" htmlFor="bn-a"><select id="bn-a" className="input" value={f.aplicadoComo} onChange={(e) => set({ aplicadoComo: e.target.value as Beneficio['aplicadoComo'] })}><option value="reais">Em reais</option><option value="percentual_contrato">% do valor do contrato</option></select></Field>
-        <Field label="Periodicidade" htmlFor="bn-p"><select id="bn-p" className="input" value={f.periodicidade} onChange={(e) => set({ periodicidade: e.target.value as Beneficio['periodicidade'] })}>{Object.entries(PERIOD).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+        <Field label="Aplicado como" htmlFor="bn-a"><Dropdown id="bn-a" className="input" value={f.aplicadoComo} onChange={(e) => set({ aplicadoComo: e.target.value as Beneficio['aplicadoComo'] })}><option value="reais">Em reais</option><option value="percentual_contrato">% do valor do contrato</option></Dropdown></Field>
+        <Field label="Periodicidade" htmlFor="bn-p"><Dropdown id="bn-p" className="input" value={f.periodicidade} onChange={(e) => set({ periodicidade: e.target.value as Beneficio['periodicidade'] })}>{Object.entries(PERIOD).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Dropdown></Field>
         <div className="grid grid-cols-[1fr_130px] gap-2">
           <Field label="Coparticipação" htmlFor="bn-co"><input id="bn-co" type="number" min={0} step="any" className="input" value={f.coparticipacao ?? ''} onChange={(e) => set({ coparticipacao: e.target.value === '' ? undefined : Number(e.target.value) })} /></Field>
-          <Field label="Como" htmlFor="bn-oc"><select id="bn-oc" className="input" value={f.opcaoCoparticipacao} onChange={(e) => set({ opcaoCoparticipacao: e.target.value as Beneficio['opcaoCoparticipacao'] })}><option value="percentual">%</option><option value="valor_fixo">R$ fixo</option></select></Field>
+          <Field label="Como" htmlFor="bn-oc"><Dropdown id="bn-oc" className="input" value={f.opcaoCoparticipacao} onChange={(e) => set({ opcaoCoparticipacao: e.target.value as Beneficio['opcaoCoparticipacao'] })}><option value="percentual">%</option><option value="valor_fixo">R$ fixo</option></Dropdown></Field>
         </div>
         <Field label="Descrição (portal)" htmlFor="bn-d" className="sm:col-span-2"><input id="bn-d" className="input" value={f.descricao} onChange={(e) => set({ descricao: e.target.value })} /></Field>
         <Field label="Elegibilidade" htmlFor="bn-e"><input id="bn-e" className="input" value={f.elegibilidade} onChange={(e) => set({ elegibilidade: e.target.value })} /></Field>
@@ -157,9 +158,9 @@ function VincularModal({ onClose }: { onClose: () => void }) {
     <Modal open onClose={onClose} wide title="Vincular pessoas a um benefício" subtitle="Vínculo individual ou em lote (por área e função). Vínculos já existentes são ignorados."
       footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Link" disabled={!sel.length} onClick={() => { if (feedback(s.vincularBeneficiarios(beneficio, sel, deps), 'Vínculos criados.')) onClose() }}>Vincular {sel.length || ''}</Button></>}>
       <div className="grid sm:grid-cols-3 gap-3 mb-4">
-        <Field label="Benefício" htmlFor="vb-b"><select id="vb-b" className="input" value={beneficio} onChange={(e) => { setBeneficio(e.target.value); setSel([]) }}>{s.beneficios.filter((x) => x.ativo !== false).map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}</select></Field>
-        <Field label="Área" htmlFor="vb-a"><select id="vb-a" className="input" value={area} onChange={(e) => setArea(e.target.value)}><option value="">Todas</option>{s.setores.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</select></Field>
-        <Field label="Função" htmlFor="vb-f"><select id="vb-f" className="input" value={funcao} onChange={(e) => setFuncao(e.target.value)}><option value="">Todas</option>{s.cargos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}</select></Field>
+        <Field label="Benefício" htmlFor="vb-b"><Dropdown id="vb-b" className="input" value={beneficio} onChange={(e) => { setBeneficio(e.target.value); setSel([]) }}>{s.beneficios.filter((x) => x.ativo !== false).map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}</Dropdown></Field>
+        <Field label="Área" htmlFor="vb-a"><Dropdown id="vb-a" className="input" value={area} onChange={(e) => setArea(e.target.value)}><option value="">Todas</option>{s.setores.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</Dropdown></Field>
+        <Field label="Função" htmlFor="vb-f"><Dropdown id="vb-f" className="input" value={funcao} onChange={(e) => setFuncao(e.target.value)}><option value="">Todas</option>{s.cargos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}</Dropdown></Field>
       </div>
       <SeletorPessoas pessoas={pessoas} selecionadas={sel} onChange={setSel} extra={(c) => b?.permiteDependentes ? (
         <span className="flex gap-1" onClick={(e) => e.stopPropagation()}>

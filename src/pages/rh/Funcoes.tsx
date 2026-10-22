@@ -10,6 +10,7 @@ import { feedback, toast } from '@/components/toast'
 import { brl, cn } from '@/lib/utils'
 import { CATEGORIAS_DISC, TRACOS, DISC_NEUTRO, discDominante, tracosPadrao, compatibilidadeFuncao } from '@/domain/perfil'
 import { gerarCSV, baixarArquivo } from '@/domain/csv'
+import { Dropdown } from '@/components/Dropdown'
 
 const NIVEIS: Senioridade[] = ['Júnior', 'Pleno', 'Sênior', 'Especialista', 'Liderança']
 
@@ -201,14 +202,14 @@ function FuncaoForm({ c, onClose }: { c?: Cargo; onClose: () => void }) {
       {aba === 'geral' && (
         <div className="grid sm:grid-cols-2 gap-x-4">
           <Field label="Nome" required htmlFor="fn-n"><input id="fn-n" className="input" value={f.nome} onChange={(e) => set({ nome: e.target.value })} /></Field>
-          <Field label="Área" htmlFor="fn-a"><select id="fn-a" className="input" value={f.setorId} onChange={(e) => set({ setorId: e.target.value })}>{s.setores.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</select></Field>
-          <Field label="Senioridade" htmlFor="fn-s"><select id="fn-s" className="input" value={f.nivel} onChange={(e) => set({ nivel: e.target.value as Senioridade })}>{NIVEIS.map((n) => <option key={n}>{n}</option>)}</select></Field>
+          <Field label="Área" htmlFor="fn-a"><Dropdown id="fn-a" className="input" value={f.setorId} onChange={(e) => set({ setorId: e.target.value })}>{s.setores.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</Dropdown></Field>
+          <Field label="Senioridade" htmlFor="fn-s"><Dropdown id="fn-s" className="input" value={f.nivel} onChange={(e) => set({ nivel: e.target.value as Senioridade })}>{NIVEIS.map((n) => <option key={n}>{n}</option>)}</Dropdown></Field>
           <Field label="CBO (opcional)" htmlFor="fn-c" hint="Formato 0000-00"><input id="fn-c" className="input" value={f.codigoCBO} onChange={(e) => set({ codigoCBO: e.target.value })} placeholder="2124-05" /></Field>
-          <Field label="Função superior" htmlFor="fn-sup"><select id="fn-sup" className="input" value={f.funcaoSuperiorId ?? ''} onChange={(e) => set({ funcaoSuperiorId: e.target.value || undefined })}><option value="">Nenhuma</option>{s.cargos.filter((x) => x.id !== c?.id).map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}</select></Field>
+          <Field label="Função superior" htmlFor="fn-sup"><Dropdown id="fn-sup" className="input" value={f.funcaoSuperiorId ?? ''} onChange={(e) => set({ funcaoSuperiorId: e.target.value || undefined })}><option value="">Nenhuma</option>{s.cargos.filter((x) => x.id !== c?.id).map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}</Dropdown></Field>
           <Field label="Responsáveis pela função" htmlFor="fn-r">
-            <select id="fn-r" className="input" multiple size={4} value={f.responsaveisIds} onChange={(e) => set({ responsaveisIds: [...e.target.selectedOptions].map((o) => o.value) })}>
+            <Dropdown id="fn-r" className="input" multiple size={4} value={f.responsaveisIds} onChange={(e) => set({ responsaveisIds: [...e.target.selectedOptions].map((o) => o.value) })}>
               {s.colaboradores.filter((p) => p.status !== 'encerrado' && p.papel !== 'colaborador').map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-            </select>
+            </Dropdown>
           </Field>
           <Field label="Descrição" htmlFor="fn-d" className="sm:col-span-2"><textarea id="fn-d" rows={2} className="input !h-auto py-2.5" value={f.descricao} onChange={(e) => set({ descricao: e.target.value })} /></Field>
         </div>

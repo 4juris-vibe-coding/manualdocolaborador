@@ -5,6 +5,7 @@ import { Modal, ConfirmModal } from '@/components/Modal'
 import { toast, feedback } from '@/components/toast'
 import { brl, fmtDate, STATUS_SOLIC, NF_ETAPAS, cn } from '@/lib/utils'
 import type { NotaFiscal, StatusNota } from '@/lib/types'
+import { Dropdown } from '@/components/Dropdown'
 
 const mesLabel = (comp: string) => new Date(comp + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
 const STATUS_OPCOES: StatusNota[] = ['aguardando', 'enviada', 'aprovada', 'pagamento', 'paga']
@@ -19,13 +20,13 @@ function StatusSelect({ value, onChange, className }: { value: StatusNota; onCha
   }
   return (
     <div className={cn('relative', className)}>
-      <select
+      <Dropdown
         value={value}
         onChange={(e) => onChange(e.target.value as StatusNota)}
         className={cn('appearance-none w-full h-9 pl-3 pr-8 rounded-lg border text-[12.5px] font-semibold cursor-pointer outline-none transition focus:ring-1 focus:ring-brand', toneCls[tone])}
       >
         {STATUS_OPCOES.map((st) => <option key={st} value={st}>{STATUS_SOLIC[st].label}</option>)}
-      </select>
+      </Dropdown>
       <Icon name="ChevronsUpDown" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 opacity-60" />
     </div>
   )
@@ -107,9 +108,9 @@ export default function NotasAdmin({ onVerColaborador }: { onVerColaborador: () 
       {/* Filtro de competência + stats */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <span className="text-[12.5px] font-semibold text-muted">Competência</span>
-        <select className="input w-auto min-w-[170px] capitalize" value={comp} onChange={(e) => setComp(e.target.value)}>
+        <Dropdown className="input w-auto min-w-[170px] capitalize" value={comp} onChange={(e) => setComp(e.target.value)}>
           {(competencias.includes(comp) ? competencias : [comp, ...competencias]).map((c) => <option key={c} value={c} className="capitalize">{mesLabel(c)}</option>)}
-        </select>
+        </Dropdown>
         <span className="ml-auto text-[12.5px] text-muted">{doComp.length} nota(s) em {mesLabel(comp)}</span>
       </div>
 
@@ -182,14 +183,14 @@ export default function NotasAdmin({ onVerColaborador }: { onVerColaborador: () 
       {view === 'lista' && (
         <div className="animate-fade-in">
           <div className="flex flex-wrap items-center gap-3 mb-4">
-            <select className="input w-auto min-w-[180px]" value={colabF} onChange={(e) => setColabF(e.target.value)}>
+            <Dropdown className="input w-auto min-w-[180px]" value={colabF} onChange={(e) => setColabF(e.target.value)}>
               <option value="todos">Todos os colaboradores</option>
               {s.colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
-            <select className="input w-auto min-w-[150px]" value={statusF} onChange={(e) => setStatusF(e.target.value)}>
+            </Dropdown>
+            <Dropdown className="input w-auto min-w-[150px]" value={statusF} onChange={(e) => setStatusF(e.target.value)}>
               <option value="todos">Todos os status</option>
               {STATUS_OPCOES.map((st) => <option key={st} value={st}>{STATUS_SOLIC[st].label}</option>)}
-            </select>
+            </Dropdown>
             <span className="ml-auto text-[12.5px] text-muted">{listaFiltrada.length} nota(s)</span>
           </div>
           <Card>
@@ -282,7 +283,7 @@ export default function NotasAdmin({ onVerColaborador }: { onVerColaborador: () 
         footer={<><Button variant="ghost" onClick={() => setNova(false)}>Cancelar</Button><Button icon="Check" type="submit" form="novaNotaForm">Criar nota</Button></>}>
         <form id="novaNotaForm" onSubmit={criarNota}>
           <Field label="Colaborador" required>
-            <select name="colaboradorId" className="input" defaultValue="" onChange={(e) => {
+            <Dropdown name="colaboradorId" className="input" defaultValue="" onChange={(e) => {
               const c = colabDe(e.target.value)
               const valorInput = (e.currentTarget.form?.elements.namedItem('valor') as HTMLInputElement | null)
               const k = s.contratos.find((x) => x.colaboradorId === c?.id && x.status !== 'encerrado')
@@ -290,7 +291,7 @@ export default function NotasAdmin({ onVerColaborador }: { onVerColaborador: () 
             }}>
               <option value="" disabled>Selecione...</option>
               {s.colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
+            </Dropdown>
           </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Competência" required><input name="competencia" type="month" className="input" defaultValue={comp} /></Field>

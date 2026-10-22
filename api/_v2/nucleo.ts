@@ -315,9 +315,11 @@ export const camel = <T extends Record<string, unknown>>(linha: T): Record<strin
  * as que solicitaram/lideram/criaram ou da(s) própria(s) área(s). `alias` = alias de rec_vagas na consulta;
  * `proximoParam` = número do próximo $n livre. Devolve o fragmento SQL e os parâmetros a anexar.
  */
+/** RH não se limita por área: quem gerencia vagas e o(a) analista de RH veem e solicitam vagas de qualquer área. */
+export const qualquerArea = (u: Usuario) => u.caps.has('vagas:gerenciar') || u.funcoes.includes('analista_rh')
+
 export function escopoVagas(u: Usuario, alias = 'v', proximoParam = 1): { sql: string; params: unknown[] } {
-  // RH não se limita por área: quem gerencia vagas e o(a) analista de RH (leitura) veem todas.
-  if (u.caps.has('vagas:gerenciar') || u.funcoes.includes('analista_rh')) return { sql: 'true', params: [] }
+  if (qualquerArea(u)) return { sql: 'true', params: [] }
   const p = proximoParam
   const a = alias
   return {

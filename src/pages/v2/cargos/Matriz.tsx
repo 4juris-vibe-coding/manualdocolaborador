@@ -7,6 +7,7 @@ import { TelaCargos } from '@/components/v2/cargos/comum'
 import { api, executar, useApi } from '@/data/v2/api'
 import { useTem } from '@/data/v2/acesso'
 import { cn } from '@/lib/utils'
+import { Dropdown } from '@/components/Dropdown'
 
 interface Entrada { cargoId: string; competenciaId: string; nivelEsperado: number; obrigatoria: boolean; criterio: string | null }
 interface Resp {
@@ -106,8 +107,8 @@ export default function Matriz() {
           <Button variant="ghost" onClick={() => setCel(null)}>Cancelar</Button><Button onClick={() => void salvar()}>Salvar</Button></>}>
         {cel && (
           <form onSubmit={(e) => { e.preventDefault(); void salvar() }}>
-            <Field label="Nível esperado (1 a 5)" htmlFor="mx-n"><select id="mx-n" className="input" value={cel.nivel} onChange={(e) => setCel({ ...cel, nivel: Number(e.target.value) })}>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</select></Field>
-            <Field label="Tipo" htmlFor="mx-o"><select id="mx-o" className="input" value={cel.obrigatoria ? 's' : 'n'} onChange={(e) => setCel({ ...cel, obrigatoria: e.target.value === 's' })}><option value="s">Obrigatória</option><option value="n">Desejável</option></select></Field>
+            <Field label="Nível esperado (1 a 5)" htmlFor="mx-n"><Dropdown id="mx-n" className="input" value={cel.nivel} onChange={(e) => setCel({ ...cel, nivel: Number(e.target.value) })}>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</Dropdown></Field>
+            <Field label="Tipo" htmlFor="mx-o"><Dropdown id="mx-o" className="input" value={cel.obrigatoria ? 's' : 'n'} onChange={(e) => setCel({ ...cel, obrigatoria: e.target.value === 's' })}><option value="s">Obrigatória</option><option value="n">Desejável</option></Dropdown></Field>
             <Field label="Critério de avaliação" htmlFor="mx-c"><textarea id="mx-c" rows={3} className="input !h-auto py-2.5" value={cel.criterio} onChange={(e) => setCel({ ...cel, criterio: e.target.value })} /></Field>
           </form>
         )}

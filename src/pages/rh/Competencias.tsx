@@ -6,6 +6,7 @@ import { Modal, ConfirmModal } from '@/components/Modal'
 import { feedback, toast } from '@/components/toast'
 import { cn } from '@/lib/utils'
 import { gerarCSV, baixarArquivo } from '@/domain/csv'
+import { Dropdown } from '@/components/Dropdown'
 
 export const CAT9: Record<Categoria9Box, string> = { nenhuma: 'Fora do 9 box', comportamento: 'Comportamento', desempenho: 'Desempenho' }
 export const TIPO_COMP: Record<TipoAvaliacaoCompetencia, string> = { desempenho: 'Ciclos de avaliação', inicio_parceria: 'Início de parceria' }
@@ -123,8 +124,8 @@ function CompetenciaForm({ c, onClose }: { c?: Competencia; onClose: () => void 
     <Modal open onClose={onClose} wide title={c ? 'Editar competência' : 'Nova competência'} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Check" onClick={salvar}>Salvar</Button></>}>
       <div className="grid sm:grid-cols-2 gap-x-4">
         <Field label="Nome" required htmlFor="cp-n"><input id="cp-n" className="input" value={f.nome} onChange={(e) => setF({ ...f, nome: e.target.value })} /></Field>
-        <Field label="Grupo" htmlFor="cp-g"><select id="cp-g" className="input" value={f.grupoId} onChange={(e) => setF({ ...f, grupoId: e.target.value })}>{s.gruposCompetencia.filter((g) => g.ativo || g.id === f.grupoId).map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}</select></Field>
-        <Field label="Usada em" htmlFor="cp-t"><select id="cp-t" className="input" value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value as TipoAvaliacaoCompetencia })}>{Object.entries(TIPO_COMP).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+        <Field label="Grupo" htmlFor="cp-g"><Dropdown id="cp-g" className="input" value={f.grupoId} onChange={(e) => setF({ ...f, grupoId: e.target.value })}>{s.gruposCompetencia.filter((g) => g.ativo || g.id === f.grupoId).map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}</Dropdown></Field>
+        <Field label="Usada em" htmlFor="cp-t"><Dropdown id="cp-t" className="input" value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value as TipoAvaliacaoCompetencia })}>{Object.entries(TIPO_COMP).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Dropdown></Field>
         <Field label="Peso (1–100)" htmlFor="cp-p" hint="Influência na nota ponderada."><input id="cp-p" type="number" min={1} max={100} className="input" value={f.peso} onChange={(e) => setF({ ...f, peso: Number(e.target.value) })} /></Field>
         <Field label="Descrição" htmlFor="cp-d" className="sm:col-span-2"><textarea id="cp-d" rows={2} className="input !h-auto py-2.5" value={f.descricao} onChange={(e) => setF({ ...f, descricao: e.target.value })} /></Field>
       </div>
@@ -145,7 +146,7 @@ function GrupoForm({ g, onClose }: { g?: GrupoCompetencia; onClose: () => void }
   return (
     <Modal open onClose={onClose} title={g ? 'Editar grupo' : 'Novo grupo de competências'} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Check" onClick={() => { if (feedback(s.salvarGrupoCompetencia({ nome: nome.trim(), categoria9box: cat, ativo: g?.ativo ?? true }, g?.id), 'Grupo salvo.')) onClose() }}>Salvar</Button></>}>
       <Field label="Nome" required htmlFor="gc-n"><input id="gc-n" className="input" value={nome} onChange={(e) => setNome(e.target.value)} /></Field>
-      <Field label="Categoria no 9 box" htmlFor="gc-c"><select id="gc-c" className="input" value={cat} onChange={(e) => setCat(e.target.value as Categoria9Box)}>{Object.entries(CAT9).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+      <Field label="Categoria no 9 box" htmlFor="gc-c"><Dropdown id="gc-c" className="input" value={cat} onChange={(e) => setCat(e.target.value as Categoria9Box)}>{Object.entries(CAT9).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Dropdown></Field>
     </Modal>
   )
 }

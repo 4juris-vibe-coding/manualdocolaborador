@@ -9,6 +9,7 @@ import { BadgePrazo, BadgePrioridade, BadgeStatus, ROTULO_ACAO, useAcaoVaga, use
 import { api, executar, lerBase64, useApi } from '@/data/v2/api'
 import { ROTULO_ETAPA, ROTULO_MODALIDADE, ROTULO_MOTIVO, ROTULO_REMUNERACAO, ROTULO_TIPO } from '@/domain/v2/vagas'
 import { dataBR, dataHoraBR, haQuanto, moeda } from '@/lib/fmt'
+import { Dropdown } from '@/components/Dropdown'
 
 type D = Record<string, any>
 const ABAS = [
@@ -243,9 +244,9 @@ function ModalReatribuir({ passo, vagaId, opcoes, onClose, onFeito }: { passo: {
     <Modal open onClose={onClose} title={`Reatribuir: ${passo.rotulo}`}
       footer={<><Button variant="ghost" onClick={onClose}>Voltar</Button><Button disabled={!ref} onClick={async () => { const r = await executar(() => api.post(`vagas/${vagaId}/aprovacoes/${passo.passoId}/reatribuir`, { tipo, ref }), 'Aprovador reatribuído.'); if (r) onFeito() }}>Reatribuir</Button></>}>
       <label className="block mb-3"><span className="label">Tipo de aprovador</span>
-        <select className="input" value={tipo} onChange={(e) => { setTipo(e.target.value as typeof tipo); setRef('') }}><option value="pessoa">Pessoa específica</option><option value="papel">Papel</option><option value="funcao">Função adicional</option></select></label>
+        <Dropdown className="input" value={tipo} onChange={(e) => { setTipo(e.target.value as typeof tipo); setRef('') }}><option value="pessoa">Pessoa específica</option><option value="papel">Papel</option><option value="funcao">Função adicional</option></Dropdown></label>
       <label className="block"><span className="label">Aprovador</span>
-        <select className="input" value={ref} onChange={(e) => setRef(e.target.value)}><option value="">Selecione…</option>{lista.map((o) => <option key={o.v} value={o.v}>{o.n}</option>)}</select></label>
+        <Dropdown className="input" value={ref} onChange={(e) => setRef(e.target.value)}><option value="">Selecione…</option>{lista.map((o) => <option key={o.v} value={o.v}>{o.n}</option>)}</Dropdown></label>
     </Modal>
   )
 }

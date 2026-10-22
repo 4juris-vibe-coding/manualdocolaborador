@@ -485,7 +485,7 @@ describe('vagas · regressões do formulário', () => {
 })
 
 describe('vagas · analista de RH', () => {
-  it('vê vagas e candidaturas de todas as áreas, sem poder criar nem editar', async () => {
+  it('vê vagas de todas as áreas e solicita vaga para qualquer área, sem gerenciar', async () => {
     await m.pg.query("insert into acl_funcoes (colaborador_id, funcao) values ('col1','analista_rh') on conflict do nothing")
     try {
       const d = await criar(m.c.rh1, { titulo: 'Vaga de outra área', setorId: 's2' }) // col1 é da área s1
@@ -494,7 +494,14 @@ describe('vagas · analista de RH', () => {
       expect(lista.json.itens.some((v: any) => v.id === d.vaga.id)).toBe(true)
       expect((await GET(m, `vagas/${d.vaga.id}`, m.c.col1)).status).toBe(200)
       expect((await GET(m, 'ats/candidaturas', m.c.col1)).status).toBe(200)
-      expect((await POST(m, 'vagas', m.c.col1, corpoVaga())).status).toBe(403)
+      // cria para outra área (col1 é de s1) e envia para aprovação; não edita vaga alheia nem publica
+      const nova = await POST(m, 'vagas', m.c.col1, corpoVaga({ titulo: 'Pedido do analista', setorId: 's2' }))
+      expect(nova.status).toBe(201)
+      expect(nova.json.vaga.setorId).toBe('s2')
+      expect((await POST(m, `vagas/${nova.json.vaga.id}/acoes/solicitar`, m.c.col1)).status).toBe(200)
+      expect([403, 409]).toContain((await POST(m, `vagas/${nova.json.vaga.id}/acoes/publicar`, m.c.col1)).status)
+      expect((await GET(m, `vagas/${nova.json.vaga.id}`, m.c.rh1)).json.vaga.status).not.toBe('publicada')
+      expect((await GET(m, 'recrutamento/opcoes', m.c.col1)).json.setores.length).toBe(2)
       expect((await PUT(m, `vagas/${d.vaga.id}`, m.c.col1, { versao: d.vaga.versao, titulo: 'x' })).status).toBe(403)
       // sem a função, colaborador comum não vê a vaga
       expect((await GET(m, `vagas/${d.vaga.id}`, m.c.col2)).status).toBe(403)

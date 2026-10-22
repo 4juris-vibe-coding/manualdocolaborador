@@ -9,6 +9,7 @@ import { hojeISO, somarDias } from '@/domain/datas'
 import { agregar, type ResultadoPergunta } from '@/domain/pesquisas'
 import { gerarCSV, baixarArquivo } from '@/domain/csv'
 import { MODO_DEMO } from '@/data/config'
+import { Dropdown } from '@/components/Dropdown'
 
 const TIPO_LABEL: Record<TipoPergunta, string> = { escala: 'Escala 1–5', enps: 'Recomendação 0–10', opcoes: 'Múltipla escolha', texto: 'Texto livre (opcional)' }
 const STATUS: Record<Pesquisa['status'], { label: string; tone: string }> = { rascunho: { label: 'Rascunho', tone: 'neutral' }, aberta: { label: 'Aberta', tone: 'brand' }, encerrada: { label: 'Encerrada', tone: 'success' } }
@@ -137,7 +138,7 @@ function PesquisaForm({ p, onClose, onSalvo }: { p?: Pesquisa; onClose: () => vo
       <div className="grid sm:grid-cols-4 gap-3">
         <Field label="Início" htmlFor="pq-i"><input id="pq-i" type="date" className="input" value={f.inicio} onChange={(e) => setF({ ...f, inicio: e.target.value })} /></Field>
         <Field label="Fim" htmlFor="pq-f"><input id="pq-f" type="date" className="input" value={f.fim} onChange={(e) => setF({ ...f, fim: e.target.value })} /></Field>
-        <Field label="Situação" htmlFor="pq-s"><select id="pq-s" className="input" value={f.status} onChange={(e) => setF({ ...f, status: e.target.value as Pesquisa['status'] })}><option value="rascunho">Rascunho</option><option value="aberta">Aberta</option><option value="encerrada">Encerrada</option></select></Field>
+        <Field label="Situação" htmlFor="pq-s"><Dropdown id="pq-s" className="input" value={f.status} onChange={(e) => setF({ ...f, status: e.target.value as Pesquisa['status'] })}><option value="rascunho">Rascunho</option><option value="aberta">Aberta</option><option value="encerrada">Encerrada</option></Dropdown></Field>
         <Field label="Mínimo p/ exibir" htmlFor="pq-m" hint="3 ou mais"><input id="pq-m" type="number" min={3} className="input" value={f.minimoRespostas} onChange={(e) => setF({ ...f, minimoRespostas: Number(e.target.value) })} /></Field>
       </div>
       <fieldset className="mb-4">
@@ -152,7 +153,7 @@ function PesquisaForm({ p, onClose, onSalvo }: { p?: Pesquisa; onClose: () => vo
             <li key={q.id} className="rounded-xl border border-line p-3">
               <div className="grid sm:grid-cols-[1fr_190px_auto] gap-2">
                 <input aria-label={`Pergunta ${i + 1}`} className="input" value={q.texto} onChange={(e) => updQ(q.id, { texto: e.target.value })} placeholder={`Pergunta ${i + 1}`} />
-                <select aria-label="Tipo de resposta" className="input" value={q.tipo} onChange={(e) => updQ(q.id, { tipo: e.target.value as TipoPergunta, opcoes: e.target.value === 'opcoes' ? ['', ''] : undefined })}>{(Object.keys(TIPO_LABEL) as TipoPergunta[]).map((t) => <option key={t} value={t}>{TIPO_LABEL[t]}</option>)}</select>
+                <Dropdown aria-label="Tipo de resposta" className="input" value={q.tipo} onChange={(e) => updQ(q.id, { tipo: e.target.value as TipoPergunta, opcoes: e.target.value === 'opcoes' ? ['', ''] : undefined })}>{(Object.keys(TIPO_LABEL) as TipoPergunta[]).map((t) => <option key={t} value={t}>{TIPO_LABEL[t]}</option>)}</Dropdown>
                 <Button size="icon-sm" variant="subtle" icon="X" aria-label="Remover pergunta" disabled={f.perguntas.length <= 1} onClick={() => setF({ ...f, perguntas: f.perguntas.filter((x) => x.id !== q.id) })} />
               </div>
               {q.tipo === 'opcoes' && (

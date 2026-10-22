@@ -8,6 +8,7 @@ import { feedback, toast } from '@/components/toast'
 import { mesLabel } from '@/lib/utils'
 import { hojeISO } from '@/domain/datas'
 import { gerarCSV, baixarArquivo } from '@/domain/csv'
+import { Dropdown } from '@/components/Dropdown'
 
 export default function Metas() {
   const s = useStore()
@@ -84,12 +85,12 @@ export default function Metas() {
             </div>
             <Field label="Descrição" required htmlFor="mt-d"><textarea id="mt-d" name="descricao" rows={2} className="input !h-auto py-2.5" defaultValue={form.o?.descricao} /></Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Área" htmlFor="mt-a"><select id="mt-a" name="setorId" className="input" defaultValue={form.o?.setorId}>{s.setores.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</select></Field>
+              <Field label="Área" htmlFor="mt-a"><Dropdown id="mt-a" name="setorId" className="input" defaultValue={form.o?.setorId}>{s.setores.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</Dropdown></Field>
               <Field label="Mês/ano" htmlFor="mt-p"><input id="mt-p" name="periodo" type="month" className="input" defaultValue={form.o?.periodo ?? (mes || hojeISO().slice(0, 7))} /></Field>
               <Field label="Valor da meta" required htmlFor="mt-v"><input id="mt-v" name="meta" type="number" min={0} step="any" className="input" defaultValue={form.o?.meta} /></Field>
               <Field label="Realizado" htmlFor="mt-r"><input id="mt-r" name="atual" type="number" min={0} step="any" className="input" defaultValue={form.o?.atual ?? 0} /></Field>
               <Field label="Unidade" htmlFor="mt-u"><input id="mt-u" name="unidade" className="input" defaultValue={form.o?.unidadeMedida} placeholder="R$, leads, %" /></Field>
-              <Field label="Ponto focal" htmlFor="mt-pf"><select id="mt-pf" name="responsavelId" className="input" defaultValue={form.o?.responsavelId ?? ''}><option value="">—</option>{s.colaboradores.filter((c) => c.status !== 'encerrado').map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></Field>
+              <Field label="Ponto focal" htmlFor="mt-pf"><Dropdown id="mt-pf" name="responsavelId" className="input" defaultValue={form.o?.responsavelId ?? ''}><option value="">—</option>{s.colaboradores.filter((c) => c.status !== 'encerrado').map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</Dropdown></Field>
             </div>
           </form>
         )}

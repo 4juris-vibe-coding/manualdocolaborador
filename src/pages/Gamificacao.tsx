@@ -7,6 +7,7 @@ import { feedback } from '@/components/toast'
 import { cn, fmtDate, relTime, STATUS_INICIATIVA, firstName } from '@/lib/utils'
 import { hojeISO } from '@/domain/datas'
 import { ACAO_LABEL, progressoDesafio } from '@/domain/gamificacao'
+import { Dropdown } from '@/components/Dropdown'
 
 /** Valores da cultura (configuráveis em Cultura organizacional). */
 export function useValores() {
@@ -158,10 +159,10 @@ export function ReconhecerModal({ onClose, excluir, paraInicial }: { onClose: ()
     <Modal open onClose={onClose} title="Reconhecer alguém" subtitle="Agradeça uma ajuda, destaque uma atitude ou celebre um resultado."
       footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Send" onClick={enviar}>Enviar reconhecimento</Button></>}>
       <Field label="Quem você quer reconhecer?" required htmlFor="rc-para">
-        <select id="rc-para" className="input" value={para} onChange={(e) => setPara(e.target.value)}>
+        <Dropdown id="rc-para" className="input" value={para} onChange={(e) => setPara(e.target.value)}>
           <option value="">Selecione…</option>
           {pessoas.map((c) => <option key={c.id} value={c.id}>{c.nome} · {s.setorNome(c.setorId)}</option>)}
-        </select>
+        </Dropdown>
       </Field>
       <fieldset className="mb-4">
         <legend className="label">Valor demonstrado</legend>

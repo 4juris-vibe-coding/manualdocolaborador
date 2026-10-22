@@ -5,6 +5,7 @@ import { api, executar, lerBase64 } from '@/data/v2/api'
 import { ORIGENS, ROTULO_ORIGEM } from '@/domain/v2/ats'
 import { TEXTAREA, camposDoErro, lerTexto, mensagemDoErro } from './comuns'
 import { toast } from '@/components/toast'
+import { Dropdown } from '@/components/Dropdown'
 
 const ORIGENS_MANUAL = ORIGENS.filter((o) => o !== 'portal' && o !== 'importacao')
 
@@ -40,9 +41,9 @@ export function CadastroManualModal({ vagaId, open, onClose, onFeito, podeSalari
         <Field label="Cidade" htmlFor="cm-cid"><input id="cm-cid" className="input" value={f.cidade} onChange={(e) => set('cidade', e.target.value)} /></Field>
         <Field label="UF" erro={erros.uf} htmlFor="cm-uf"><input id="cm-uf" className="input" maxLength={2} value={f.uf} onChange={(e) => set('uf', e.target.value.toUpperCase())} /></Field>
         <Field label="Origem" htmlFor="cm-ori">
-          <select id="cm-ori" className="input" value={f.origem} onChange={(e) => set('origem', e.target.value)}>
+          <Dropdown id="cm-ori" className="input" value={f.origem} onChange={(e) => set('origem', e.target.value)}>
             {ORIGENS_MANUAL.map((o) => <option key={o} value={o}>{ROTULO_ORIGEM[o]}</option>)}
-          </select>
+          </Dropdown>
         </Field>
         {podeSalario && <Field label="Pretensão salarial (R$)" erro={erros.pretensao} htmlFor="cm-pre"><input id="cm-pre" type="number" min={0} className="input" value={f.pretensao} onChange={(e) => set('pretensao', e.target.value)} /></Field>}
         <Field label="Currículo (PDF, DOC, DOCX ou ODT — até 3 MB)" erro={erros.curriculo} htmlFor="cm-cv" className="sm:col-span-2">
