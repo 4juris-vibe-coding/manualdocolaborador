@@ -29,7 +29,10 @@ export async function enviarEmail(para: string, assunto: string, corpoTexto: str
         text: corpoTexto,
       }),
     })
-    if (!r.ok) return { status: 'falhou', erro: `Provedor de e-mail respondeu ${r.status}.` }
+    if (!r.ok) {
+      const detalhe = (await r.text().catch(() => '')).slice(0, 300)
+      return { status: 'falhou', erro: `Provedor de e-mail respondeu ${r.status}${detalhe ? `: ${detalhe}` : '.'}` }
+    }
     return { status: 'enviada' }
   } catch (e) {
     return { status: 'falhou', erro: e instanceof Error ? e.message.slice(0, 200) : 'Falha de rede ao enviar.' }
