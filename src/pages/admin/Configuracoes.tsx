@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '@/lib/store'
-import type { ConfigGeral } from '@/lib/types'
+import type { ConfigGeral, Produto } from '@/lib/types'
 import { PageHeader, Card, CardHead, Button, Field, Icon } from '@/components/ui'
 import { feedback } from '@/components/toast'
 import { mascaraCNPJ } from '@/domain/validacao'
+import { uid } from '@/lib/utils'
 
 const ATALHOS = [
   { to: '/admin', icon: 'ShieldCheck', t: 'Usuários & acessos', d: 'Papéis e matriz de permissões' },
@@ -20,6 +21,8 @@ export default function Configuracoes() {
   const s = useStore()
   const [g, setG] = useState<ConfigGeral>(s.config.geral)
   const [fin, setFin] = useState(s.config.financeiro)
+  const [produtos, setProdutos] = useState<Produto[]>(s.config.produtos ?? [])
+  const mudarProduto = (id: string, patch: Partial<Produto>) => setProdutos((ps) => ps.map((p) => (p.id === id ? { ...p, ...patch } : p)))
   return (
     <>
       <PageHeader title="Configurações gerais" subtitle="Dados da empresa usados no portal e nas instruções de emissão de notas fiscais." />
@@ -43,6 +46,21 @@ export default function Configuracoes() {
             if (!(fin.diaEnvioNF >= 1 && fin.diaEnvioNF <= 28 && fin.diaPagamento >= 1 && fin.diaPagamento <= 28)) { feedback({ ok: false, erro: 'Use dias entre 1 e 28.' }, ''); return }
             useStore.setState((st) => ({ config: { ...st.config, financeiro: fin } })); feedback({ ok: true }, 'Calendário atualizado (vale para as próximas competências geradas).')
           }}>Salvar calendário</Button>
+          <h3 className="text-[15px] font-bold text-ink mb-1 mt-8">Produtos</h3>
+          <p className="text-[12.5px] text-muted mb-4">Negócios da empresa (ex.: 4Juris, Lexfy). Cada pessoa pode atuar em mais de um; aparecem como etiqueta e filtro no organograma, sem mudar quem responde a quem.</p>
+          <ul className="space-y-2 mb-3">
+            {produtos.map((p) => (
+              <li key={p.id} className="flex items-center gap-2">
+                <input type="color" aria-label={`Cor de ${p.nome || 'produto'}`} className="h-9 w-10 rounded-lg border border-line bg-surface p-1 shrink-0" value={p.cor} onChange={(e) => mudarProduto(p.id, { cor: e.target.value })} />
+                <input aria-label="Nome do produto" className="input flex-1" value={p.nome} onChange={(e) => mudarProduto(p.id, { nome: e.target.value })} />
+                <Button size="sm" variant="ghost" icon="Trash2" aria-label={`Remover ${p.nome || 'produto'}`} onClick={() => setProdutos((ps) => ps.filter((x) => x.id !== p.id))} />
+              </li>
+            ))}
+          </ul>
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="ghost" icon="Plus" onClick={() => setProdutos((ps) => [...ps, { id: uid('pr'), nome: '', cor: '#0032D2' }])}>Adicionar produto</Button>
+            <Button icon="Check" onClick={() => feedback(s.salvarProdutos(produtos), 'Produtos salvos.')}>Salvar produtos</Button>
+          </div>
         </Card>
         <Card>
           <CardHead title="Outras configurações" />

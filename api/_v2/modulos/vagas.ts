@@ -10,6 +10,7 @@ import {
   type Ctx, type Executor, type Res, type Rota, type Usuario,
 } from '../nucleo.js'
 import { baixarArquivo, guardarArquivo, validarUpload } from '../arquivos.js'
+import { lerVagaDoPdf } from '../vagaPdf.js'
 import { FUNCAO_LABEL, PAPEL_LABEL } from '../../../src/domain/permissions.js'
 import type { Papel } from '../../../src/lib/types.js'
 import {
@@ -773,6 +774,17 @@ export const rotas: Rota[] = [
       }
       await auditar(db, u.colaboradorId, 'vaga', null, 'exportar', { linhas: linhas.rows.length })
       return { status: 200, binario: { mime: 'text/csv; charset=utf-8', nome: `vagas-${hojeISO(agora)}.csv`, dados: Buffer.from('﻿' + out.join('\r\n'), 'utf8') } }
+    },
+  },
+
+  /* ===== importação de PDF: só lê e devolve os campos; nada é gravado até a pessoa salvar ===== */
+  {
+    metodo: 'POST', padrao: 'vagas/importar', cap: ['vagas:solicitar', 'vagas:gerenciar'],
+    h: async ({ db, usuario: u, req }) => {
+      const up = validarUpload(req.corpo?.arquivo, ['pdf'])
+      const campos = await lerVagaDoPdf(up.dados)
+      await auditar(db, u.colaboradorId, 'vaga', null, 'importar_pdf', { arquivo: up.nome })
+      return ok({ campos })
     },
   },
 

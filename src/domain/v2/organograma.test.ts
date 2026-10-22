@@ -129,6 +129,13 @@ describe('posições vagas e recortes', () => {
     expect(filtrarPessoas(gente, { setorId: 's2' }).map((p) => p.id)).toEqual(['o'])
     expect(filtrarPessoas(gente, { gestorId: 'b' }).map((p) => p.id).sort()).toEqual(['b', 'd'])
   })
+  it('filtra por produto mantendo a cadeia de gestores acima (a árvore não se parte)', () => {
+    // a ── b ── d(lexfy) ; c(lexfy, 4juris) ; e(4juris) sem gestor
+    const gente = [P('a'), P('b', 'a'), P('c', 'a', { produtoIds: ['lexfy', '4juris'] }), P('d', 'b', { produtoIds: ['lexfy'] }), P('e', null, { produtoIds: ['4juris'] })]
+    expect(filtrarPessoas(gente, { produtoId: 'lexfy' }, semLider).map((p) => p.id).sort()).toEqual(['a', 'b', 'c', 'd'])
+    expect(filtrarPessoas(gente, { produtoId: '4juris' }, semLider).map((p) => p.id).sort()).toEqual(['a', 'c', 'e'])
+    expect(filtrarPessoas(gente, { produtoId: 'pcd' }, semLider)).toEqual([])
+  })
 })
 
 describe('indicadores de estrutura', () => {

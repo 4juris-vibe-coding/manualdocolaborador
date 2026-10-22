@@ -3,11 +3,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api, qs, useApi } from '@/data/v2/api'
 import type { CartaoPessoa, NoUI, PosicaoVagaDto, ResultadoBusca, VisaoOrg } from './tipos'
 
-export interface FiltrosOrg { setor: string; unidade: string; gestor: string }
-export const SEM_FILTRO: FiltrosOrg = { setor: '', unidade: '', gestor: '' }
+export interface FiltrosOrg { setor: string; unidade: string; gestor: string; produto: string }
+export const SEM_FILTRO: FiltrosOrg = { setor: '', unidade: '', gestor: '', produto: '' }
 
 export function useOrganograma(filtros: FiltrosOrg) {
-  const rota = `organograma${qs({ setor: filtros.setor, unidade: filtros.unidade, gestor: filtros.gestor })}`
+  const rota = `organograma${qs({ setor: filtros.setor, unidade: filtros.unidade, gestor: filtros.gestor, produto: filtros.produto })}`
   const base = useApi<VisaoOrg>(rota)
   const [extras, setExtras] = useState<Record<string, CartaoPessoa>>({})
   const [carregandoRamo, setCarregandoRamo] = useState<Set<string>>(new Set())

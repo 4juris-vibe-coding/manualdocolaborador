@@ -16,7 +16,7 @@ export interface Aresta { de: string; para: string; x1: number; y1: number; x2: 
 export interface ResultadoLayout { nos: Posicionado[]; arestas: Aresta[]; largura: number; altura: number }
 
 export interface Medidas { largura: number; altura: number; espacoH: number; espacoV: number; porLinha?: number }
-export const MEDIDAS: Medidas = { largura: 208, altura: 80, espacoH: 18, espacoV: 44, porLinha: 3 }
+export const MEDIDAS: Medidas = { largura: 208, altura: 94, espacoH: 18, espacoV: 44, porLinha: 3 }
 
 interface Bloco { w: number; h: number; grade: null | { colW: number[]; rowH: number[] } }
 

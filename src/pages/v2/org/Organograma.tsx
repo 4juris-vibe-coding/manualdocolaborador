@@ -65,7 +65,7 @@ function MapaTab() {
   }, [alvo, !!dados])
 
   const sel = selecionado ? o.pessoas.get(selecionado) : undefined
-  const temFiltro = !!(filtros.setor || filtros.unidade || filtros.gestor)
+  const temFiltro = !!(filtros.setor || filtros.unidade || filtros.gestor || filtros.produto)
   const lista = useMemo(() => o.visiveis, [o.visiveis])
 
   return (
@@ -107,6 +107,11 @@ function MapaTab() {
                     <Select id="org-f-eq" label="Equipe de" value={filtros.gestor} onChange={(v) => setFiltros((f) => ({ ...f, gestor: v }))}>
                       <option value="">Escolha…</option>{d.gestores.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}</Select></div>
                 )}
+                {d.produtos.length > 0 && (
+                  <div><label className="label" htmlFor="org-f-prod">Produto</label>
+                    <Select id="org-f-prod" label="Produto" value={filtros.produto} onChange={(v) => setFiltros((f) => ({ ...f, produto: v }))}>
+                      <option value="">Todos</option>{d.produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</Select></div>
+                )}
                 {d.unidades.length > 0 && (
                   <div><label className="label" htmlFor="org-f-un">Unidade</label>
                     <Select id="org-f-un" label="Unidade" value={filtros.unidade} onChange={(v) => setFiltros((f) => ({ ...f, unidade: v }))}>
@@ -142,11 +147,11 @@ function MapaTab() {
                 action={temFiltro ? <Button variant="ghost" onClick={() => { setFiltros(SEM_FILTRO); setVisao('toda') }}>Limpar filtros</Button> : undefined} /></Card>
             ) : modo === 'mapa' ? (
               <MapaOrg ref={mapa} visiveis={lista} expandidos={o.expandidos} carregandoRamo={o.carregandoRamo} faltaCarregar={o.faltaCarregar}
-                selecionado={selecionado} onSelecionar={setSelecionado} onAlternar={(id) => void o.alternar(id)}
-                chaveAjuste={`${visao}|${filtros.setor}|${filtros.unidade}|${filtros.gestor}|${geracao}`} />
+                selecionado={selecionado} onSelecionar={setSelecionado} onAlternar={(id) => void o.alternar(id)} produtos={dados?.produtos ?? []}
+                chaveAjuste={`${visao}|${filtros.setor}|${filtros.unidade}|${filtros.gestor}|${filtros.produto}|${geracao}`} />
             ) : (
               <ArvoreLista visiveis={lista} expandidos={o.expandidos} carregandoRamo={o.carregandoRamo} faltaCarregar={o.faltaCarregar}
-                selecionado={selecionado} focoChave={foco} onSelecionar={setSelecionado} onAlternar={(id) => void o.alternar(id)} />
+                selecionado={selecionado} focoChave={foco} onSelecionar={setSelecionado} onAlternar={(id) => void o.alternar(id)} produtos={dados?.produtos ?? []} />
             )}
 
             {o.vagasSemGestor.length > 0 && (

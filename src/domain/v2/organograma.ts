@@ -13,6 +13,8 @@ export interface PessoaOrg {
   setorId?: string
   cargoId?: string
   unidadeId?: string
+  /** Produtos em que a pessoa atua (etiqueta; não muda a hierarquia). */
+  produtoIds?: string[]
   status: string
   responsavelId?: string | null
   /** Topo da organização (CEO): não herda o líder do departamento. */
@@ -287,7 +289,7 @@ export function posicoesVagas(vagas: VagaOrg[], pessoas: Map<string, PessoaOrg>,
 }
 
 /* ---------- recortes (visão por departamento / equipe) ---------- */
-export interface Filtro { setorId?: string; unidadeId?: string; gestorId?: string }
+export interface Filtro { setorId?: string; unidadeId?: string; gestorId?: string; produtoId?: string }
 
 /** Subconjunto de pessoas do filtro. Por gestor: o gestor e toda a sua equipe (inclusive a herdada do departamento). */
 export function filtrarPessoas(todas: PessoaOrg[], f: Filtro, setores: SetorOrg[] = []): PessoaOrg[] {
@@ -299,5 +301,13 @@ export function filtrarPessoas(todas: PessoaOrg[], f: Filtro, setores: SetorOrg[
   }
   if (f.setorId) base = base.filter((p) => p.setorId === f.setorId)
   if (f.unidadeId) base = base.filter((p) => p.unidadeId === f.unidadeId)
+  if (f.produtoId) {
+    // Quem atua no produto e, para a árvore não se partir, a cadeia de gestores acima (que aparece como contexto).
+    const h = construirHierarquia(todas, setores)
+    const membros = base.filter((p) => p.produtoIds?.includes(f.produtoId!))
+    const ids = new Set(membros.map((p) => p.id))
+    for (const m of membros) cadeiaAcima(h, m.id).forEach((id) => ids.add(id))
+    base = base.filter((p) => ids.has(p.id))
+  }
   return base
 }

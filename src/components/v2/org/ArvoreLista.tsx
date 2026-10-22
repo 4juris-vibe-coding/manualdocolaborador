@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Avatar, Icon } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import type { NoUI } from './tipos'
+import { EtiquetasProduto, type ProdutoOrg } from './EtiquetasProduto'
 
 interface Props {
   visiveis: { no: NoUI; nivel: number; paiChave: string | null }[]
@@ -13,9 +14,10 @@ interface Props {
   focoChave?: string | null
   onSelecionar: (id: string) => void
   onAlternar: (id: string) => void
+  produtos: ProdutoOrg[]
 }
 
-export function ArvoreLista({ visiveis, expandidos, carregandoRamo, faltaCarregar, selecionado, focoChave, onSelecionar, onAlternar }: Props) {
+export function ArvoreLista({ visiveis, expandidos, carregandoRamo, faltaCarregar, selecionado, focoChave, onSelecionar, onAlternar, produtos }: Props) {
   const [ativo, setAtivo] = useState<string | null>(null)
   const refs = useRef(new Map<string, HTMLDivElement>())
   const chaveAtiva = ativo && visiveis.some((v) => v.no.chave === ativo) ? ativo : visiveis[0]?.no.chave ?? null
@@ -73,11 +75,12 @@ export function ArvoreLista({ visiveis, expandidos, carregandoRamo, faltaCarrega
               </button>
             ) : <span className="w-8 shrink-0" />}
             {pessoa ? (
-              <button type="button" tabIndex={-1} onClick={() => onSelecionar(pessoa.id)} className="flex items-center gap-3 min-w-0 flex-1 text-left">
+              <button type="button" tabIndex={-1} onClick={() => onSelecionar(pessoa.id)} className={cn('flex items-center gap-3 min-w-0 flex-1 text-left', pessoa.contexto && 'opacity-60')}>
                 <Avatar nome={pessoa.nome} cor={pessoa.avatarCor ?? undefined} size="sm" />
                 <span className="min-w-0">
                   <span className="block text-[13.5px] font-semibold text-ink truncate">{pessoa.apelido || pessoa.nome}</span>
                   <span className="block text-[12px] text-muted truncate">{[pessoa.cargo, pessoa.setor].filter(Boolean).join(' · ') || 'Função e área não definidas'}</span>
+                  <EtiquetasProduto ids={pessoa.produtoIds} produtos={produtos} className="mt-0.5" />
                 </span>
                 {pessoa.diretos > 0 && <span className="ml-auto text-[11.5px] text-muted shrink-0">{pessoa.diretos} direto{pessoa.diretos > 1 ? 's' : ''}</span>}
                 {pessoa.pendente && <Icon name="AlertTriangle" className="h-4 w-4 text-warning shrink-0" aria-label="Cadastro com pendência" />}

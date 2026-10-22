@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Badge, Button, Callout, Card, Field, PageHeader } from '@/components/ui'
 import { Aguardar, SoComBanco } from '@/components/v2/estados'
 import { BadgeStatus, useOpcoes } from '@/components/v2/vagas/comum'
@@ -9,6 +9,8 @@ import { toast } from '@/components/toast'
 import { MODALIDADES_VAGA, REGIMES_CONTRATACAO, ROTULO_MODALIDADE, ROTULO_REGIME_CONTRATACAO, SOBRE_4JURIS_PADRAO } from '@/domain/v2/vagas'
 import { Dropdown } from '@/components/Dropdown'
 import { MODELOS_VAGA, type ModeloVaga } from '@/domain/v2/vagaModelos'
+import type { VagaImportada } from '@/domain/v2/vagaImportada'
+import { BotaoImportarPdf } from '@/components/v2/vagas/ImportarPdf'
 
 const CHAVE_LOCAL = 'vaga_rascunho_nao_salvo_v2'
 /** Rótulos curtos para o select de contrato (o rótulo completo continua na página pública). */
@@ -85,6 +87,7 @@ const campoDoForm = (k: string) => (Object.entries(LISTAS).find(([, col]) => col
 export default function VagaForm() {
   const { id: idRota } = useParams()
   const nav = useNavigate()
+  const local = useLocation()
   const opcoes = useOpcoes()
   const gestao = useTem('vagas:gerenciar')
   const verRemuneracao = useTem('vagas:ver_remuneracao')
@@ -222,6 +225,33 @@ export default function VagaForm() {
     setEstado('sujo'); setErros({}); setMaisDetalhes(true)
     toast(`Modelo “${m.nome}” aplicado. Revise e ajuste antes de publicar.`)
   }
+  /** Preenche o formulário com o que veio do PDF. Só sobrescreve campos que o PDF trouxe. */
+  const aplicarImportacao = useCallback((c: VagaImportada) => {
+    dirty.current = true
+    setForm((f) => {
+      const n: Form = { ...f }
+      const texto = (k: string, v: string | null) => { if (v) n[k] = v }
+      texto('titulo', c.titulo); texto('modalidade', c.modalidade); texto('regimeContratacao', c.regimeContratacao)
+      texto('sobreEmpresa', c.sobreEmpresa); texto('textoPublico', c.textoPublico); texto('responsabilidades', c.responsabilidades); texto('desafios', c.desafios)
+      texto('endereco', c.endereco); texto('jornada', c.jornada); texto('senioridade', c.senioridade)
+      texto('encerraCandidaturasEm', c.encerraCandidaturasEm); texto('dataInicioPrevista', c.dataInicioPrevista)
+      for (const k of ['requisitos', 'diferenciais', 'vantagens', 'etapas'] as const) if (c[k].length) n[k] = c[k].join('\n')
+      if (c.qtdPosicoes) n.qtdPosicoes = String(c.qtdPosicoes)
+      if (verRemuneracao && (c.salarioMin !== null || c.salarioMax !== null)) { n.salarioMin = num(c.salarioMin); n.salarioMax = num(c.salarioMax) }
+      return n
+    })
+    setEstado('sujo'); setErros({}); setMaisDetalhes(true); setRecuperavel(null)
+    toast('Dados do PDF preenchidos. Revise antes de publicar.')
+  }, [verRemuneracao])
+
+  // Vindo do botão "Importar PDF" da lista de vagas: os campos chegam pelo state da navegação.
+  useEffect(() => {
+    const c = (local.state as { importado?: VagaImportada } | null)?.importado
+    if (!c || idRota || !opcoes.dados) return
+    aplicarImportacao(c)
+    nav(local.pathname, { replace: true, state: null })
+  }, [local.state, local.pathname, idRota, opcoes.dados, aplicarImportacao, nav])
+
   const emBranco = !String(form.titulo ?? '').trim() && !String(form.textoPublico ?? '').trim() && !String(form.responsabilidades ?? '').trim()
   const num$ = (k: string, label: string, p: { hint?: string; min?: number; step?: string } = {}) => (
     <Field label={label} hint={p.hint} erro={E(k)} htmlFor={`f-${k}`}>
@@ -255,6 +285,13 @@ export default function VagaForm() {
 
       {!id && emBranco && (
         <Card className="p-5 sm:p-6 mb-5">
+          <div className="flex items-start justify-between gap-3 flex-wrap mb-4 pb-4 border-b border-line">
+            <div>
+              <div className="text-[14px] font-semibold text-ink">Importar de um PDF</div>
+              <p className="text-[12.5px] text-muted mt-0.5">Envie a vaga em PDF (até 3 MB): título, descrição, requisitos, vantagens e o resto são preenchidos para você revisar.</p>
+            </div>
+            <BotaoImportarPdf size="sm" variant="primary" aoImportar={aplicarImportacao} />
+          </div>
           <div className="text-[14px] font-semibold text-ink">Começar de um modelo</div>
           <p className="text-[12.5px] text-muted mt-0.5 mb-3">Preenche descrição, responsabilidades, desafios e requisitos da função. Vantagens, remuneração e jornada ficam com você. Para reaproveitar uma vaga anterior, use <b>Duplicar</b> na página dela.</p>
           <div className="flex flex-wrap gap-2">

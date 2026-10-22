@@ -24,12 +24,15 @@ interface Base {
   cargos: Awaited<ReturnType<typeof lerCargos>>
   unidades: Awaited<ReturnType<typeof lerUnidades>>
   vagas: VagaOrg[]
+  produtos: { id: string; nome: string; cor: string }[]
   h: Hierarquia
 }
 
 async function carregarBase(db: Executor, u: Usuario): Promise<Base> {
   const [legado, setores, cargos, unidades] = await Promise.all([lerPessoas(db), lerSetores(db), lerCargos(db), lerUnidades(db)])
-  const pessoas: PessoaOrg[] = legado.map((p) => ({ id: p.id, nome: p.nome, setorId: p.setorId, cargoId: p.cargoId, unidadeId: p.unidadeId, status: p.status, responsavelId: p.responsavelId ?? null, topo: !!p.topoOrganizacao }))
+  const pessoas: PessoaOrg[] = legado.map((p) => ({ id: p.id, nome: p.nome, setorId: p.setorId, cargoId: p.cargoId, unidadeId: p.unidadeId, produtoIds: p.produtoIds ?? [], status: p.status, responsavelId: p.responsavelId ?? null, topo: !!p.topoOrganizacao }))
+  const produtos = (await db.query("select dados from app_config where chave = 'produtos'")).rows[0]?.dados
+  // Lista curta e não sensível; ids desconhecidos nas pessoas são ignorados.
   // Posições de vagas ainda não publicadas podem ser confidenciais (ex.: substituição): só quem vê vagas as enxerga.
   const verTodasVagas = u.caps.has('vagas:ver')
   const rv = await db.query(
@@ -39,11 +42,11 @@ async function carregarBase(db: Executor, u: Usuario): Promise<Base> {
     id: r.id, titulo: r.titulo, status: r.status, setorId: r.setor_id, cargoId: r.cargo_id,
     gestorImediatoId: r.gestor_imediato_id, qtdPosicoes: r.qtd_posicoes, posicoesPreenchidas: r.posicoes_preenchidas,
   }))
-  return { legado, pessoas, setores, cargos, unidades, vagas, h: construirHierarquia(pessoas, setores) }
+  return { legado, pessoas, setores, cargos, unidades, vagas, produtos: Array.isArray(produtos) ? produtos : [], h: construirHierarquia(pessoas, setores) }
 }
 
 /** Cartão de pessoa. Contato só com org:ver_contato e se a pessoa não o ocultou. NUNCA salário, contrato, avaliações. */
-function cartao(b: Base, id: string, u: Usuario, noMapa: Set<string>) {
+function cartao(b: Base, id: string, u: Usuario, noMapa: Set<string>, produtoFiltro?: string) {
   const p = b.legado.find((x) => x.id === id)!
   const cargo = b.cargos.find((c) => c.id === p.cargoId)
   const setor = b.setores.find((s) => s.id === p.setorId)
@@ -60,6 +63,9 @@ function cartao(b: Base, id: string, u: Usuario, noMapa: Set<string>) {
     setorId: p.setorId || null, setor: setor?.nome ?? null, setorCor: setor?.cor ?? null,
     unidadeId: unidade?.id ?? null, unidade: unidade?.nome ?? null,
     status: p.status,
+    produtoIds: (p.produtoIds ?? []).filter((x) => b.produtos.some((pr) => pr.id === x)),
+    /** No filtro por produto: está no mapa só como gestor de quem atua no produto. */
+    contexto: !!produtoFiltro && !(p.produtoIds ?? []).includes(produtoFiltro),
     gestorId: pai && noMapa.has(pai) ? pai : null,
     gestorForaDaVisao: pai && !noMapa.has(pai) ? pai : null,
     gestorViaDepartamento: !!pai && b.h.viaDepartamento.has(id),
@@ -73,7 +79,7 @@ function cartao(b: Base, id: string, u: Usuario, noMapa: Set<string>) {
 }
 
 function filtros(q: Record<string, string>) {
-  return { setorId: q.setor || undefined, unidadeId: q.unidade || undefined, gestorId: q.gestor || undefined }
+  return { setorId: q.setor || undefined, unidadeId: q.unidade || undefined, gestorId: q.gestor || undefined, produtoId: q.produto || undefined }
 }
 
 function nomeBusca(s: string) { return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() }
@@ -105,7 +111,7 @@ export const rotas: Rota[] = [
         incluidos.add(id)
         for (const fl of filhosVisao.get(id) ?? []) fila.push([fl, nv + 1])
       }
-      const itens = [...incluidos].map((id) => ({ ...cartao(b, id, usuario, ids), filhosNaVisao: filhosVisao.get(id)?.length ?? 0 }))
+      const itens = [...incluidos].map((id) => ({ ...cartao(b, id, usuario, ids, f.produtoId), filhosNaVisao: filhosVisao.get(id)?.length ?? 0 }))
       const pos = posicoesVagas(b.vagas, b.h.pessoas, b.setores)
         .filter((v) => (!f.setorId || v.setorId === f.setorId) && (v.gestorId === null || ids.has(v.gestorId)))
         .map((v) => ({
@@ -121,6 +127,7 @@ export const rotas: Rota[] = [
         buscaAplicada: q || null,
         areas: b.setores.map((s) => ({ id: s.id, nome: s.nome, cor: s.cor ?? null, gestorId: s.gestorId ?? null })),
         unidades: b.unidades.map((x) => ({ id: x.id, nome: x.nome })),
+        produtos: b.produtos,
         gestores: b.h.diretos.size ? [...b.h.diretos.entries()].filter(([, n]) => n > 0).map(([id]) => ({ id, nome: b.h.pessoas.get(id)!.nome })).sort((a, c) => a.nome.localeCompare(c.nome, 'pt-BR')) : [],
         podeEditar: usuario.caps.has('org:editar'),
         podeVerPerfilCompleto: usuario.caps.has('pessoas:gerenciar'),

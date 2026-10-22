@@ -11,6 +11,7 @@ import { useTem } from '@/data/v2/acesso'
 import { useStore } from '@/lib/store'
 import { MAPA_STATUS_VAGA, STATUS_VAGA, ROTULO_MODALIDADE } from '@/domain/v2/vagas'
 import { dataBR } from '@/lib/fmt'
+import { BotaoImportarPdf } from '@/components/v2/vagas/ImportarPdf'
 
 const EXTRAS = ['pagina', 'ordem', 'visao']
 /** Colunas do antigo fluxo de aprovação: só aparecem enquanto houver vaga nelas. */
@@ -60,6 +61,7 @@ export default function ListaVagas() {
         subtitle={gestao ? 'Todas as vagas do ciclo de recrutamento.' : solicita ? 'Solicite vagas e acompanhe a aprovação e os candidatos.' : 'Vagas que você acompanha ou precisa aprovar.'}
         actions={<>
           {gestao && <a href={api.url(`vagas/exportar${queryDe(filtrosExport)}`)} download className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl text-[13.5px] font-semibold border border-line bg-surface text-ink hover:bg-surface-2 hover:border-line-strong outline-none focus-visible:ring-2 focus-visible:ring-brand">Exportar CSV</a>}
+          {solicita && <BotaoImportarPdf aoImportar={(c) => nav('/recrutamento/vagas/nova', { state: { importado: c } })} />}
           {solicita && <Link to="/recrutamento/vagas/nova"><Button icon="Plus">{gestao ? 'Nova vaga' : 'Solicitar vaga'}</Button></Link>}
         </>} />
       <SoComBanco>

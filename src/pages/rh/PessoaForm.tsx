@@ -18,7 +18,7 @@ export function PessoaForm({ pessoa, onClose, onSalvo }: { pessoa?: Colaborador;
   const [f, setF] = useState<PessoaInput>(() => ({
     nome: pessoa?.nome ?? '', nomeSocial: pessoa?.nomeSocial ?? '', email: pessoa?.email ?? '', telefone: pessoa?.telefone ?? '',
     papel: pessoa?.papel ?? 'colaborador', setorId: pessoa?.setorId ?? s.setores[0]?.id ?? '', cargoId: pessoa?.cargoId ?? '',
-    unidadeId: pessoa?.unidadeId ?? '', status: pessoa?.status ?? 'integracao', dataEntrada: pessoa?.dataEntrada ?? hojeISO(),
+    unidadeId: pessoa?.unidadeId ?? '', produtoIds: pessoa?.produtoIds ?? [], status: pessoa?.status ?? 'integracao', dataEntrada: pessoa?.dataEntrada ?? hojeISO(),
     nascimento: pessoa?.nascimento ?? '', cidade: pessoa?.cidade ?? '', uf: pessoa?.uf ?? '', regime: pessoa?.regime ?? 'PJ',
     cpf: pessoa?.cpf ?? '', razaoSocial: pessoa?.razaoSocial ?? '', cnpj: pessoa?.cnpj ?? '',
     endereco: pessoa?.endereco ?? { pais: 'Brasil' }, celular: pessoa?.celular ?? '', emailPessoal: pessoa?.emailPessoal ?? '',
@@ -111,6 +111,24 @@ export function PessoaForm({ pessoa, onClose, onSalvo }: { pessoa?: Colaborador;
           <Field label="Área" required htmlFor="pf-area"><Dropdown id="pf-area" className="input" value={f.setorId} onChange={(x) => set({ setorId: x.target.value, cargoId: '' })}>{s.setores.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</Dropdown></Field>
           <Field label="Função" htmlFor="pf-func" hint={cargos.length ? undefined : 'Cadastre funções da área em Estrutura.'}><Dropdown id="pf-func" className="input" value={f.cargoId} onChange={(x) => set({ cargoId: x.target.value })}><option value="">—</option>{cargos.map((g) => <option key={g.id} value={g.id}>{g.nome} · {g.nivel}</option>)}</Dropdown></Field>
           <Field label="Unidade" htmlFor="pf-un"><Dropdown id="pf-un" className="input" value={f.unidadeId} onChange={(x) => set({ unidadeId: x.target.value })}><option value="">—</option>{s.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}</Dropdown></Field>
+          {(s.config.produtos ?? []).length > 0 && (
+            <div className="sm:col-span-2 mb-4">
+              <span className="label" id="pf-prod">Produtos em que atua</span>
+              <div className="flex flex-wrap gap-2" role="group" aria-labelledby="pf-prod">
+                {(s.config.produtos ?? []).map((p) => {
+                  const marcado = !!f.produtoIds?.includes(p.id)
+                  return (
+                    <button key={p.id} type="button" aria-pressed={marcado}
+                      onClick={() => set({ produtoIds: marcado ? f.produtoIds!.filter((x) => x !== p.id) : [...(f.produtoIds ?? []), p.id] })}
+                      className={`rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition ${marcado ? '' : 'border-line text-ink-2 hover:bg-winter'}`}
+                      style={marcado ? { color: p.cor, borderColor: p.cor, backgroundColor: `${p.cor}14` } : undefined}>
+                      {marcado ? '✓ ' : ''}{p.nome}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
           <Field label="Início da parceria" required htmlFor="pf-ini"><input id="pf-ini" type="date" className="input" value={f.dataEntrada} onChange={(x) => set({ dataEntrada: x.target.value })} /></Field>
           {!pessoa || pessoa.status !== 'encerrado' ? (
             <Field label="Situação" htmlFor="pf-st"><Dropdown id="pf-st" className="input" value={f.status} onChange={(x) => set({ status: x.target.value as Colaborador['status'] })}>

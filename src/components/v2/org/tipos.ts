@@ -12,6 +12,9 @@ export interface CartaoPessoa {
   unidadeId: string | null
   unidade: string | null
   status: string
+  produtoIds: string[]
+  /** No filtro por produto: aparece só como gestor de quem atua no produto. */
+  contexto?: boolean
   gestorId: string | null
   gestorForaDaVisao: string | null
   /** Sem gestor imediato definido: o gestor mostrado é o líder do departamento. */
@@ -34,6 +37,7 @@ export interface VisaoOrg {
   encerradas: { id: string; nome: string }[]
   areas: { id: string; nome: string; cor: string | null; gestorId: string | null }[]
   unidades: { id: string; nome: string }[]
+  produtos: { id: string; nome: string; cor: string }[]
   gestores: { id: string; nome: string }[]
   podeEditar: boolean
   podeVerPerfilCompleto: boolean

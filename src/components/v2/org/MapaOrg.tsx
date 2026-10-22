@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { calcularLayout, MEDIDAS, type NoLayout } from './layoutArvore'
 import { Conexoes, VisorMapa, estiloNo, type VisorHandle } from './VisorMapa'
 import type { NoUI } from './tipos'
+import { EtiquetasProduto, type ProdutoOrg } from './EtiquetasProduto'
 
 export interface MapaHandle { centralizar: () => void; focar: (chave: string) => void }
 interface Props {
@@ -15,11 +16,12 @@ interface Props {
   selecionado: string | null
   onSelecionar: (id: string) => void
   onAlternar: (id: string) => void
+  produtos: ProdutoOrg[]
   /** Muda quando o recorte muda (filtros, expandir/recolher tudo): o mapa reenquadra. */
   chaveAjuste?: string
 }
 
-export const MapaOrg = forwardRef<MapaHandle, Props>(function MapaOrg({ visiveis, expandidos, carregandoRamo, faltaCarregar, selecionado, onSelecionar, onAlternar, chaveAjuste }, ref) {
+export const MapaOrg = forwardRef<MapaHandle, Props>(function MapaOrg({ visiveis, expandidos, carregandoRamo, faltaCarregar, selecionado, onSelecionar, onAlternar, produtos, chaveAjuste }, ref) {
   const visor = useRef<VisorHandle>(null)
 
   const layout = useMemo(() => {
@@ -67,7 +69,7 @@ export const MapaOrg = forwardRef<MapaHandle, Props>(function MapaOrg({ visiveis
                   onClick={() => onSelecionar(c.id)}
                   aria-label={`${c.apelido || c.nome}, ${c.cargo ?? 'sem função definida'}, ${c.setor ?? 'sem área'}. ${c.diretos} subordinados diretos. Abrir detalhes.`}
                   className={cn('h-full w-full text-left rounded-xl border bg-surface pl-2.5 pr-3 py-2 flex items-center gap-2.5 transition shadow-sm hover:shadow-md outline-none focus-visible:ring-2 focus-visible:ring-brand',
-                    selecionado === c.id ? 'border-brand ring-2 ring-brand/30' : 'border-line')}
+                    selecionado === c.id ? 'border-brand ring-2 ring-brand/30' : 'border-line', c.contexto && 'opacity-60 border-dashed')}
                   style={{ borderLeft: `4px solid ${c.setorCor ?? 'rgb(var(--c-line-strong))'}` }}
                 >
                   <Avatar nome={c.nome} cor={c.avatarCor ?? undefined} size="md" />
@@ -75,6 +77,7 @@ export const MapaOrg = forwardRef<MapaHandle, Props>(function MapaOrg({ visiveis
                     <span className="block text-[13px] font-bold text-ink truncate">{c.apelido || c.nome}</span>
                     <span className="block text-[11.5px] text-ink-2 truncate">{c.cargo ?? 'Função não definida'}</span>
                     <span className="block text-[11px] text-muted truncate">{c.setor ?? 'Sem área'}{c.diretos > 0 ? ` · ${c.diretos} direto${c.diretos > 1 ? 's' : ''}` : ''}</span>
+                    <EtiquetasProduto ids={c.produtoIds} produtos={produtos} className="mt-1" />
                   </span>
                   {c.pendente && <Icon name="AlertTriangle" className="h-4 w-4 text-warning shrink-0 absolute top-2 right-2" aria-label="Cadastro com pendência" />}
                 </button>

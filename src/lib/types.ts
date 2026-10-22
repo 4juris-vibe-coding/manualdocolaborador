@@ -49,6 +49,8 @@ export interface Colaborador {
   setorId: string
   cargoId: string
   unidadeId?: string
+  /** Produtos/negócios em que a pessoa atua (pode ser mais de um). Não muda a hierarquia. */
+  produtoIds?: string[]
   status: StatusParceria
   /** Início da parceria. */
   dataEntrada: string
@@ -865,6 +867,9 @@ export interface RegistroAuditoria {
   resumo: string
 }
 
+/** Produto/negócio da empresa (ex.: 4Juris, Lexfy). Etiqueta transversal às áreas e à hierarquia. */
+export interface Produto { id: string; nome: string; cor: string }
+
 export interface ConfigPlataforma {
   disponibilidade: PoliticaDisponibilidade
   gamificacao: ConfigGamificacao
@@ -872,6 +877,8 @@ export interface ConfigPlataforma {
   geral: ConfigGeral
   cultura: CulturaOrganizacional
   avaliacaoInicio: ConfigAvaliacaoInicio
+  /** Opcional: bases antigas não têm a chave. */
+  produtos?: Produto[]
 }
 
 export interface DB {

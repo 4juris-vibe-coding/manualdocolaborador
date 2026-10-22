@@ -22,7 +22,7 @@ import type {
   Objetivo, Pesquisa, Papel, AcaoPontuavel, Badge, Treinamento,
   Dependente, Exigencia, GrupoCompetencia, Competencia, CicloAvaliativo, Feedback, CulturaOrganizacional, ConfigGeral,
   ConfigAvaliacaoInicio, PerfilComportamental, Diversidade, Endereco, Escolaridade, Beneficio,
-  Apresentacao, SlideInstancia, TemaApresentacao, Sugestao, StatusSugestao, CategoriaSugestao,
+  Apresentacao, SlideInstancia, TemaApresentacao, Sugestao, StatusSugestao, CategoriaSugestao, Produto,
 } from './types'
 import { seed, seedProducao } from './mock'
 import { MODO_API } from '@/data/config'
@@ -76,6 +76,7 @@ export interface PessoaInput {
   setorId: string
   cargoId?: string
   unidadeId?: string
+  produtoIds?: string[]
   status: Colaborador['status']
   dataEntrada: string
   nascimento?: string
@@ -175,6 +176,7 @@ interface AppState extends DB {
   sugestaoEhMinha: (id: string) => boolean
   minhaChaveApoio: (id: string) => string
   salvarConfigGeral: (g: ConfigGeral) => Resultado
+  salvarProdutos: (p: Produto[]) => Resultado
   atualizarPrivacidade: (patch: Partial<Colaborador['privacidade']>) => Resultado
   encerrarParceria: (id: string, data: string, motivoId: string, observacao?: string, iniciarChecklist?: boolean) => Resultado
   reativarParceria: (id: string) => Resultado
@@ -1401,6 +1403,17 @@ export const useStore = create<AppState>()(
           if (new Set(c.valores.map((v) => v.nome.trim().toLowerCase())).size !== c.valores.length) return ERRO('Há valores com nomes repetidos.')
           d.config = { ...d.config, cultura: { ...c, valores: c.valores.map((v) => ({ ...v, nome: v.nome.trim() })), atualizadoEm: hojeISO() } }
           audit(d, 'config.cultura', 'config', 'cultura', 'Cultura organizacional atualizada')
+        }),
+        salvarProdutos: (lista) => tx((d) => {
+          if (!pode('config:geral')) return SEM_PERMISSAO
+          const produtos = lista.map((p) => ({ ...p, nome: p.nome.trim() }))
+          if (produtos.some((p) => !p.nome)) return ERRO('Todo produto precisa de nome.')
+          if (new Set(produtos.map((p) => p.nome.toLowerCase())).size !== produtos.length) return ERRO('Há produtos com nomes repetidos.')
+          d.config = { ...d.config, produtos }
+          // Quem estava num produto removido deixa de ter a etiqueta.
+          const ids = new Set(produtos.map((p) => p.id))
+          d.colaboradores = d.colaboradores.map((c) => (c.produtoIds?.some((x) => !ids.has(x)) ? { ...c, produtoIds: c.produtoIds.filter((x) => ids.has(x)) } : c))
+          audit(d, 'config.produtos', 'config', 'produtos', 'Produtos atualizados')
         }),
         salvarConfigGeral: (g) => tx((d) => {
           if (!pode('config:geral')) return SEM_PERMISSAO
