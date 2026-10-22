@@ -14,6 +14,7 @@ import { sobreposicoesNaArea } from '@/domain/disponibilidade'
 import { progresso, prazoItem } from '@/domain/jornada'
 import { can } from '@/domain/permissions'
 import { Dropdown } from '@/components/Dropdown'
+import { AcessosEquipe } from '@/components/AcessosEquipe'
 
 export default function Lideranca() {
   const s = useStore()
@@ -66,6 +67,7 @@ export default function Lideranca() {
       <Tabs tabs={[
         { key: 'disponibilidade', label: `Disponibilidade${paraAlinhar.length ? ` (${paraAlinhar.length})` : ''}` },
         { key: 'equipe', label: 'Equipe' },
+        ...(can(user.papel, 'acessos:equipe') ? [{ key: 'acessos', label: 'Acessos da equipe' }] : []),
         { key: 'objetivos', label: 'Objetivos' },
         { key: 'integracao', label: `Integração${itensLideranca ? ` (${itensLideranca})` : ''}` },
         { key: 'solicitacoes', label: `Solicitações${reembPend.length + iniciativasRev.length ? ` (${reembPend.length + iniciativasRev.length})` : ''}` },
@@ -109,6 +111,8 @@ export default function Lideranca() {
           </Card>
         </div>
       )}
+
+      {tab === 'acessos' && <AcessosEquipe areas={areas} equipe={equipe} />}
 
       {tab === 'equipe' && (
         <Card>

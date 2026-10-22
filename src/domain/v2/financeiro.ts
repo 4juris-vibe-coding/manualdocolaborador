@@ -151,7 +151,8 @@ export interface Divergencia { codigo: string; mensagem: string }
  */
 export function divergenciasNota(n: NotaBase, k: ContratoBase, outrasNaCompetencia: number): Divergencia[] {
   const out: Divergencia[] = []
-  if (k.modeloRemuneracao === 'mensal_fixo' && centavos(n.valorBruto) !== centavos(k.valor)) {
+  // Valor mensal 0 = "a definir" (contrato-base): não há referência para comparar.
+  if (k.modeloRemuneracao === 'mensal_fixo' && centavos(k.valor) > 0 && centavos(n.valorBruto) !== centavos(k.valor)) {
     out.push({ codigo: 'valor_diferente', mensagem: `Valor da nota difere do valor mensal do contrato (${k.valor.toFixed(2)}).` })
   }
   if (k.modeloRemuneracao === 'por_projeto' && centavos(n.valorBruto) > centavos(k.valor)) {

@@ -10,12 +10,16 @@ import type { Apresentacao } from '@/lib/types'
 import { toast } from '@/components/toast'
 import { modeloProntoDe } from '@/domain/apresentacoes'
 import { ehArte, tamanhoDe, urlEditor } from '@/domain/canva'
+import { useAlturaDisponivel } from '@/lib/layout'
 
 const LIMITE_ESPERA_MS = 10000
 
-export function EditorLivreApresentacao({ a, somenteLeitura, onSalvo }: { a: Apresentacao; somenteLeitura: boolean; onSalvo?: () => void }) {
+export function EditorLivreApresentacao({ a, somenteLeitura, onSalvo, preencher }: { a: Apresentacao; somenteLeitura: boolean; onSalvo?: () => void; preencher?: boolean }) {
   const salvarApresentacao = useStore((s) => s.salvarApresentacao)
   const frame = useRef<HTMLIFrameElement>(null)
+  const caixa = useRef<HTMLDivElement>(null)
+  // O editor tem rolagem própria nos painéis: ele termina no rodapé da janela para a página não rolar junto.
+  const altura = useAlturaDisponivel(caixa, { min: 560 })
   const [estado, setEstado] = useState<'carregando' | 'pronto' | 'falhou'>('carregando')
   const [tentativa, setTentativa] = useState(0)
   // Valores mais recentes sem reabrir o listener a cada edição.
@@ -57,11 +61,13 @@ export function EditorLivreApresentacao({ a, somenteLeitura, onSalvo }: { a: Apr
   }, [tentativa])
 
   return (
-    <div className="relative">
+    // preencher: ocupa todo o espaço do contêiner flex (editor em tela cheia); senão, mede a altura que sobra na janela.
+    <div ref={caixa} className={preencher ? 'relative flex-1 min-h-0' : 'relative'}>
       <iframe key={tentativa} ref={frame} src={urlEditor(a)} onLoad={enviarCarga} title={`Editor de ${a.titulo}`} allow="fullscreen; clipboard-write"
-        className="block w-full rounded-2xl border border-line bg-midnight shadow-sm" style={{ height: 'max(640px, calc(100vh - 210px))' }} />
+        className={preencher ? 'block w-full h-full bg-midnight animate-fade-in' : 'block w-full rounded-2xl border border-line bg-midnight shadow-sm'}
+        style={preencher ? undefined : { height: altura ?? 'max(560px, calc(100dvh - 160px))' }} />
       {estado !== 'pronto' && (
-        <div className="absolute inset-0 rounded-2xl bg-midnight/95 flex flex-col items-center justify-center gap-3 text-center text-white p-6" role={estado === 'falhou' ? 'alert' : 'status'}>
+        <div className={`absolute inset-0 ${preencher ? '' : 'rounded-2xl '}bg-midnight/95 flex flex-col items-center justify-center gap-3 text-center text-white p-6`} role={estado === 'falhou' ? 'alert' : 'status'}>
           {estado === 'carregando' ? (
             <p className="text-[13.5px] font-semibold">Carregando o editor…</p>
           ) : (

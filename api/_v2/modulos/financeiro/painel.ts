@@ -14,6 +14,7 @@ import { RE_COMPETENCIA, centavos, reais, somarDias, somarMeses } from '../../..
 import { dstr, espelharContrato, hoje, idsComCapacidade, lerConfig, mapaPessoas, meusFornecedores, nomeDe, num, type Linha } from './comum.js'
 import { contaJson } from './contas.js'
 import { notaJson } from './notas.js'
+import { disparosAutomaticos, lerDisparoAuto } from './disparos.js'
 
 const n2 = (v: unknown) => Number(v ?? 0)
 
@@ -187,18 +188,21 @@ export async function processarAlertas(ex: Executor, hojeStr: string, origem: st
     const vencido = d.v < hojeStr
     for (const dest of [d.pessoa_id, ...conferentes]) await avisar(dest, 'documento', vencido ? `Documento vencido: ${d.titulo}` : `Documento vence em ${d.v}: ${d.titulo}`, 'Envie a versão atualizada.', dest === d.pessoa_id ? '/meus-documentos' : '/financeiro/documentos?validade=vencendo', `doc-${vencido ? 'vencido' : 'vence'}:${d.id}:${d.v}`)
   }
-  // 6) Nota do mês ainda não enviada (a partir de 5 dias antes do limite).
+  // 6) Nota do mês ainda não enviada (a partir de 5 dias antes do limite). Com os disparos automáticos ligados, a cobrança é feita por eles (passo 7).
   const comp = hojeStr.slice(0, 7)
   const limite = `${comp}-${String(cfg.diaLimiteEnvioNf).padStart(2, '0')}`
-  if (hojeStr >= somarDias(limite, -5)) {
+  const auto = await lerDisparoAuto(ex)
+  if (!auto.ativo && hojeStr >= somarDias(limite, -5)) {
     for (const k of (await ex.query(`select k.id, k.numero, k.prestador_id, f.representante_id from fin_contratos k join fin_fornecedores f on f.id = k.fornecedor_id
         where k.status = 'vigente' and k.periodicidade_faturamento = 'mensal' and k.inicio <= ($1 || '-28')::date and (k.fim is null or k.fim >= ($1 || '-01')::date)
         and not exists (select 1 from fin_notas n where n.contrato_id = k.id and n.competencia = $1 and n.status <> 'cancelada')`, [comp])).rows) {
       await avisar(k.prestador_id ?? k.representante_id, 'nota_fiscal', `Envie a nota fiscal de ${comp}`, `Contrato ${k.numero} · prazo ${limite}.`, '/notas', `nf-pendente:${k.id}:${comp}`)
     }
   }
+  // 7) Disparos automáticos de cobrança da NF (notificação no portal), nos dias configurados.
+  const disparos = await disparosAutomaticos(ex, hojeStr)
   await ex.query('update fin_execucoes_alertas set concluido_em = now(), notificacoes = $2, renovacoes = $3 where id = $1', [exec, notificacoes, renovacoes])
-  return { notificacoes, renovacoes }
+  return { notificacoes, renovacoes, disparos }
 }
 
 async function talvezProcessar(ex: Executor & { tx?: unknown }, hojeStr: string) {

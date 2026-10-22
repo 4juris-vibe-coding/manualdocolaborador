@@ -157,7 +157,7 @@ export default function Candidatar() {
 
               <Card className="p-5 sm:p-6 mb-5">
                 <h2 className="font-bold text-ink mb-2">Privacidade</h2>
-                <div className="text-[13px] text-ink-2 leading-relaxed bg-surface-2 border border-line rounded-xl p-4 max-h-48 overflow-y-auto" tabIndex={0} aria-label="Aviso de privacidade">
+                <div className="text-[13px] text-ink-2 leading-relaxed bg-surface-2 border border-line rounded-xl p-4" aria-label="Aviso de privacidade">
                   {v.privacidade.texto}
                   <p className="mt-2 text-muted">Contato para exercer seus direitos: <b>{v.privacidade.contato}</b> · Versão do aviso: {v.privacidade.versao}</p>
                 </div>

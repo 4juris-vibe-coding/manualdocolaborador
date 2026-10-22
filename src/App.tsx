@@ -73,6 +73,7 @@ const FinContrato = lazy(() => import('@/pages/v2/financeiro/ContratoDetalhe'))
 const FinFornecedores = lazy(() => import('@/pages/v2/financeiro/Fornecedores'))
 const FinFornecedor = lazy(() => import('@/pages/v2/financeiro/Fornecedores').then((m) => ({ default: m.FornecedorDetalhe })))
 const FinNotas = lazy(() => import('@/pages/v2/financeiro/Notas'))
+const FinKanban = lazy(() => import('@/pages/v2/financeiro/Kanban'))
 const FinContas = lazy(() => import('@/pages/v2/financeiro/Contas'))
 const FinDocumentos = lazy(() => import('@/pages/v2/financeiro/Outros').then((m) => ({ default: m.DocumentosRepo })))
 const FinConfig = lazy(() => import('@/pages/v2/financeiro/Outros').then((m) => ({ default: m.ConfigFinanceiro })))
@@ -247,6 +248,7 @@ export function App() {
             <Route path="/financeiro/fornecedores" element={<FinFornecedores />} />
             <Route path="/financeiro/fornecedores/:id" element={<FinFornecedor />} />
             <Route path="/financeiro/notas" element={<FinNotas />} />
+            <Route path="/financeiro/kanban" element={<FinKanban />} />
             <Route path="/financeiro/contas" element={<FinContas />} />
             <Route path="/financeiro/documentos" element={<FinDocumentos />} />
             <Route path="/financeiro/config" element={<FinConfig />} />

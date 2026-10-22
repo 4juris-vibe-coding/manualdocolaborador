@@ -60,7 +60,7 @@ export default function PainelVagas() {
                   action={solicita && !f.ativos ? <Link to="/recrutamento/vagas/nova"><Button icon="Plus">Criar vaga</Button></Link> : undefined} /></Card>
               ) : (
                 <>
-                  <section aria-label="Situação das vagas" className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+                  <section aria-label="Situação das vagas" className="grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
                     {[
                       { icon: 'FolderOpen', v: p.cards.abertas, l: 'Vagas em aberto', to: lista({ status: EM_ABERTO }) },
                       { icon: 'Hourglass', v: p.cards.emAprovacao, l: 'Em aprovação', to: lista({ status: 'em_aprovacao' }), tone: 'warning' },
@@ -78,8 +78,8 @@ export default function PainelVagas() {
                       { icon: 'UserCheck', v: p.cards.contratacoes, l: 'Contratações concluídas', to: '/recrutamento/candidatos', tone: 'success' },
                       { icon: 'Armchair', v: p.cards.posicoesEmAberto, l: 'Posições ainda em aberto', to: lista({ status: EM_ABERTO }) },
                     ].map((k) => (
-                      <Link key={k.l} to={k.to} className="block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-brand hover:-translate-y-0.5 transition">
-                        <StatCard icon={k.icon} tone={k.tone ?? 'brand'} value={numero(k.v)} label={k.l} />
+                      <Link key={k.l} to={k.to} className="block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-brand hover:-translate-y-0.5 hover:shadow-sm transition">
+                        <StatCard compacto icon={k.icon} tone={k.tone ?? 'brand'} value={numero(k.v)} label={k.l} />
                       </Link>
                     ))}
                   </section>

@@ -271,7 +271,7 @@ function EventoDetalhe({ e, onClose, onEditar }: { e: Evento; onClose: () => voi
       {presencaAberta && (
         <div className="mt-4">
           <p className="text-[12.5px] text-muted mb-2">Marque quem participou. Cada pessoa recebe os pontos de participação uma única vez por evento.</p>
-          <div className="max-h-64 overflow-y-auto rounded-xl border border-line p-2 space-y-1">
+          <div className="rounded-xl border border-line p-2 space-y-1">
             {convidados.map((c) => (
               <label key={c.id} className={cn('flex items-center gap-2.5 rounded-lg px-2.5 py-2 cursor-pointer', presentes.includes(c.id) ? 'bg-brand-50' : 'hover:bg-surface-2')}>
                 <input type="checkbox" className="h-4 w-4 accent-brand" checked={presentes.includes(c.id)} onChange={() => setPresentes((p) => (p.includes(c.id) ? p.filter((x) => x !== c.id) : [...p, c.id]))} />

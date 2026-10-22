@@ -100,7 +100,7 @@ export default function Dashboard() {
         </Link>
       )}
 
-      <nav aria-label="Atalhos" className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-6">
+      <nav aria-label="Atalhos" className="grid grid-cols-3 sm:grid-cols-[repeat(auto-fit,minmax(112px,1fr))] gap-3 mb-6">
         {atalhos.map((a) => (
           <Link key={a.to} to={a.to} className="card p-3 sm:p-4 flex flex-col items-center gap-2.5 text-center hover:shadow-sm hover:-translate-y-0.5 transition group">
             <span className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-brand-50 text-brand flex items-center justify-center group-hover:bg-brand group-hover:text-white transition">

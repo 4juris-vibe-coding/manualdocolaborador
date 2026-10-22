@@ -25,7 +25,7 @@ const CAP_LABEL: Partial<Record<Capacidade, string>> = {
   'pesquisas:gerenciar': 'Pesquisas', 'disponibilidade:configurar': 'Política e agenda de disponibilidade', 'financeiro:gerenciar': 'Notas fiscais e reembolsos (gestão)',
   'relatorios:exportar': 'Exportar relatórios', 'admin:usuarios': 'Usuários e papéis', 'admin:auditoria': 'Auditoria', 'admin:privacidade': 'Anonimização (LGPD)', 'admin:dados_demo': 'Dados de demonstração',
 }
-const PAPEIS: Papel[] = ['colaborador', 'gestor', 'rh', 'diretoria', 'admin']
+const PAPEIS: Papel[] = ['colaborador', 'gestor', 'financeiro', 'rh', 'diretoria', 'admin']
 
 export default function Admin() {
   const s = useStore()

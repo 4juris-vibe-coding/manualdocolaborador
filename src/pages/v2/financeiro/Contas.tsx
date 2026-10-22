@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Badge, Button, Callout, Card, EmptyState, Field, PageHeader, SearchBox, Select, TD, TH, Tabela } from '@/components/ui'
+import { Badge, Button, Callout, Card, EmptyState, Field, PageHeader, SearchBox, Select, TD, TH, Tabela, classesBotao, Icon } from '@/components/ui'
 import { Dropdown } from '@/components/Dropdown'
 import { Modal } from '@/components/Modal'
 import { Drawer } from '@/components/v2/Drawer'
@@ -31,7 +31,7 @@ export default function Contas() {
     <>
       <PageHeader title="Contas a pagar" subtitle="Obrigações com prestadores: previstas → autorizadas → pagas (registro manual) → conciliadas."
         actions={<>
-          <a href={api.url(`financeiro/contas/exportar${consulta}`)} className="inline-flex items-center gap-2 h-10 px-4 rounded-xl text-[13.5px] font-semibold border border-line bg-surface hover:bg-surface-2">Exportar CSV</a>
+          <a href={api.url(`financeiro/contas/exportar${consulta}`)} className={classesBotao('ghost')}><Icon name="Download" className="h-[17px] w-[17px]" />Exportar CSV</a>
           {op.dados?.capacidades.pagar && <Button icon="Plus" onClick={() => setAvulsa(true)}>Conta avulsa</Button>}
         </>} />
       <SoComBanco>
@@ -41,8 +41,10 @@ export default function Contas() {
           <Select label="Situação" value={f.valores.status} onChange={(v) => f.definir('status', v)}><option value="">Todas</option>{Object.entries(MAPA_STATUS_CONTA).map(([k, v]) => <option key={k} value={k}>{v.rotulo}</option>)}<option value="prevista,autorizada">Em aberto</option></Select>
           {op.dados && <Select label="Fornecedor" value={f.valores.fornecedor} onChange={(v) => f.definir('fornecedor', v)}><option value="">Todos os fornecedores</option>{op.dados.fornecedores.map((x) => <option key={x.id} value={x.id}>{x.razaoSocial}</option>)}</Select>}
           {op.dados && <Select label="Centro de custo" value={f.valores.centro} onChange={(v) => f.definir('centro', v)}><option value="">Todos os centros</option>{op.dados.centros.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nome}</option>)}</Select>}
-          <input type="date" aria-label="Vencimento de" className="input w-auto" value={f.valores.de} onChange={(e) => f.definir('de', e.target.value)} />
-          <input type="date" aria-label="Vencimento até" className="input w-auto" value={f.valores.ate} onChange={(e) => f.definir('ate', e.target.value)} />
+          <label className="flex items-center gap-2 text-[12.5px] font-semibold text-ink-2 whitespace-nowrap">Vence de
+            <input type="date" aria-label="Vencimento de" className="input w-auto" value={f.valores.de} onChange={(e) => f.definir('de', e.target.value)} /></label>
+          <label className="flex items-center gap-2 text-[12.5px] font-semibold text-ink-2 whitespace-nowrap">até
+            <input type="date" aria-label="Vencimento até" className="input w-auto" value={f.valores.ate} onChange={(e) => f.definir('ate', e.target.value)} /></label>
           <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={f.valores.atrasadas === '1'} onChange={(e) => f.definir('atrasadas', e.target.checked ? '1' : '')} /> Só vencidas</label>
           <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={f.valores.conciliar === '1'} onChange={(e) => f.definir('conciliar', e.target.checked ? '1' : '')} /> A conciliar</label>
         </div>
@@ -87,28 +89,34 @@ function DetalheConta({ id, fechar, mudou }: { id: string; fechar: () => void; m
   const [ret, setRet] = useState(false)
   const [pagar, setPagar] = useState(false)
   const motivo = useMotivo()
-  const agir = async (rota: string, corpo: unknown, msg: string) => { if (await executar(() => api.post(`financeiro/contas/${id}/${rota}`, corpo), msg)) { r.recarregar(); mudou() } }
+  // Enquanto uma ação está em andamento, as demais ficam desabilitadas (evita autorizar/conciliar duas vezes num clique duplo).
+  const [ocupado, setOcupado] = useState(false)
+  const agir = async (rota: string, corpo: unknown, msg: string) => {
+    if (ocupado) return
+    setOcupado(true)
+    try { if (await executar(() => api.post(`financeiro/contas/${id}/${rota}`, corpo), msg)) { r.recarregar(); mudou() } } finally { setOcupado(false) }
+  }
   const d = r.dados, c = d?.conta, a = d?.acoes ?? {}
   return (
     <Drawer open={!!id} onClose={fechar} titulo={c?.descricao ?? 'Conta a pagar'} subtitulo={c && `${c.fornecedorNome ?? c.pessoaNome} · vence ${dataBR(c.vencimento)}`} largura="max-w-2xl"
       rodape={c && <>
-        {a.cancelar && <Button variant="ghost" onClick={async () => { const m = await motivo.pedir('Cancelar conta', 'A conta deixa de ser cobrada. Fica no histórico.', 'Cancelar conta'); if (m) agir('cancelar', { motivo: m }, 'Conta cancelada.') }}>Cancelar</Button>}
-        {a.desautorizar && <Button variant="ghost" onClick={async () => { const m = await motivo.pedir('Revogar autorização', 'A conta volta para "prevista" e precisa de nova autorização.', 'Revogar', false); if (m) agir('desautorizar', { motivo: m }, 'Autorização revogada.') }}>Revogar autorização</Button>}
-        {a.autorizar && <Button icon="ShieldCheck" onClick={() => agir('autorizar', { versao: c.versao }, 'Pagamento autorizado.')}>Autorizar pagamento</Button>}
-        {a.pagar && <Button icon="Banknote" onClick={() => setPagar(true)}>Registrar pagamento</Button>}
-        {a.conciliar && <Button icon="CheckCheck" onClick={() => agir('conciliar', {}, 'Pagamento conciliado.')}>Conciliar</Button>}
+        {a.cancelar && <Button variant="ghost" disabled={ocupado} onClick={async () => { const m = await motivo.pedir('Cancelar conta', 'A conta deixa de ser cobrada. Fica no histórico.', 'Cancelar conta'); if (m) agir('cancelar', { motivo: m }, 'Conta cancelada.') }}>Cancelar</Button>}
+        {a.desautorizar && <Button variant="ghost" disabled={ocupado} onClick={async () => { const m = await motivo.pedir('Revogar autorização', 'A conta volta para "prevista" e precisa de nova autorização.', 'Revogar', false); if (m) agir('desautorizar', { motivo: m }, 'Autorização revogada.') }}>Revogar autorização</Button>}
+        {a.autorizar && <Button icon="ShieldCheck" disabled={ocupado} onClick={() => agir('autorizar', { versao: c.versao }, 'Pagamento autorizado.')}>Autorizar pagamento</Button>}
+        {a.pagar && <Button icon="Banknote" disabled={ocupado} onClick={() => setPagar(true)}>Registrar pagamento</Button>}
+        {a.conciliar && <Button icon="CheckCheck" disabled={ocupado} onClick={() => agir('conciliar', {}, 'Pagamento conciliado.')}>Conciliar</Button>}
       </>}>
       {!c ? <p className="text-muted text-[13px]">Carregando…</p> : (
         <div className="space-y-5">
           <div className="flex flex-wrap gap-2"><BadgeConta valor={c.status} />{c.atrasada && <Badge tone="danger" dot>Vencida</Badge>}{c.conciliadaEm && <Badge tone="success">Conciliada</Badge>}</div>
           {d!.bloqueios.length > 0 && <Callout tone="warning" icon="AlertTriangle"><ul className="list-disc ml-5">{d!.bloqueios.map((b) => <li key={b}>{b}</li>)}</ul></Callout>}
-          <dl className="grid grid-cols-3 gap-4">
+          <dl className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <Info rotulo="Bruto">{dinheiro(c.valorBruto)}</Info><Info rotulo="Retenções">{dinheiro(c.valorRetencoes)}</Info><Info rotulo="Líquido a pagar"><b>{dinheiro(c.valorLiquido)}</b></Info>
             <Info rotulo="Origem">{c.notaId ? <Link className="text-brand hover:underline" to={`/financeiro/notas?nota=${c.notaId}`}>NF {c.notaNumero}</Link> : c.origem === 'reembolso' ? 'Reembolso aprovado' : 'Conta avulsa'}</Info>
             <Info rotulo="Contrato">{c.contratoId ? <Link className="text-brand hover:underline" to={`/financeiro/contratos/${c.contratoId}`}>{c.contratoNumero}</Link> : '—'}</Info>
             <Info rotulo="Centro de custo">{c.centroCusto}</Info>
-            {c.autorizadaPor && <Info rotulo="Autorizada por" className="col-span-3">{c.autorizadaPor} em {dataHoraBR(c.autorizadaEm)}</Info>}
-            {c.motivoCancelamento && <Info rotulo="Cancelamento" className="col-span-3">{c.canceladaPor}: {c.motivoCancelamento}</Info>}
+            {c.autorizadaPor && <Info rotulo="Autorizada por" className="col-span-2 sm:col-span-3">{c.autorizadaPor} em {dataHoraBR(c.autorizadaEm)}</Info>}
+            {c.motivoCancelamento && <Info rotulo="Cancelamento" className="col-span-2 sm:col-span-3">{c.canceladaPor}: {c.motivoCancelamento}</Info>}
           </dl>
           {d!.destino && <div className="rounded-xl border border-line p-4"><h3 className="text-[13px] font-bold mb-2">Destino do pagamento</h3>
             {d!.destino.origem === 'ausente' ? <p className="text-[13px] text-danger">Sem dados de pagamento cadastrados.</p> : <p className="text-[13px]">{d!.destino.pixChave ? `PIX (${d!.destino.pixTipo ?? 'chave'}): ${d!.destino.pixChave}` : ''}{d!.destino.conta ? ` · Banco ${d!.destino.banco ?? ''} ag. ${d!.destino.agencia ?? ''} conta ${d!.destino.conta}` : ''}<span className="block text-[11.5px] text-muted mt-1">Fonte: {d!.destino.origem === 'fornecedor' ? 'cadastro do fornecedor' : 'perfil da pessoa'}</span></p>}</div>}

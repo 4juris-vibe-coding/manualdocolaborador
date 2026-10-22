@@ -193,6 +193,9 @@ const exigirFaixas = (c: Ctx) => { if (!tem(c.usuario, 'cargos:ver_faixas')) thr
 /* ============================================================
    Rotas
    ============================================================ */
+/** Mínimo de contratos comparados para mostrar abaixo/dentro/acima a quem não vê contratos. */
+const MIN_GRUPO_FAIXA = 5
+
 export const rotas: Rota[] = [
   /* ---------- catálogo ---------- */
   {
@@ -471,10 +474,17 @@ export const rotas: Rota[] = [
         if (detalhe) pessoasDet.push({ pessoaId: p.id, nome: p.nome, cargoId: p.cargoId, posicao: pos })
       }
       const nc = new Map(lista.map((x) => [x.id, x.nome]))
+      // Quem não vê contratos (ex.: analista de RH) não pode deduzir a posição de uma pessoa: cargos com poucos
+      // contratos comparados têm abaixo/dentro/acima ocultos (mesmo mínimo de grupo do People Analytics).
+      const ocultar = !tem(c.usuario, 'pessoas:ver_contratos')
       return ok({
-        referencia: hoje, ressalva: RESSALVA_FAIXA,
+        referencia: hoje, ressalva: RESSALVA_FAIXA, minGrupo: MIN_GRUPO_FAIXA,
         cargos: [...porCargo].filter(([, a]) => a.abaixo + a.dentro + a.acima + a.semFaixa + a.semContrato + a.moedaDiferente > 0)
-          .map(([cargoId, a]) => ({ cargoId, cargoNome: nc.get(cargoId) ?? '(cargo removido)', ...a })),
+          .map(([cargoId, a]) => {
+            const n = a.abaixo + a.dentro + a.acima
+            const suprimido = ocultar && n > 0 && n < MIN_GRUPO_FAIXA
+            return { cargoId, cargoNome: nc.get(cargoId) ?? '(cargo removido)', ...a, ...(suprimido ? { abaixo: null, dentro: null, acima: null, suprimido: true } : {}) }
+          }),
         ...(detalhe ? { pessoas: pessoasDet } : {}),
       })
     },

@@ -202,7 +202,9 @@ export async function pessoaPorId(ex: Executor, id: string): Promise<PessoaOrg |
 
 /** Pessoas com determinada função adicional ou papel (para notificar / designar). */
 export async function idsComFuncao(ex: Executor, funcao: FuncaoAdicional): Promise<string[]> {
-  return (await ex.query('select colaborador_id from acl_funcoes where funcao = $1', [funcao])).rows.map((r) => r.colaborador_id)
+  // Como idsComPapel: quem teve a parceria encerrada não recebe tarefas nem avisos.
+  return (await ex.query(`select f.colaborador_id from acl_funcoes f join app_colaboradores c on c.id = f.colaborador_id
+    where f.funcao = $1 and coalesce(c.dados->>'status', '') <> 'encerrado'`, [funcao])).rows.map((r) => r.colaborador_id)
 }
 export async function idsComPapel(ex: Executor, ...papeis: Papel[]): Promise<string[]> {
   return (await ex.query("select id from app_colaboradores where dados->>'papel' = any($1) and coalesce(dados->>'status','') <> 'encerrado'", [papeis])).rows.map((r) => r.id)

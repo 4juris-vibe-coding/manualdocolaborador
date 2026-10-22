@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import gsap from 'gsap'
 import { ArrowRight, ArrowLeft, ShieldCheck, Sparkles, Layers, Fingerprint, Mail, Lock, Eye, EyeOff, MailCheck } from 'lucide-react'
+import { marcarEntrada } from '@/lib/layout'
+import { cn } from '@/lib/utils'
 import { Logo } from '@/components/ui'
 import { toast } from '@/components/toast'
 import { useStore } from '@/lib/store'
@@ -148,14 +150,23 @@ export default function Login() {
     return () => { clearTimeout(garantir); window.removeEventListener('mousemove', onMove); ctx.revert() }
   }, [])
 
+  // Saída animada: a tela de login some e o portal entra em sequência (ver useEntradaAnimada no AppLayout).
+  const [saindo, setSaindo] = useState(false)
+  const irParaPortal = () => {
+    setSaindo(true)
+    marcarEntrada()
+    setTimeout(() => navigate(destino === '/login' ? '/' : destino, { replace: true }), 300)
+  }
+
   const acessar = (id: string) => {
     setLoading(true)
     entrar(id)
-    setTimeout(() => navigate(destino === '/login' ? '/' : destino, { replace: true }), 250)
+    irParaPortal()
   }
 
-  // Já existe sessão válida (cookie): vai direto ao portal.
-  useEffect(() => { if (MODO_API && sessao === 'ok') navigate(destino === '/login' ? '/' : destino, { replace: true }) }, [sessao, destino, navigate])
+  // Já existe sessão válida (cookie): vai direto ao portal. Durante um login feito aqui, quem navega é irParaPortal (com a animação).
+  const entrandoAgora = useRef(false)
+  useEffect(() => { if (MODO_API && sessao === 'ok' && !entrandoAgora.current) navigate(destino === '/login' ? '/' : destino, { replace: true }) }, [sessao, destino, navigate])
 
   const trocarModo = (m: 'entrar' | 'recuperar') => { setModo(m); setErro(''); setSenha(''); setVerSenha(false) }
 
@@ -175,9 +186,10 @@ export default function Login() {
     if (!senha) { setErro('Informe a senha.'); return }
     if (MODO_API) {
       setLoading(true)
+      entrandoAgora.current = true
       const falha = await entrarComSenha(email.trim(), senha)
-      if (falha) { setLoading(false); setErro(falha); toast(falha, 'danger'); return }
-      navigate(destino === '/login' ? '/' : destino, { replace: true })
+      if (falha) { entrandoAgora.current = false; setLoading(false); setErro(falha); toast(falha, 'danger'); return }
+      irParaPortal()
       return
     }
     const p = pessoas.find((c) => c.email.toLowerCase() === email.trim().toLowerCase())
@@ -187,7 +199,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-[1.05fr_.95fr] bg-midnight">
+    <div className={cn('min-h-screen grid lg:grid-cols-[1.05fr_.95fr] bg-midnight', saindo && 'animate-sair-login pointer-events-none')}>
       {/* -------- Painel de marca (tecnológico) -------- */}
       <div ref={brandRef} className="relative overflow-hidden hidden lg:flex flex-col justify-between p-14 text-white tech-grid">
         <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />

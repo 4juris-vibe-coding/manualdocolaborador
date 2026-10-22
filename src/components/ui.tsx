@@ -1,7 +1,7 @@
 /* ============================================================
    4JURIS Pessoas · UI kit (Tailwind)
    ============================================================ */
-import { type ReactNode, type ButtonHTMLAttributes, forwardRef } from 'react'
+import { type ReactNode, type ButtonHTMLAttributes, forwardRef, useCallback, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { ICONES } from './icons'
 import { Dropdown } from './Dropdown'
@@ -49,6 +49,10 @@ const btnSizes: Record<BtnSize, string> = {
   'icon-sm': 'h-9 w-9 rounded-lg',
 }
 
+const btnBase = 'inline-flex items-center justify-center font-semibold whitespace-nowrap transition active:translate-y-px disabled:opacity-50 disabled:pointer-events-none outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1'
+/** Classes do Button para links e downloads (<a>, <Link>) que precisam da mesma aparência e foco. */
+export const classesBotao = (variant: BtnVariant = 'primary', size: BtnSize = 'md', className?: string) => cn(btnBase, btnVariants[variant], btnSizes[size], className)
+
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: BtnVariant
   size?: BtnSize
@@ -60,10 +64,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     <button
       ref={ref}
       type={type}
-      className={cn(
-        'inline-flex items-center justify-center font-semibold whitespace-nowrap transition active:translate-y-px disabled:opacity-50 disabled:pointer-events-none outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1',
-        btnVariants[variant], btnSizes[size], className,
-      )}
+      className={classesBotao(variant, size, className)}
       {...props}
     >
       {icon && <Icon name={icon} className={size === 'sm' || size === 'icon-sm' ? 'h-4 w-4' : 'h-[17px] w-[17px]'} />}
@@ -139,11 +140,24 @@ export function Progress({ value, className, barClassName, color }: { value: num
 }
 
 /* ---------- StatCard ---------- */
-export function StatCard({ icon, tone = 'brand', value, label, trend }: { icon: string; tone?: string; value: ReactNode; label: string; trend?: ReactNode }) {
+export function StatCard({ icon, tone = 'brand', value, label, trend, compacto }: { icon: string; tone?: string; value: ReactNode; label: string; trend?: ReactNode; compacto?: boolean }) {
   const iconTones: Record<string, string> = {
     brand: 'bg-brand-100 text-brand', success: 'bg-success-soft text-success',
     warning: 'bg-warning-soft text-warning', ink: 'bg-winter text-ink', danger: 'bg-danger-soft text-danger',
   }
+  // Compacto: ícone ao lado do número, para grades com muitos indicadores (metade da altura).
+  if (compacto) return (
+    <Card className="p-3.5 h-full flex items-center gap-3">
+      <div className={cn('h-9 w-9 shrink-0 rounded-lg flex items-center justify-center', iconTones[tone])}>
+        <Icon name={icon} className="h-[18px] w-[18px]" />
+      </div>
+      <div className="min-w-0">
+        <div className="text-[21px] font-extrabold tracking-tight text-ink leading-none tabular-nums">{value}</div>
+        <div className="text-[11.5px] text-muted mt-1 font-medium leading-snug">{label}</div>
+      </div>
+      {trend && <div className="ml-auto text-[11.5px] font-bold self-start">{trend}</div>}
+    </Card>
+  )
   return (
     <Card className="p-5 relative overflow-hidden">
       {trend && <div className="absolute top-5 right-5 text-[11.5px] font-bold">{trend}</div>}
@@ -196,21 +210,88 @@ export function Field({ label, required, hint, erro, htmlFor, children, classNam
 }
 
 /* ---------- Tabs ---------- */
-export function Tabs({ tabs, active, onChange }: { tabs: { key: string; label: string }[]; active: string; onChange: (k: string) => void }) {
+/** Abas com rolagem lateral quando não cabem: setas e esmaecimento indicam que há mais, a aba ativa entra na vista e o teclado navega (←/→, Home, End). */
+export function Tabs({ tabs, active, onChange, className }: { tabs: { key: string; label: string }[]; active: string; onChange: (k: string) => void; className?: string }) {
+  const lista = useRef<HTMLDivElement>(null)
+  const [borda, setBorda] = useState({ esq: false, dir: false })
+  const medir = useCallback(() => {
+    const el = lista.current
+    if (!el) return
+    setBorda({ esq: el.scrollLeft > 2, dir: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 })
+  }, [])
+  useEffect(() => {
+    const el = lista.current
+    if (!el) return
+    medir()
+    const ro = new ResizeObserver(medir)
+    ro.observe(el)
+    el.addEventListener('scroll', medir, { passive: true })
+    return () => { ro.disconnect(); el.removeEventListener('scroll', medir) }
+  }, [medir, tabs.length])
+  // Mantém a aba ativa visível (sem rolar a página: só a faixa de abas).
+  useEffect(() => {
+    const el = lista.current
+    const alvo = el?.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (!el || !alvo) return
+    const esq = alvo.getBoundingClientRect().left - el.getBoundingClientRect().left + el.scrollLeft, dir = esq + alvo.offsetWidth
+    if (esq < el.scrollLeft + 24) el.scrollTo({ left: Math.max(0, esq - 32), behavior: 'smooth' })
+    else if (dir > el.scrollLeft + el.clientWidth - 24) el.scrollTo({ left: dir - el.clientWidth + 32, behavior: 'smooth' })
+  }, [active])
+  const rolar = (d: number) => lista.current?.scrollBy({ left: d * Math.max(160, (lista.current.clientWidth ?? 0) * 0.6), behavior: 'smooth' })
+  const teclas = (e: React.KeyboardEvent) => {
+    const i = tabs.findIndex((t) => t.key === active)
+    const j = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : null
+    if (j === null || !tabs.length) return
+    e.preventDefault()
+    const k = tabs[(j + tabs.length) % tabs.length].key
+    onChange(k)
+    requestAnimationFrame(() => lista.current?.querySelector<HTMLElement>(`[data-aba="${CSS.escape(k)}"]`)?.focus())
+  }
+  const seta = 'absolute top-0 bottom-0 z-[1] hidden sm:flex items-center w-12 text-muted hover:text-ink'
   return (
-    <div role="tablist" className="flex gap-1 border-b border-line mb-6 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-      {tabs.map((t) => (
-        <button
-          key={t.key}
-          type="button"
-          role="tab"
-          aria-selected={active === t.key}
-          onClick={() => onChange(t.key)}
-          className={cn('px-3.5 py-3 text-[13.5px] font-semibold border-b-2 -mb-px transition whitespace-nowrap outline-none focus-visible:bg-brand-50 rounded-t-lg',
-            active === t.key ? 'text-brand border-brand' : 'text-muted border-transparent hover:text-ink')}
-        >
-          {t.label}
+    <div className={cn('relative border-b border-line mb-6', className)}>
+      <div ref={lista} role="tablist" onKeyDown={teclas} className="flex gap-1 overflow-x-auto overflow-y-hidden -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {tabs.map((t, i) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            data-aba={t.key}
+            aria-selected={active === t.key}
+            tabIndex={active === t.key || (i === 0 && !tabs.some((x) => x.key === active)) ? 0 : -1}
+            onClick={() => onChange(t.key)}
+            className={cn('px-3.5 py-3 text-[13.5px] font-semibold border-b-2 transition whitespace-nowrap outline-none focus-visible:bg-brand-50 rounded-t-lg',
+              active === t.key ? 'text-brand border-brand' : 'text-muted border-transparent hover:text-ink')}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {borda.esq && (
+        <button type="button" tabIndex={-1} aria-hidden onClick={() => rolar(-1)} className={cn(seta, 'left-0 justify-start bg-gradient-to-r from-surface-3 via-surface-3/90 to-transparent')}>
+          <Icon name="ChevronLeft" className="h-4 w-4" />
         </button>
+      )}
+      {borda.dir && (
+        <button type="button" tabIndex={-1} aria-hidden onClick={() => rolar(1)} className={cn(seta, 'right-0 justify-end bg-gradient-to-l from-surface-3 via-surface-3/90 to-transparent')}>
+          <Icon name="ChevronRight" className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+/* ---------- Controle segmentado (escolha única entre poucas opções) ---------- */
+export function Segmentado<T extends string>({ opcoes, valor, onChange, rotulo, rotuloId, tamanho = 'md' }: {
+  opcoes: readonly (readonly [T, string])[]; valor: T; onChange: (v: T) => void; rotulo?: string; rotuloId?: string; tamanho?: 'sm' | 'md'
+}) {
+  return (
+    <div role="group" aria-label={rotuloId ? undefined : rotulo} aria-labelledby={rotuloId} className={cn('inline-flex border border-line overflow-hidden bg-surface', tamanho === 'sm' ? 'rounded-lg' : 'rounded-xl')}>
+      {opcoes.map(([k, rot]) => (
+        <button key={k} type="button" aria-pressed={valor === k} onClick={() => onChange(k)}
+          className={cn('font-semibold transition outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand border-l border-line first:border-l-0',
+            tamanho === 'sm' ? 'h-9 px-3 text-[12.5px]' : 'h-10 px-3.5 text-[12.5px]',
+            valor === k ? 'bg-brand text-white' : 'text-ink-2 hover:bg-winter')}>{rot}</button>
       ))}
     </div>
   )
@@ -347,3 +428,18 @@ export function Tabela({ children, minWidth = 680 }: { children: ReactNode; minW
 }
 export const TH = 'text-left text-[11px] font-bold uppercase tracking-wide text-muted bg-surface-2 border-b border-line px-4 sm:px-5 py-3'
 export const TD = 'px-4 sm:px-5 py-3 border-b border-line align-middle'
+
+/* ---------- Listas longas: "mostrar mais" em vez de rolagem dentro de uma caixa ---------- */
+/** Mostra os primeiros itens e um botão para revelar o resto, mantendo a rolagem natural da página. */
+export function useMostrarMais(total: number, inicial = 12, passo = 24) {
+  const [limite, setLimite] = useState(inicial)
+  const restantes = Math.max(0, total - limite)
+  const botao = restantes > 0 ? (
+    <div className="pt-3 flex justify-center">
+      <Button size="sm" variant="ghost" icon="ChevronDown" onClick={() => setLimite((l) => l + passo)}>
+        Mostrar mais {Math.min(passo, restantes)} <span className="text-muted font-medium">({restantes} restante{restantes > 1 ? 's' : ''})</span>
+      </Button>
+    </div>
+  ) : null
+  return { limite, botao }
+}

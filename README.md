@@ -38,6 +38,8 @@ Sistema de RH anterior (Next.js + Supabase), mantido como referência. Suas func
 
 Fornecedores, contratos (aditivos, renovação, encerramento comercial), documentos com arquivo, notas fiscais de serviço (conferência → aceite), contas a pagar (retenções revisáveis → autorização → registro manual do pagamento → conciliação), painel com fórmulas e alertas. Regras, permissões, migração e limites em [`docs/FINANCEIRO.md`](docs/FINANCEIRO.md). Não há integração bancária nem fiscal: pagamentos são registros manuais com comprovante.
 
+Papel **Financeiro**: kanban das notas de todos (aguardando → recebida → aprovada/recusada → paga), cobranças manuais e automáticas e aviso de pagamento ao prestador, tudo por notificação dentro do portal. A liderança cadastra pessoas e envia acessos de colaboradores das próprias áreas (Painel da liderança › Acessos da equipe).
+
 Variáveis novas: `CRON_SECRET` (alertas diários pelo agendador da Vercel) e `ANON_SECRET` (caixa de sugestões anônima). Funções adicionais novas: *Analista financeiro* e *Autorização de pagamentos*.
 
 ## Módulos v2 (recrutamento, pesquisas, cargos, organograma, analytics)

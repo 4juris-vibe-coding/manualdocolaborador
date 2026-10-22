@@ -1,7 +1,7 @@
 /* Resultados de uma pesquisa: participação, eNPS, distribuições, recortes protegidos e respostas abertas. */
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Badge, Button, Callout, Card, CardHead, EmptyState, PageHeader, Select, StatCard, Tabela, TD, TH } from '@/components/ui'
+import { Badge, Button, Callout, Card, CardHead, EmptyState, PageHeader, Select, StatCard, Tabela, TD, TH, useMostrarMais } from '@/components/ui'
 import { Modal } from '@/components/Modal'
 import { Aguardar, SoComBanco } from '@/components/v2/estados'
 import { LinhaTempo } from '@/components/v2/charts2'
@@ -10,7 +10,8 @@ import { api, executar, qs, useApi } from '@/data/v2/api'
 import { useTem } from '@/data/v2/acesso'
 import { useStore } from '@/lib/store'
 import { MODO_ROTULO, ROTULO_TIPO, STATUS_PESQUISA } from '@/domain/v2/pesquisaTipos'
-import type { PerguntaResultado, ResultadoPergunta, ResultadosPesquisa } from '@/domain/v2/pesquisaCalculo'
+import { destaquesDimensoes, LIMIAR_ATENCAO, LIMIAR_FORTE, type PerguntaResultado, type ResultadoPergunta, type ResultadosPesquisa } from '@/domain/v2/pesquisaCalculo'
+import { PlanoAcao } from '@/components/v2/pesquisas/PlanoAcao'
 import { dataBR, numero, pct } from '@/lib/fmt'
 
 interface Dados {
@@ -93,6 +94,7 @@ function Abertas({ pesquisaId, p, pode, onMudou }: { pesquisaId: string; p: Perg
   const [novaTag, setNovaTag] = useState<Record<string, string>>({})
   const tags = [...new Set((p.textos ?? []).flatMap((t) => t.tags))].sort()
   const lista = (p.textos ?? []).filter((t) => !filtro || t.tags.includes(filtro))
+  const mais = useMostrarMais(lista.length, 10, 20)
   async function salvar(respostaId: string, novas: string[]) {
     await executar(() => api.post(`pesquisas/${pesquisaId}/tags`, { respostaId, perguntaId: p.id, tags: novas }))
     onMudou()
@@ -104,8 +106,8 @@ function Abertas({ pesquisaId, p, pode, onMudou }: { pesquisaId: string; p: Perg
         <span className="text-[13px] text-muted">{lista.length} de {p.textos.length} respostas</span>
         {tags.length > 0 && <Select label="Filtrar por marcador" value={filtro} onChange={setFiltro}><option value="">Todos os marcadores</option>{tags.map((t) => <option key={t} value={t}>{t}</option>)}</Select>}
       </div>
-      <ul className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
-        {lista.map((t) => (
+      <ul className="space-y-2.5">
+        {lista.slice(0, mais.limite).map((t) => (
           <li key={t.respostaId} className="rounded-xl border border-line px-3.5 py-3">
             <p className="text-[13.5px] text-ink whitespace-pre-line">{t.texto}</p>
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
@@ -122,8 +124,32 @@ function Abertas({ pesquisaId, p, pode, onMudou }: { pesquisaId: string; p: Perg
           </li>
         ))}
       </ul>
+      {mais.botao}
       <p className="text-[11.5px] text-muted mt-2">Marcadores são aplicados manualmente por quem analisa. Não há resumo por IA nesta tela.</p>
     </div>
+  )
+}
+
+/** Pontos fortes e pontos de atenção por dimensão: o que foi observado, separado do que ainda é hipótese. */
+function Destaques({ res }: { res: ResultadosPesquisa }) {
+  const d = destaquesDimensoes(res.dimensoes, res.minGrupo)
+  if (!d.fortes.length && !d.atencao.length) return null
+  const fmt = (m: number) => m.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+  return (
+    <Card>
+      <CardHead title="Pontos fortes e pontos de atenção" sub={`Critério: média ≥ ${fmt(LIMIAR_FORTE)} é ponto forte; abaixo de ${fmt(LIMIAR_ATENCAO)} merece investigação (escala de 1 a 5).`} />
+      <div className="p-5 grid gap-5 sm:grid-cols-2">
+        <div>
+          <h4 className="text-[12px] font-bold uppercase tracking-wide text-success mb-2">Pontos fortes · observado</h4>
+          {d.fortes.length ? <ul className="space-y-1 text-[13.5px] text-ink-2">{d.fortes.map((x) => <li key={x.dimensao}><b className="text-ink">{x.dimensao}</b>: média {fmt(x.media)}</li>)}</ul> : <p className="text-[13px] text-muted">Nenhuma dimensão com média ≥ {fmt(LIMIAR_FORTE)}.</p>}
+        </div>
+        <div>
+          <h4 className="text-[12px] font-bold uppercase tracking-wide text-danger mb-2">Merecem investigação · observado</h4>
+          {d.atencao.length ? <ul className="space-y-1 text-[13.5px] text-ink-2">{d.atencao.map((x) => <li key={x.dimensao}><b className="text-ink">{x.dimensao}</b>: média {fmt(x.media)}</li>)}</ul> : <p className="text-[13px] text-muted">Nenhuma dimensão abaixo de {fmt(LIMIAR_ATENCAO)}.</p>}
+        </div>
+      </div>
+      <p className="px-5 pb-4 text-[12px] text-muted">As médias mostram <b>o que</b> as pessoas responderam, não <b>por quê</b>. Trate as causas como hipóteses: converse com as equipes antes de definir a ação no plano abaixo.</p>
+    </Card>
   )
 }
 
@@ -197,6 +223,8 @@ export default function Resultados() {
                             </Card>
                           </div>
 
+                          <Destaques res={res} />
+
                           {res.porVersao.length > 1 && (
                             <Callout tone="brand" icon="GitBranch">A pesquisa teve {res.porVersao.length} versões ({res.porVersao.map((v) => `v${v.versao}: ${v.n}`).join(', ')}). Respostas só são somadas entre versões quando a pergunta continua idêntica (mesmo enunciado, tipo e escala).</Callout>
                           )}
@@ -221,6 +249,10 @@ export default function Resultados() {
                       )}
                     </>
                   )}
+
+                  <PlanoAcao pesquisaId={id} pode={gerencia}
+                    dimensoes={[...new Set([...res.dimensoes.map((x) => x.dimensao), ...res.perguntas.map((p) => p.dimensao).filter((x): x is string => !!x)])]}
+                    sugestoes={res.filtroBloqueado || res.suprimido ? [] : destaquesDimensoes(res.dimensoes, res.minGrupo).atencao} />
                 </div>
               </SoComBanco>
             </>

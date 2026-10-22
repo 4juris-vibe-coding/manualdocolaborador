@@ -8,6 +8,8 @@ import { Recusa } from './_v2/guarda.js'
 import { aplicarLote, estadoPara, type Lote } from './_v2/estadoLegado.js'
 import { garantirSchemaV2 } from './_v2/migrar.js'
 import { dbDoPool } from './_v2/nucleo.js'
+import { capacidadesDe } from '../src/domain/permissions.js'
+import type { Papel } from '../src/lib/types.js'
 
 type Req = IncomingMessage & { query?: Record<string, string | string[] | undefined>; body?: unknown }
 
@@ -51,14 +53,15 @@ export default async function handler(req: Req, res: ServerResponse) {
       if (f && f.n >= 5 && f.ate > Date.now()) return json(res, 429, { erro: 'Muitas tentativas. Aguarde alguns minutos.' })
       const { email, senha } = await corpoJSON(req) as { email?: string; senha?: string }
       if (typeof email !== 'string' || typeof senha !== 'string' || !email || !senha) return json(res, 400, { erro: 'Informe e-mail e senha.' })
-      const r = await db().query('select id, senha_hash, colaborador_id from usuarios where lower(email) = lower($1) and ativo', [email.trim()])
+      const r = await db().query(`select u.id, u.senha_hash, u.colaborador_id, c.dados->>'status' as status from usuarios u
+        left join app_colaboradores c on c.id = u.colaborador_id where lower(u.email) = lower($1) and u.ativo`, [email.trim()])
       const u = r.rows[0]
       // Mesmo custo de cálculo com ou sem usuário, para não revelar se o e-mail existe.
       const ok = confereSenha(senha, u?.senha_hash ?? 'scrypt$00$00') && !!u
       if (!ok) {
         // Cadastro feito pelo link e ainda não aprovado: avisa em vez de "senha incorreta".
         if (!u) {
-          await garantirTabelasCadastro()
+          await garantirTabelasCadastro(db())
           const sol = (await db().query("select senha_hash, status from solicitacoes_acesso where lower(email) = lower($1) and status <> 'aprovado' order by criado_em desc limit 1", [email.trim()])).rows[0]
           if (sol && confereSenha(senha, sol.senha_hash)) {
             return json(res, 403, { erro: sol.status === 'pendente' ? 'Seu cadastro está aguardando aprovação da equipe 4JURIS. Você receberá um aviso quando o acesso for liberado.' : 'Seu cadastro não foi aprovado. Fale com o RH da 4JURIS.' })
@@ -68,6 +71,8 @@ export default async function handler(req: Req, res: ServerResponse) {
         return json(res, 401, { erro: 'E-mail ou senha incorretos.' })
       }
       falhas.delete(ip)
+      // Mesma regra da API v2 (montarUsuario): parceria encerrada não entra, mesmo com o login ainda ativo.
+      if (u.status === 'encerrado') return json(res, 403, { erro: 'Parceria encerrada — o acesso ao portal foi encerrado. Fale com o RH da 4JURIS.' })
       await db().query('update usuarios set ultimo_acesso = now() where id = $1', [u.id])
       return json(res, 200, { colaboradorId: u.colaborador_id }, { 'Set-Cookie': emitirCookie({ uid: u.id, colaboradorId: u.colaborador_id }, seguro) })
     }
@@ -99,7 +104,7 @@ export default async function handler(req: Req, res: ServerResponse) {
     }
 
     if (acao === 'convite' && req.method === 'GET') {
-      await garantirTabelasCadastro()
+      await garantirTabelasCadastro(db())
       return json(res, 200, { valido: await conviteValido(new URL(req.url ?? '/', 'http://x').searchParams.get('token')) })
     }
 
@@ -108,7 +113,7 @@ export default async function handler(req: Req, res: ServerResponse) {
       const c = cadastros.get(ip)
       if (c && c.n >= 10 && c.ate > Date.now()) return json(res, 429, { erro: 'Muitas tentativas. Aguarde alguns minutos.' })
       cadastros.set(ip, { n: (c && c.ate > Date.now() ? c.n : 0) + 1, ate: Date.now() + 60 * 60 * 1000 })
-      await garantirTabelasCadastro()
+      await garantirTabelasCadastro(db())
       const { token, nome, email, senha } = await corpoJSON(req) as { token?: string; nome?: string; email?: string; senha?: string }
       if (!(await conviteValido(token))) return json(res, 400, { erro: 'Este link de cadastro não é mais válido. Peça um novo ao RH.' })
       const n = typeof nome === 'string' ? nome.trim().replace(/\s+/g, ' ') : ''
@@ -126,8 +131,9 @@ export default async function handler(req: Req, res: ServerResponse) {
 
     const sessao = lerSessao(req.headers.cookie)
     if (!sessao) return json(res, 401, { erro: 'Sessão ausente ou expirada.' })
-    // O usuário precisa continuar ativo no banco.
-    const vivo = await db().query('select 1 from usuarios where id = $1 and ativo', [sessao.uid])
+    // O usuário precisa continuar ativo no banco e a parceria não pode estar encerrada (mesma regra de montarUsuario na API v2).
+    const vivo = await db().query(`select 1 from usuarios u left join app_colaboradores c on c.id = u.colaborador_id
+      where u.id = $1 and u.ativo and c.dados->>'status' is distinct from 'encerrado'`, [sessao.uid])
     if (!vivo.rowCount) return json(res, 401, { erro: 'Acesso desativado.' }, { 'Set-Cookie': cookieLimpo(seguro) })
 
     // Mutações autenticadas exigem o cabeçalho da aplicação (defesa contra CSRF, além do SameSite=Lax).
@@ -135,12 +141,20 @@ export default async function handler(req: Req, res: ServerResponse) {
 
     if (acao === 'sessao' && req.method === 'GET') return json(res, 200, { colaboradorId: sessao.colaboradorId })
 
-    // Acessos (logins): a administração gerencia todos; o RH, apenas de colaboradores e gestores (nunca de RH, diretoria ou admin).
+    // Acessos (logins): a administração gerencia todos; o RH, apenas de colaboradores e gestores (nunca de financeiro, RH, diretoria ou admin);
+    // a liderança (acessos:equipe), apenas de colaboradores das áreas que lidera — e não mexe em solicitações nem no link de cadastro.
     if (acao === 'usuarios' || acao === 'solicitacoes' || acao === 'convites' || acao === 'enviar-acesso') {
       const quem = (await db().query("select dados->>'papel' as papel from app_colaboradores where id = $1", [sessao.colaboradorId])).rows[0]
-      if (quem?.papel !== 'admin' && quem?.papel !== 'rh') return json(res, 403, { erro: 'Apenas RH ou administração gerenciam acessos.' })
-      const podeGerir = (papelAlvo: string) => quem.papel === 'admin' || papelAlvo === 'colaborador' || papelAlvo === 'gestor'
-      if (acao === 'solicitacoes' || acao === 'convites') await garantirTabelasCadastro()
+      const gestaoTotal = quem?.papel === 'admin' || quem?.papel === 'rh'
+      const lidera: string[] = gestaoTotal || !quem?.papel || !capacidadesDe(quem.papel as Papel).has('acessos:equipe') ? []
+        : (await db().query("select id from app_setores where dados->>'gestorId' = $1 or dados->'liderancaIds' ? $1", [sessao.colaboradorId])).rows.map((r) => r.id as string)
+      if (!gestaoTotal && !lidera.length) return json(res, 403, { erro: 'Apenas RH, administração ou a liderança da área gerenciam acessos.' })
+      if (!gestaoTotal && (acao === 'solicitacoes' || acao === 'convites')) return json(res, 403, { erro: 'Apenas RH ou administração gerenciam cadastros por link.' })
+      const podeGerir = (papelAlvo: string, setorAlvo?: string | null) => quem.papel === 'admin'
+        || (quem.papel === 'rh' && (papelAlvo === 'colaborador' || papelAlvo === 'gestor'))
+        || (!gestaoTotal && papelAlvo === 'colaborador' && !!setorAlvo && lidera.includes(setorAlvo))
+      const semPermissao = gestaoTotal ? 'Apenas a administração gerencia o acesso de financeiro, RH, diretoria e administradores.' : 'Você só gerencia o acesso de colaboradores das áreas que lidera.'
+      if (acao === 'solicitacoes' || acao === 'convites') await garantirTabelasCadastro(db())
 
       // Link de cadastro: um ativo por vez; gerar um novo invalida o anterior.
       if (acao === 'convites' && req.method === 'GET') {
@@ -176,7 +190,7 @@ export default async function handler(req: Req, res: ServerResponse) {
         const pessoa = (await db().query("select dados->>'email' as email, dados->>'papel' as papel, dados->>'status' as status from app_colaboradores where id = $1", [colaboradorId])).rows[0]
         if (!pessoa?.email) return json(res, 404, { erro: 'Cadastro da pessoa não encontrado.' })
         if (String(pessoa.email).trim().toLowerCase() !== String(sol.email).toLowerCase()) return json(res, 400, { erro: 'O e-mail do cadastro não confere com o da solicitação.' })
-        if (!podeGerir(pessoa.papel)) return json(res, 403, { erro: 'Apenas a administração libera acesso de RH, diretoria e administradores.' })
+        if (!podeGerir(pessoa.papel)) return json(res, 403, { erro: 'Apenas a administração libera acesso de financeiro, RH, diretoria e administradores.' })
         if (pessoa.status === 'encerrado') return json(res, 400, { erro: 'Parceria encerrada — o acesso não pode ser liberado.' })
         if ((await db().query('select 1 from usuarios where lower(email) = lower($1) or colaborador_id = $2', [sol.email, colaboradorId])).rowCount) {
           return json(res, 409, { erro: 'Esta pessoa já tem acesso ao portal.' })
@@ -196,15 +210,18 @@ export default async function handler(req: Req, res: ServerResponse) {
       }
       // E-mail de boas-vindas com link para criar a senha (7 dias). Cria o login se a pessoa ainda não tiver.
       if (acao === 'enviar-acesso' && req.method === 'POST') {
-        await garantirColunaConvite()
+        await garantirColunaConvite(db())
         const { colaboradorIds } = await corpoJSON(req) as { colaboradorIds?: unknown }
         if (!Array.isArray(colaboradorIds) || !colaboradorIds.length || colaboradorIds.length > 200 || colaboradorIds.some((x) => typeof x !== 'string')) return json(res, 400, { erro: 'Informe as pessoas.' })
         const resultados: { colaboradorId: string; status: string; erro?: string }[] = []
         for (const colaboradorId of colaboradorIds as string[]) {
-          const pessoa = (await db().query("select dados->>'nome' as nome, dados->>'email' as email, dados->>'papel' as papel, dados->>'status' as status from app_colaboradores where id = $1", [colaboradorId])).rows[0]
+          const pessoa = (await db().query("select dados->>'nome' as nome, dados->>'email' as email, dados->>'papel' as papel, dados->>'status' as status, dados->>'setorId' as setor from app_colaboradores where id = $1", [colaboradorId])).rows[0]
           const falha = (erro: string) => resultados.push({ colaboradorId, status: 'falhou', erro })
           if (!pessoa?.email) { falha('Pessoa não encontrada.'); continue }
-          if (!podeGerir(pessoa.papel)) { falha('Apenas a administração envia acesso de RH, diretoria e administradores.'); continue }
+          if (!podeGerir(pessoa.papel, pessoa.setor)) {
+            if (!gestaoTotal && colaboradorIds.length === 1) return json(res, 403, { erro: semPermissao })
+            falha(semPermissao); continue
+          }
           if (pessoa.status === 'encerrado') { falha('Parceria encerrada.'); continue }
           let u = (await db().query('select id, email, ativo from usuarios where colaborador_id = $1', [colaboradorId])).rows[0]
           if (!u) {
@@ -223,11 +240,13 @@ export default async function handler(req: Req, res: ServerResponse) {
       if (acao !== 'usuarios') return json(res, 405, { erro: 'Método não permitido.' })
 
       if (req.method === 'GET') {
-        await garantirColunaConvite()
+        await garantirColunaConvite(db())
         const um = new URL(req.url ?? '/', 'http://x').searchParams.get('colaboradorId')
+        // A liderança só enxerga os acessos dos colaboradores das áreas que lidera.
+        const daEquipe = gestaoTotal ? '' : " and colaborador_id in (select id from app_colaboradores where dados->>'papel' = 'colaborador' and dados->>'setorId' = any($2::text[]))"
         const r = um
-          ? await db().query('select colaborador_id, ativo, ultimo_acesso, convite_enviado_em from usuarios where colaborador_id = $1', [um])
-          : await db().query('select colaborador_id, ativo, ultimo_acesso, convite_enviado_em from usuarios')
+          ? await db().query(`select colaborador_id, ativo, ultimo_acesso, convite_enviado_em from usuarios where colaborador_id = $1${daEquipe}`, gestaoTotal ? [um] : [um, lidera])
+          : await db().query(`select colaborador_id, ativo, ultimo_acesso, convite_enviado_em from usuarios where true${daEquipe.replace('$2', '$1')}`, gestaoTotal ? [] : [lidera])
         return json(res, 200, { acessos: r.rows.map((u) => ({ colaboradorId: u.colaborador_id, ativo: u.ativo, ultimoAcesso: u.ultimo_acesso, conviteEnviadoEm: u.convite_enviado_em })) })
       }
 
@@ -238,9 +257,9 @@ export default async function handler(req: Req, res: ServerResponse) {
         if (ativo !== undefined && typeof ativo !== 'boolean') return json(res, 400, { erro: 'Pedido inválido.' })
         if (ativo === false && colaboradorId === sessao.colaboradorId) return json(res, 400, { erro: 'Você não pode desativar o próprio acesso.' })
 
-        const pessoa = (await db().query("select dados->>'email' as email, dados->>'papel' as papel, dados->>'status' as status from app_colaboradores where id = $1", [colaboradorId])).rows[0]
+        const pessoa = (await db().query("select dados->>'email' as email, dados->>'papel' as papel, dados->>'status' as status, dados->>'setorId' as setor from app_colaboradores where id = $1", [colaboradorId])).rows[0]
         if (!pessoa?.email) return json(res, 404, { erro: 'Pessoa não encontrada.' })
-        if (!podeGerir(pessoa.papel)) return json(res, 403, { erro: 'Apenas a administração gerencia o acesso de RH, diretoria e administradores.' })
+        if (!podeGerir(pessoa.papel, pessoa.setor)) return json(res, 403, { erro: semPermissao })
         if (pessoa.status === 'encerrado' && ativo !== false) return json(res, 400, { erro: 'Parceria encerrada — o acesso não pode ser liberado.' })
 
         const atual = (await db().query('select id from usuarios where colaborador_id = $1', [colaboradorId])).rows[0]

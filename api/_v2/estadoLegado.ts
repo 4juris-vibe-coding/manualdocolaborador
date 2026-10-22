@@ -74,6 +74,48 @@ async function comHistoricoFinanceiro(ex: Ex, ids: string[]): Promise<Set<string
   return new Set(r.rows.map((x) => String(x.id)))
 }
 
+/**
+ * Função (cargo) e departamento são referenciados por ID em pessoas (inclusive encerradas), histórico de função,
+ * vagas, fichas/faixas/competências de cargos e outros departamentos. Remover um registro ainda referenciado deixaria
+ * esses vínculos órfãos (ficha 404, vaga sem cargo, histórico ilegível); por isso a remoção é recusada e o motivo, explicado.
+ */
+async function conferirReferenciasEstrutura(ex: Ex, estado: Obj, planos: { colecao: string; antes: Obj | null; novo: Obj | null }[]): Promise<void> {
+  const removidos = (col: string) => planos.filter((p) => p.colecao === col && p.antes && !p.novo).map((p) => String(p.antes!.id))
+  const cargos = removidos('cargos'), setores = removidos('setores')
+  if (!cargos.length && !setores.length) return
+  // Estado depois do lote (pessoas podem ser movidas no mesmo envio).
+  const depois = (col: string): Obj[] => {
+    const m = new Map((estado[col] as Obj[]).map((r) => [String(r.id), r]))
+    for (const p of planos) if (p.colecao === col) { const id = String((p.novo ?? p.antes)!.id); if (p.novo) m.set(id, p.novo); else m.delete(id) }
+    return [...m.values()]
+  }
+  const pessoas = depois('colaboradores'), restantesCargos = depois('cargos'), restantesSetores = depois('setores')
+  const motivos = (nome: string, achados: [number, string][]) => {
+    const lista = achados.filter(([n]) => n > 0).map(([n, o]) => `${n} ${o}`)
+    if (lista.length) throw new Recusa(`${nome} ainda é usado(a) por: ${lista.join(', ')}. Desvincule antes de remover (o histórico precisa continuar legível).`, 409)
+  }
+  const conta = async (sql: string, ids: string[]) => Number((await ex.query(sql, [ids])).rows[0]?.n ?? 0)
+  if (cargos.length) {
+    const hist = (estado.historicoFuncao as Obj[] ?? []).filter((h) => cargos.includes(h.cargoAnteriorId) || cargos.includes(h.cargoNovoId)).length
+    motivos('A função', [
+      [pessoas.filter((p) => cargos.includes(p.cargoId)).length, 'pessoa(s) (ativas ou encerradas)'],
+      [hist, 'registro(s) de histórico de função'],
+      [restantesCargos.filter((c) => cargos.includes(c.funcaoSuperiorId)).length, 'função(ões) subordinada(s)'],
+      [await conta('select count(*) n from rec_vagas where cargo_id = any($1::text[])', cargos), 'vaga(s)'],
+      [await conta(`select (select count(*) from cg_fichas where cargo_id = any($1::text[])) + (select count(*) from cg_faixas where cargo_id = any($1::text[]))
+        + (select count(*) from cg_cargo_competencias where cargo_id = any($1::text[])) n`, cargos), 'registro(s) na Arquitetura de cargos (ficha, faixa ou competência)'],
+    ])
+  }
+  if (setores.length) {
+    motivos('O departamento', [
+      [pessoas.filter((p) => setores.includes(p.setorId)).length, 'pessoa(s) (ativas ou encerradas)'],
+      [restantesCargos.filter((c) => setores.includes(c.setorId)).length, 'função(ões)'],
+      [restantesSetores.filter((s) => setores.includes(s.paiId)).length, 'subdepartamento(s)'],
+      [await conta('select count(*) n from rec_vagas where setor_id = any($1::text[])', setores), 'vaga(s)'],
+    ])
+  }
+}
+
 /** Estado que a pessoa pode ver. */
 export async function estadoPara(ex: Ex, colaboradorId: string): Promise<{ estado: Obj; segredo: string } | null> {
   await migrarChavesSugestoes(ex)
@@ -156,6 +198,8 @@ export async function aplicarLote(ex: Ex, colaboradorId: string, lote: Lote, ago
     e.conflitos = conflitos
     throw e
   }
+
+  await conferirReferenciasEstrutura(ex, estado, planos)
 
   // 2) Regras por registro (com o lote inteiro à vista, para checagens cruzadas).
   const removidas = planos.filter((p) => p.colecao === 'colaboradores' && !p.novo && p.antes).map((p) => String(p.antes!.id))

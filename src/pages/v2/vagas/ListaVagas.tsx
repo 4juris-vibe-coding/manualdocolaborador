@@ -65,9 +65,9 @@ export default function ListaVagas() {
       <SoComBanco>
         <AprovacoesPendentes />
         <BarraFiltros {...f} opcoes={opcoes.dados} />
-        <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
-          <Tabs tabs={[{ key: 'lista', label: 'Lista' }, { key: 'kanban', label: 'Kanban por situação' }]} active={visao} onChange={(k) => mudar('visao', k === 'kanban' ? 'kanban' : '')} />
-          <label className="flex items-center gap-2 text-[12.5px] text-muted -mt-6">
+        <div className="flex items-end justify-between gap-x-3 gap-y-2 flex-wrap mb-4 border-b border-line">
+          <Tabs className="mb-0 border-b-0" tabs={[{ key: 'lista', label: 'Lista' }, { key: 'kanban', label: 'Kanban por situação' }]} active={visao} onChange={(k) => mudar('visao', k === 'kanban' ? 'kanban' : '')} />
+          <label className="flex items-center gap-2 text-[12.5px] text-muted pb-3 cursor-pointer">
             <input type="checkbox" checked={f.valores.arquivadas === '1'} onChange={(e) => f.definir('arquivadas', e.target.checked ? '1' : '')} /> Ver arquivadas
           </label>
         </div>

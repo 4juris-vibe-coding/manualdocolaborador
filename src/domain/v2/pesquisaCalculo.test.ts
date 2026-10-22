@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { avaliarFiltro, calcularNps, calcularResultados, resultadosParaCsv, resumoExecutivo, suprimirGrupos, type RespostaBruta } from './pesquisaCalculo'
+import { avaliarFiltro, calcularNps, destaquesDimensoes, calcularResultados, resultadosParaCsv, resumoExecutivo, suprimirGrupos, type RespostaBruta } from './pesquisaCalculo'
 import { assinaturaPergunta, condicaoVerdadeira, perguntasVisiveis, resolverPublico, validarEstrutura, validarRespostas, validarValor, type PerguntaPesquisa } from './pesquisaTipos'
 import { MODELOS } from './pesquisaModelos'
 
@@ -210,5 +210,17 @@ describe('biblioteca de modelos', () => {
     const m = MODELOS.find((x) => x.chave === 'enps')!
     expect(m.perguntas[0].tipo).toBe('enps')
     expect(m.perguntas.some((p) => p.tipo === 'texto_longo')).toBe(true)
+  })
+})
+
+describe('destaques por dimensão', () => {
+  const d = (dimensao: string, media: number, n = 10) => ({ dimensao, media, n, perguntas: 2 })
+  it('separa pontos fortes (≥ 4) e de atenção (< 3,5), ordenados e limitados', () => {
+    const r = destaquesDimensoes([d('A', 4.6), d('B', 3.9), d('C', 3.4), d('D', 2.1), d('E', 4.0), d('F', 3.5), d('G', 4.2), d('H', 4.9)])
+    expect(r.fortes.map((x) => x.dimensao)).toEqual(['H', 'A', 'G'])
+    expect(r.atencao.map((x) => x.dimensao)).toEqual(['D', 'C'])
+  })
+  it('ignora dimensões com poucas respostas', () => {
+    expect(destaquesDimensoes([d('A', 1.5, 2)], 5).atencao).toHaveLength(0)
   })
 })

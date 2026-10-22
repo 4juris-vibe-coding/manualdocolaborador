@@ -100,11 +100,12 @@ export async function criarCandidatura(ex: Executor, n: NovaCandidatura): Promis
   return { candidaturaId, candidatoId, candidatoReutilizado: reutilizado, outrasCandidaturas: outras, etapaId: primeira.id }
 }
 
-/** Conclui a contratação: candidatura "contratado", +1 posição preenchida e, se completou, encerra a vaga como "preenchida". */
+/** Conclui a contratação: candidatura "contratado", +1 posição preenchida e, se completou, encerra a vaga como "preenchida".
+ *  Trava a candidatura e a vaga: duas contratações simultâneas na mesma vaga não passam do número de posições. */
 export async function concluirContratacao(ex: Executor, candidaturaId: string, quem: string | null): Promise<{ vagaEncerrada: boolean }> {
   const r = await ex.query(
     `select c.id, c.status, c.etapa_id, c.vaga_id, v.status as vaga_status, v.qtd_posicoes, v.posicoes_preenchidas
-     from rec_candidaturas c join rec_vagas v on v.id = c.vaga_id where c.id = $1`, [candidaturaId])
+     from rec_candidaturas c join rec_vagas v on v.id = c.vaga_id where c.id = $1 for update of c, v`, [candidaturaId])
   const c = r.rows[0]
   if (!c) throw naoEncontrado('Candidatura não encontrada.')
   if (c.status === 'contratado') throw conflito('Esta candidatura já foi concluída com contratação.')

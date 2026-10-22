@@ -167,7 +167,7 @@ function Wizard({ id: idInicial, onClose }: { id?: string; onClose: () => void }
             <Button icon="Plus" onClick={() => { if (id && feedback(s.adicionarParticipante(id, novoPar.avaliador, novoPar.avaliado), 'Par adicionado.')) setNovoPar({ avaliador: '', avaliado: '' }) }}>Adicionar</Button>
           </div>
           {porAvaliado.length === 0 ? <EmptyState icon="Users" title="Nenhum participante" desc="Gere automaticamente ou adicione pares manualmente." /> : (
-            <ul className="divide-y divide-line rounded-xl border border-line max-h-[42vh] overflow-y-auto">
+            <ul className="divide-y divide-line rounded-xl border border-line">
               {porAvaliado.map(([avaliado, ps]) => (
                 <li key={avaliado} className="p-3">
                   <div className="text-[13px] font-semibold text-ink mb-1.5">{s.nomeDe(avaliado)}</div>

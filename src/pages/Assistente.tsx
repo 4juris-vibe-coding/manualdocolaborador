@@ -3,6 +3,7 @@ import { useStore } from '@/lib/store'
 import { Avatar, Icon, Logo } from '@/components/ui'
 import { cn, firstName } from '@/lib/utils'
 import { uid } from '@/lib/utils'
+import { useAlturaDisponivel } from '@/lib/layout'
 
 interface Msg { id: string; autor: 'user' | 'ia'; texto: string }
 
@@ -96,10 +97,13 @@ export default function Assistente() {
 
   const onSubmit = (e: React.FormEvent) => { e.preventDefault(); enviar(texto) }
 
+  // A conversa rola por dentro; a página termina no rodapé da janela para não haver duas rolagens.
+  const caixaRef = useRef<HTMLDivElement>(null)
+  const altura = useAlturaDisponivel(caixaRef, { min: 460 })
   const vazio = msgs.length === 0
 
   return (
-    <div className="flex flex-col h-[calc(100vh-68px-3.5rem)] min-h-[520px] -my-1">
+    <div ref={caixaRef} className="flex flex-col" style={{ height: altura ?? 'calc(100dvh - 140px)' }}>
       {/* Cabeçalho */}
       <div className="flex items-center gap-3 pb-4 border-b border-line mb-4 shrink-0">
         <span className="h-11 w-11 rounded-2xl bg-brand text-white flex items-center justify-center"><Icon name="Bot" className="h-6 w-6" /></span>

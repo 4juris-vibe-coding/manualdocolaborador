@@ -4,6 +4,8 @@ import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { useStore } from '@/lib/store'
 import { podeAbrir } from '@/lib/nav'
+import { ehAreaDeTrabalho, ehAreaLarga, ehImersivo, useEntradaAnimada } from '@/lib/layout'
+import { cn } from '@/lib/utils'
 import { MODO_DEMO, MODO_API } from '@/data/config'
 import { useSync, sairCompleto } from '@/data/sync'
 import { useAcesso } from '@/data/v2/acesso'
@@ -19,6 +21,8 @@ export function AppLayout() {
   const preview = useStore((s) => s.previewColaborador)
   const setPreview = useStore((s) => s.setPreview)
   const [menuAberto, setMenuAberto] = useState(false)
+  // Logo após o login, menu, barra do topo e conteúdo entram em sequência.
+  const entrada = useEntradaAnimada()
 
   const real = useStore((s) => s.realUser())
   const sessaoApi = useSync((s) => s.sessao)
@@ -40,15 +44,26 @@ export function AppLayout() {
   // Capacidades vindas do servidor (funções adicionais) chegam logo após o login: não expulse antes disso.
   const aguardandoAcesso = semCapacidade && MODO_API && !acessoCarregado
   const bloqueado = semCapacidade && !aguardandoAcesso
+  // Editores ocupam a largura e a altura que sobram: sem o respiro inferior (reservado ao botão flutuante) e sem o botão por cima das ferramentas.
+  const areaDeTrabalho = ehAreaDeTrabalho(pathname)
+
+  // Editor do Canva: ocupa a janela inteira (entra com uma leve expansão, como abrir um app de design).
+  if (ehImersivo(pathname) && !bloqueado && !aguardandoAcesso) {
+    return (
+      <main id="conteudo" tabIndex={-1} className="min-h-dvh bg-midnight outline-none animate-expandir" key={pathname}>
+        <Outlet />
+      </main>
+    )
+  }
 
   return (
     <div className="flex min-h-screen">
       <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[400] focus:bg-surface focus:px-4 focus:py-2 focus:rounded-xl focus:shadow-md">
         Pular para o conteúdo
       </a>
-      <Sidebar aberto={menuAberto} onFechar={() => setMenuAberto(false)} />
+      <Sidebar aberto={menuAberto} onFechar={() => setMenuAberto(false)} entrada={entrada} />
       <div className="flex-1 min-w-0 flex flex-col">
-        <Topbar onAbrirMenu={() => setMenuAberto(true)} />
+        <Topbar onAbrirMenu={() => setMenuAberto(true)} entrada={entrada} />
         {MODO_API && erroSync && (
           <div role="alert" className="bg-danger-soft text-danger px-4 sm:px-7 py-2.5 flex items-center gap-2.5 text-[12.5px] font-medium">
             <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -70,13 +85,13 @@ export function AppLayout() {
             </button>
           </div>
         )}
-        <main id="conteudo" className="flex-1 px-4 pt-5 pb-24 sm:px-7 sm:pt-7 sm:pb-24" tabIndex={-1}>
-          <div className="mx-auto max-w-[1240px] animate-fade-in" key={pathname + (preview ? '-p' : '')}>
+        <main id="conteudo" className={cn('flex-1 px-4 pt-5 sm:px-7 sm:pt-7', areaDeTrabalho ? 'pb-4' : 'pb-24')} tabIndex={-1}>
+          <div className={cn('mx-auto', entrada ? 'animate-entrar-baixo' : 'animate-fade-in', ehAreaLarga(pathname) ? 'max-w-[1680px]' : 'max-w-[1240px]')} key={pathname + (preview ? '-p' : '')}>
             {bloqueado ? <Navigate to="/" replace /> : aguardandoAcesso ? <CarregandoArea mensagem="Carregando suas permissões…" /> : <Outlet />}
           </div>
         </main>
       </div>
-      <CaixaSugestoes />
+      {!areaDeTrabalho && <CaixaSugestoes />}
     </div>
   )
 }

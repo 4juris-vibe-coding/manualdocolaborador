@@ -14,7 +14,7 @@ const lerFechados = (): string[] => {
   try { return JSON.parse(localStorage.getItem(CHAVE) ?? 'null') ?? ['Conhecimento', 'Desenvolvimento & performance', 'Engajamento & benefícios', 'Relatórios', 'Configurações'] } catch { return [] }
 }
 
-export function Sidebar({ aberto, onFechar }: { aberto: boolean; onFechar: () => void }) {
+export function Sidebar({ aberto, onFechar, entrada }: { aberto: boolean; onFechar: () => void; entrada?: boolean }) {
   const { pathname } = useLocation()
   const collapsedPref = useStore((s) => s.sidebarCollapsed)
   const toggle = useStore((s) => s.toggleSidebar)
@@ -41,10 +41,12 @@ export function Sidebar({ aberto, onFechar }: { aberto: boolean; onFechar: () =>
       <aside
         aria-label="Menu principal"
         className={cn(
-          'shrink-0 bg-midnight text-[#aeb9c1] flex flex-col h-screen z-[70] transition-[width,transform] duration-300 border-r border-white/[.04]',
+          'shrink-0 bg-midnight text-[#aeb9c1] flex flex-col h-screen h-dvh z-[70] transition-[width,transform] duration-300 border-r border-white/[.04]',
           'fixed inset-y-0 left-0 lg:sticky lg:top-0 lg:translate-x-0',
           aberto ? 'translate-x-0 w-[284px] shadow-lg' : '-translate-x-full',
           collapsed ? 'lg:w-[76px]' : 'lg:w-[268px]',
+          // Só no desktop: no celular o menu fica fora da tela e a animação o traria de volta.
+          entrada && 'lg:animate-entrar-esq',
         )}
       >
         <div className={cn('flex items-center gap-3 px-5 h-[68px] shrink-0', collapsed && 'justify-center px-0')}>

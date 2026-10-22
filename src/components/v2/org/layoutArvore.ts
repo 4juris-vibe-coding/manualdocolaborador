@@ -10,7 +10,7 @@ export interface Aresta { de: string; para: string; x1: number; y1: number; x2: 
 export interface ResultadoLayout { nos: Posicionado[]; arestas: Aresta[]; largura: number; altura: number }
 
 export interface Medidas { largura: number; altura: number; espacoH: number; espacoV: number }
-export const MEDIDAS: Medidas = { largura: 216, altura: 92, espacoH: 20, espacoV: 46 }
+export const MEDIDAS: Medidas = { largura: 208, altura: 80, espacoH: 18, espacoV: 44 }
 
 /** Posiciona várias raízes lado a lado; cada pai fica centralizado sobre seus filhos. */
 export function calcularLayout(raizes: NoLayout[], m: Medidas = MEDIDAS): ResultadoLayout {

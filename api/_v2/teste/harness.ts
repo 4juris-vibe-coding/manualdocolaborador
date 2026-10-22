@@ -43,7 +43,7 @@ export async function criarMundo(): Promise<Mundo> {
   return { pg, db: dbPglite(pg) }
 }
 
-export type Papel = 'colaborador' | 'gestor' | 'rh' | 'diretoria' | 'admin'
+export type Papel = 'colaborador' | 'gestor' | 'financeiro' | 'rh' | 'diretoria' | 'admin'
 export interface PessoaSemente {
   id: string; nome: string; papel: Papel; setorId?: string; cargoId?: string; responsavelId?: string; status?: string; email?: string
   [k: string]: unknown

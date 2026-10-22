@@ -369,7 +369,9 @@ export const useStore = create<AppState>()(
 
         /* ---------- pessoas ---------- */
         salvarPessoa: (input, id) => tx((d) => {
-          if (!pode('pessoas:gerenciar')) return SEM_PERMISSAO
+          // Liderança cadastra (só cria) colaboradores nas áreas que lidera; o servidor confere de novo (api/_v2/guarda.ts).
+          const liderDaArea = !id && pode('acessos:equipe') && areasLideradas(eu(), d.setores).some((a) => a.id === input.setorId)
+          if (!pode('pessoas:gerenciar') && !liderDaArea) return SEM_PERMISSAO
           const erro = validarPessoa(d, input, id)
           if (erro) return ERRO(erro)
           const dados = {
@@ -440,6 +442,12 @@ export const useStore = create<AppState>()(
           // Com banco, os contratos são encerrados no módulo financeiro (com conferência de pendências).
           if (!MODO_API) d.contratos = d.contratos.map((k) => (k.colaboradorId === id && k.status !== 'encerrado' ? { ...k, status: 'encerrado', fim: k.fim && k.fim < data ? k.fim : data, atualizadoEm: hojeISO() } : k))
           d.periodos = d.periodos.map((p) => (p.colaboradorId === id && p.inicio > data && p.status !== 'cancelado' ? { ...p, status: 'cancelado' } : p))
+          // Quem saiu deixa de liderar áreas (avaliações, reembolsos e a edição do departamento dependem disso).
+          // Os subordinados diretos continuam apontando para a pessoa: o novo gestor é decisão do RH (pendência no organograma).
+          if (pode('estrutura:gerenciar')) {
+            d.setores = d.setores.map((s) => (s.gestorId === id || s.liderancaIds.includes(id)
+              ? { ...s, gestorId: s.gestorId === id ? null : s.gestorId, liderancaIds: s.liderancaIds.filter((x) => x !== id) } : s))
+          }
           if (iniciarChecklist) {
             const modelo = d.checklists.find((m) => m.tipo === 'encerramento')
             if (modelo) d.processos = [...d.processos, criarProcesso(modelo, id, hojeISO(), uid('pj'))]
@@ -546,6 +554,10 @@ export const useStore = create<AppState>()(
           if (qtd) return ERRO(`Este departamento possui ${qtd} pessoa(s) ativa(s). Mova-as antes de remover.`)
           const subs = d.setores.filter((x) => x.paiId === id).length
           if (subs) return ERRO(`Este departamento possui ${subs} subdepartamento(s). Mova-os ou remova-os antes.`)
+          // As funções do departamento saem junto, desde que nenhuma esteja em uso (o servidor confere também vagas e cargos v2).
+          const funcoes = new Set(d.cargos.filter((c) => c.setorId === id).map((c) => c.id))
+          const emUso = d.colaboradores.filter((c) => c.setorId === id || funcoes.has(c.cargoId)).length + d.historicoFuncao.filter((h) => funcoes.has(h.cargoNovoId ?? '') || funcoes.has(h.cargoAnteriorId ?? '')).length
+          if (emUso) return ERRO('Há pessoas (inclusive encerradas) ou histórico ligados a este departamento ou às suas funções. Mova-os antes de remover.')
           d.setores = d.setores.filter((x) => x.id !== id)
           d.cargos = d.cargos.filter((c) => c.setorId !== id)
           audit(d, 'area.remover', 'area', id, 'Departamento removido')
@@ -572,6 +584,8 @@ export const useStore = create<AppState>()(
         removeCargo: (id) => tx((d) => {
           if (!pode('estrutura:gerenciar')) return SEM_PERMISSAO
           if (d.colaboradores.some((c) => c.cargoId === id && c.status !== 'encerrado')) return ERRO('Há pessoas ativas com esta função.')
+          // Pessoas encerradas e o histórico de função continuam apontando para ela: removê-la deixaria o vínculo órfão.
+          if (d.colaboradores.some((c) => c.cargoId === id) || d.historicoFuncao.some((h) => h.cargoNovoId === id || h.cargoAnteriorId === id)) return ERRO('Esta função aparece no cadastro de pessoas encerradas ou no histórico de funções e não pode ser removida.')
           d.cargos = d.cargos.filter((c) => c.id !== id)
           audit(d, 'funcao.remover', 'funcao', id, 'Função removida')
         }),

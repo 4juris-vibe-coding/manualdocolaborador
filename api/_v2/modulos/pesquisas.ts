@@ -50,6 +50,44 @@ async function evento(ex: Executor, pesquisaId: string, quem: string | null, tip
   await ex.query('insert into pq_eventos (pesquisa_id, colaborador_id, tipo, detalhes) values ($1,$2,$3,$4::jsonb)', [pesquisaId, quem, tipo, JSON.stringify(detalhes)])
 }
 
+/* ---------- plano de ação (pq_acoes) ---------- */
+const STATUS_ACAO = ['planejada', 'em_andamento', 'concluida', 'cancelada'] as const
+const COLS_ACAO = `a.id, a.pesquisa_id, a.dimensao, a.problema, a.acao, a.responsavel_id, to_char(a.prazo,'YYYY-MM-DD') as prazo, a.status, a.indicador, a.conclusao,
+  to_char(a.concluida_em,'YYYY-MM-DD') as concluida_em, a.criado_em, a.atualizado_em`
+
+async function lerUmaAcao(ex: Executor, id: string) {
+  return (await ex.query(`select ${COLS_ACAO} from pq_acoes a where a.id = $1`, [id])).rows[0] as Record<string, any>
+}
+
+function saidaAcao(x: Record<string, any>, nomes: Map<string, string>, hoje: string) {
+  const o = camel(x) as Record<string, any>
+  o.responsavelNome = x.responsavel_id ? nomes.get(x.responsavel_id) ?? null : null
+  o.atrasada = !!x.prazo && x.prazo < hoje && (x.status === 'planejada' || x.status === 'em_andamento')
+  return o
+}
+
+/** Lê os campos de uma ação. Em `novo`, problema e ação são obrigatórios; na edição, só o que veio no corpo. */
+async function lerAcao(ex: Executor, b: Record<string, unknown>, novo: boolean): Promise<Record<string, unknown>> {
+  const v: Record<string, unknown> = {}
+  const tem = (k: string) => novo || Object.prototype.hasOwnProperty.call(b, k)
+  if (tem('problema')) v.problema = texto(b.problema, 'problema', { max: 1000 })
+  if (tem('acao')) v.acao = texto(b.acao, 'acao', { max: 1000 })
+  if (tem('dimensao')) v.dimensao = texto(b.dimensao, 'dimensao', { max: 120, obrigatorio: false }) || null
+  if (tem('indicador')) v.indicador = texto(b.indicador, 'indicador', { max: 300, obrigatorio: false }) || null
+  if (tem('conclusao')) v.conclusao = texto(b.conclusao, 'conclusao', { max: 2000, obrigatorio: false }) || null
+  if (tem('prazo')) v.prazo = dataISO(b.prazo, 'prazo')
+  if (tem('status') && (b.status !== undefined || !novo)) v.status = enumerado(b.status, 'status', STATUS_ACAO, 'planejada')
+  if (tem('responsavelId')) {
+    const id = typeof b.responsavelId === 'string' && b.responsavelId.trim() ? b.responsavelId.trim() : null
+    if (id) {
+      const p = await pessoaPorId(ex, id)
+      if (!p || p.status === 'encerrado') throw invalido('Responsável não encontrado.', { responsavelId: 'Selecione uma pessoa ativa' })
+    }
+    v.responsavel_id = id
+  }
+  return v
+}
+
 /** Agendadas começam; abertas/pausadas vencidas encerram. Chamado de forma preguiçosa (não há cron). */
 async function avancarEstados(ex: Executor, hoje: string) {
   await ex.query("update pq_pesquisas set status = 'aberta', atualizado_em = now() where status = 'agendada' and inicio <= $1::date", [hoje])
@@ -296,6 +334,7 @@ export const rotas: Rota[] = [
         proximasDoFim: ativas.filter((p) => p.status === 'aberta' && Date.parse(p.fim) - Date.parse(hoje) <= 7 * 86400000).map((p) => ({ id: p.id, titulo: p.titulo, fim: p.fim, taxa: p.convidados ? Math.round((p.respostas / p.convidados) * 100) : null })),
         alertas, respostasPorDia: dias, participacaoPorArea: porArea, resultadosRecentes: recentes,
         ativas: ativas.map(saida),
+        acoes: await resumoAcoes(db, hoje),
       })
     },
   },
@@ -667,6 +706,69 @@ export const rotas: Rota[] = [
       return ok({ finalidade: p.finalidade, quemAcessa: p.quem_acessa, enunciados, itens: r.rows.map((x) => ({ respostaId: x.id, versao: x.versao, enviadaEm: x.enviada_em, nome: gente.get(x.colaborador_id)?.nome ?? '—', itens: x.itens })) })
     },
   },
+  /* ---------- plano de ação ---------- */
+  {
+    metodo: 'GET', padrao: 'pesquisas/:id/acoes', cap: ['pesq:gerenciar', 'pesq:resultados'],
+    h: async ({ db, params, agora }) => {
+      await carregar(db, params.id)
+      const r = await db.query(`select ${COLS_ACAO} from pq_acoes a where a.pesquisa_id = $1 order by (a.status in ('concluida','cancelada')), a.prazo nulls last, a.criado_em`, [params.id])
+      const nomes = new Map((await pessoas(db)).map((g) => [g.id, g.nomeSocial || g.nome]))
+      return ok({ itens: r.rows.map((x) => saidaAcao(x, nomes, hojeISO(agora))) })
+    },
+  },
+  {
+    metodo: 'POST', padrao: 'pesquisas/:id/acoes', cap: 'pesq:gerenciar',
+    h: async ({ db, params, req, usuario, agora }) => {
+      await carregar(db, params.id)
+      const n = (await db.query('select count(*)::int as n from pq_acoes where pesquisa_id = $1', [params.id])).rows[0].n
+      if (n >= 100) throw invalido('Limite de 100 ações por pesquisa.')
+      const v = await lerAcao(db, req.corpo ?? {}, true)
+      const r = await db.query(
+        `insert into pq_acoes (pesquisa_id, dimensao, problema, acao, responsavel_id, prazo, status, indicador, conclusao, concluida_em, criado_por)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
+        [params.id, v.dimensao, v.problema, v.acao, v.responsavel_id, v.prazo, v.status ?? 'planejada', v.indicador, v.conclusao, v.status === 'concluida' ? hojeISO(agora) : null, usuario.colaboradorId])
+      const criada = await lerUmaAcao(db, r.rows[0].id)
+      await evento(db, params.id, usuario.colaboradorId, 'acao_criada', { acaoId: criada.id })
+      await auditar(db, usuario.colaboradorId, 'pesquisa', params.id, 'acao_criada', { acaoId: r.rows[0].id })
+      if (v.responsavel_id && v.responsavel_id !== usuario.colaboradorId) {
+        await notificar(db, { destinatarioId: String(v.responsavel_id), tipo: 'pesquisa', titulo: 'Nova ação de plano de pesquisa sob sua responsabilidade', corpo: String(v.acao).slice(0, 120), link: `/pesquisas-rh/${params.id}/resultados`, chave: `pq-acao-${r.rows[0].id}-${v.responsavel_id}` })
+      }
+      const nomes = new Map((await pessoas(db)).map((g) => [g.id, g.nomeSocial || g.nome]))
+      return ok(saidaAcao(criada, nomes, hojeISO(agora)), 201)
+    },
+  },
+  {
+    metodo: 'PATCH', padrao: 'pesquisas/:id/acoes/:acaoId', cap: 'pesq:gerenciar',
+    h: async ({ db, params, req, usuario, agora }) => {
+      if (!/^[0-9a-f-]{36}$/i.test(params.acaoId)) throw naoEncontrado('Ação não encontrada.')
+      const atual = (await db.query('select * from pq_acoes where id = $1 and pesquisa_id = $2', [params.acaoId, params.id])).rows[0]
+      if (!atual) throw naoEncontrado('Ação não encontrada.')
+      const v = await lerAcao(db, req.corpo ?? {}, false)
+      const sets: string[] = []
+      const ps: unknown[] = [params.acaoId]
+      for (const [col, val] of Object.entries(v)) { ps.push(val); sets.push(`${col} = $${ps.length}`) }
+      if (v.status !== undefined && v.status !== atual.status) { ps.push(v.status === 'concluida' ? hojeISO(agora) : null); sets.push(`concluida_em = $${ps.length}`) }
+      if (!sets.length) throw invalido('Nada para alterar.')
+      await db.query(`update pq_acoes set ${sets.join(', ')}, atualizado_em = now() where id = $1`, ps)
+      const nova = await lerUmaAcao(db, params.acaoId)
+      await auditar(db, usuario.colaboradorId, 'pesquisa', params.id, 'acao_alterada', { acaoId: params.acaoId, campos: Object.keys(v) })
+      if (v.responsavel_id && v.responsavel_id !== atual.responsavel_id && v.responsavel_id !== usuario.colaboradorId) {
+        await notificar(db, { destinatarioId: v.responsavel_id as string, tipo: 'pesquisa', titulo: 'Nova ação de plano de pesquisa sob sua responsabilidade', corpo: String(nova.acao).slice(0, 120), link: `/pesquisas-rh/${params.id}/resultados`, chave: `pq-acao-${params.acaoId}-${v.responsavel_id}` })
+      }
+      const nomes = new Map((await pessoas(db)).map((g) => [g.id, g.nomeSocial || g.nome]))
+      return ok(saidaAcao(nova, nomes, hojeISO(agora)))
+    },
+  },
+  {
+    metodo: 'DELETE', padrao: 'pesquisas/:id/acoes/:acaoId', cap: 'pesq:gerenciar',
+    h: async ({ db, params, usuario }) => {
+      if (!/^[0-9a-f-]{36}$/i.test(params.acaoId)) throw naoEncontrado('Ação não encontrada.')
+      const r = await db.query('delete from pq_acoes where id = $1 and pesquisa_id = $2', [params.acaoId, params.id])
+      if (!r.rowCount) throw naoEncontrado('Ação não encontrada.')
+      await auditar(db, usuario.colaboradorId, 'pesquisa', params.id, 'acao_removida', { acaoId: params.acaoId })
+      return ok({ ok: true })
+    },
+  },
   {
     metodo: 'POST', padrao: 'pesquisas/:id/tags', cap: 'pesq:gerenciar',
     h: async ({ db, params, req, usuario }) => {
@@ -687,6 +789,23 @@ export const rotas: Rota[] = [
     },
   },
 ]
+
+/* ---------- resumo do plano de ação (painel) ---------- */
+async function resumoAcoes(ex: Executor, hoje: string) {
+  const abertas = (await ex.query(
+    `select a.id, a.pesquisa_id, a.acao, a.responsavel_id, to_char(a.prazo,'YYYY-MM-DD') as prazo, a.status, p.titulo as pesquisa_titulo
+     from pq_acoes a join pq_pesquisas p on p.id = a.pesquisa_id where a.status in ('planejada','em_andamento') order by a.prazo nulls last`)).rows
+  const nomes = new Map((await pessoas(ex)).map((g) => [g.id, g.nomeSocial || g.nome]))
+  const atrasadas = abertas.filter((a) => a.prazo && a.prazo < hoje)
+  return {
+    abertas: abertas.length,
+    atrasadas: atrasadas.length,
+    itens: [...atrasadas, ...abertas.filter((a) => !(a.prazo && a.prazo < hoje))].slice(0, 6).map((a) => ({
+      id: a.id, pesquisaId: a.pesquisa_id, pesquisaTitulo: a.pesquisa_titulo, acao: a.acao, prazo: a.prazo, status: a.status,
+      responsavelNome: a.responsavel_id ? nomes.get(a.responsavel_id) ?? null : null, atrasada: !!a.prazo && a.prazo < hoje,
+    })),
+  }
+}
 
 /* ---------- lembretes ---------- */
 async function enviarLembretes(ctx: Ctx, p: Record<string, any>) {

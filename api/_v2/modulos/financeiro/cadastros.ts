@@ -410,7 +410,9 @@ export const rotas: Rota[] = [
         if (k.status !== 'rascunho') {
           // Valor, prazo e partes de contrato em vigor mudam por aditivo (fica o histórico).
           const fimAtual = dstr(k.fim), iniAtual = dstr(k.inicio)
-          if (Number(k.valor) !== v.valor || fimAtual !== v.fim || iniAtual !== v.inicio || k.fornecedor_id !== v.fornecedor_id || k.modelo_remuneracao !== v.modelo_remuneracao || k.tipo_prazo !== v.tipo_prazo) {
+          // Exceção: o valor "a definir" (0) do contrato-base é definido uma vez, sem aditivo.
+          const definindoValor = Number(k.valor) === 0 && v.valor > 0
+          if ((Number(k.valor) !== v.valor && !definindoValor) || fimAtual !== v.fim || iniAtual !== v.inicio || k.fornecedor_id !== v.fornecedor_id || k.modelo_remuneracao !== v.modelo_remuneracao || k.tipo_prazo !== v.tipo_prazo) {
             throw conflito('Valor, vigência, modelo e fornecedor de contrato em vigor mudam por aditivo (aba Aditivos).')
           }
         }

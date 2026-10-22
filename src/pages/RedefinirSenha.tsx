@@ -40,7 +40,7 @@ export default function RedefinirSenha() {
           </div>
         </div>
 
-        <h2 className="text-[25px] font-bold text-ink">{primeira ? 'Boas-vindas! Crie sua senha' : 'Criar nova senha'}</h2>
+        <h1 className="text-[25px] font-bold text-ink">{primeira ? 'Boas-vindas! Crie sua senha' : 'Criar nova senha'}</h1>
         {!token ? (
           <p className="text-[14px] text-danger mt-2">Link inválido. Peça um novo em “Esqueceu a senha?”.</p>
         ) : (

@@ -18,7 +18,7 @@ const notifIcon: Record<string, string> = {
   evento: 'CalendarHeart', gamificacao: 'Trophy', pendencia: 'AlertTriangle', disponibilidade: 'Palmtree',
 }
 
-export function Topbar({ onAbrirMenu }: { onAbrirMenu: () => void }) {
+export function Topbar({ onAbrirMenu, entrada }: { onAbrirMenu: () => void; entrada?: boolean }) {
   const location = useLocation()
   const navigate = useNavigate()
   const user = useStore((s) => s.currentUser())
@@ -52,7 +52,7 @@ export function Topbar({ onAbrirMenu }: { onAbrirMenu: () => void }) {
   const detalhe = current && !current.oculto && location.pathname !== current.to
 
   return (
-    <header className="h-[64px] sm:h-[68px] shrink-0 bg-surface-3/85 backdrop-blur border-b border-line sticky top-0 z-40 flex items-center gap-3 sm:gap-4 px-4 sm:px-7">
+    <header className={cn('h-[64px] sm:h-[68px] shrink-0 bg-surface-3/85 backdrop-blur border-b border-line sticky top-0 z-40 flex items-center gap-3 sm:gap-4 px-4 sm:px-7', entrada && 'animate-entrar-cima')}>
       <button onClick={onAbrirMenu} className="lg:hidden h-10 w-10 -ml-1 rounded-xl border border-line bg-surface flex items-center justify-center text-ink-2" aria-label="Abrir menu">
         <Menu className="h-5 w-5" />
       </button>

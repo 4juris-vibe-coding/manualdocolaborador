@@ -10,6 +10,7 @@ import { api, executar, lerBase64, useApi } from '@/data/v2/api'
 import { ROTULO_ETAPA, ROTULO_MODALIDADE, ROTULO_MOTIVO, ROTULO_REMUNERACAO, ROTULO_TIPO } from '@/domain/v2/vagas'
 import { dataBR, dataHoraBR, haQuanto, moeda } from '@/lib/fmt'
 import { Dropdown } from '@/components/Dropdown'
+import { documentoDaVagaInterna, ModalPdfVaga } from '@/components/v2/vagas/DocumentoVaga'
 
 type D = Record<string, any>
 const ABAS = [
@@ -43,6 +44,7 @@ export default function VagaDetalhe() {
   const [decisao, setDecisao] = useState<{ passoId: string; rotulo: string } | null>(null)
   const [reatribuir, setReatribuir] = useState<{ passoId: string; rotulo: string } | null>(null)
   const [etapas, setEtapas] = useState<{ id?: string; nome: string; tipo: string; ativas?: number }[]>([])
+  const [pdf, setPdf] = useState(false)
   useEffect(() => { if (r.dados) setEtapas(r.dados.etapas) }, [r.dados])
 
   const d = r.dados
@@ -69,6 +71,8 @@ export default function VagaDetalhe() {
               {v.status === 'ajustes' && <Callout tone="warning" icon="MessageSquareWarning" className="mb-5">A solicitação foi devolvida para ajustes. Veja a justificativa na aba <button className="underline font-semibold" onClick={() => setSp({ aba: 'aprovacoes' })}>Aprovações</button>, edite a vaga e solicite a aprovação novamente.</Callout>}
               {p.decidir.length > 0 && <Callout tone="brand" icon="ClipboardCheck" className="mb-5">Esta vaga aguarda a sua decisão. <button className="underline font-semibold" onClick={() => setSp({ aba: 'aprovacoes' })}>Abrir aprovações</button></Callout>}
 
+              <Divulgacao v={v} onPdf={() => setPdf(true)} />
+
               <Tabs tabs={ABAS} active={aba} onChange={(k) => setSp({ aba: k }, { replace: true })} />
 
               {aba === 'visao' && (
@@ -84,14 +88,14 @@ export default function VagaDetalhe() {
                     <Info rotulo="Gestor(a) solicitante">{v.gestorSolicitanteNome}</Info><Info rotulo="Gestor(a) responsável">{v.gestorResponsavelNome}</Info><Info rotulo="Gestor(a) imediato(a)">{v.gestorImediatoNome}</Info><Info rotulo="Recrutador(a)">{v.recrutadorNome}</Info>
                   </dl></Card>
                   <Card><CardHead title="Local e remuneração" /><dl className="px-5 pb-3">
-                    <Info rotulo="Local">{[v.cidade, v.estado, v.pais].filter(Boolean).join(', ')}</Info><Info rotulo="Modalidade">{ROTULO_MODALIDADE[v.modalidade]}</Info><Info rotulo="Viagens">{v.viagens}</Info>
+                    <Info rotulo="Local">{[v.cidade, v.estado, v.pais].filter(Boolean).join(', ')}</Info><Info rotulo="Modalidade">{ROTULO_MODALIDADE[v.modalidade]}</Info><Info rotulo="Viagens">{v.viagens}</Info><Info rotulo="Jornada">{v.jornada}</Info>
                     {'salarioMin' in v ? (
                       <><Info rotulo="Faixa salarial">{v.salarioMin != null || v.salarioMax != null ? `${moeda(v.salarioMin, v.moeda)} a ${moeda(v.salarioMax, v.moeda)} (${ROTULO_REMUNERACAO[v.tipoRemuneracao] ?? ''})` : ''}</Info><Info rotulo="Variável">{v.variavel}</Info><Info rotulo="Divulgar salário no portal">{v.divulgarSalario ? 'Sim' : 'Não'}</Info></>
                     ) : <Info rotulo="Faixa salarial"><span className="text-muted">Restrita ao RH</span></Info>}
                     <Info rotulo="Benefícios"><Chips itens={v.beneficios} /></Info>
                   </dl></Card>
                   <Card><CardHead title="Perfil profissional" /><dl className="px-5 pb-3">
-                    <Info rotulo="Responsabilidades">{v.responsabilidades}</Info><Info rotulo="Atividades">{v.atividades}</Info>
+                    <Info rotulo="Responsabilidades">{v.responsabilidades}</Info><Info rotulo="Atividades">{v.atividades}</Info><Info rotulo="Desafios da posição">{v.desafios}</Info>
                     <Info rotulo="Requisitos obrigatórios"><Chips itens={v.requisitosObrigatorios} /></Info><Info rotulo="Requisitos desejáveis"><Chips itens={v.requisitosDesejaveis} /></Info>
                     <Info rotulo="Formação">{v.formacao}</Info><Info rotulo="Experiência">{v.experiencia}</Info>
                     <Info rotulo="Competências técnicas"><Chips itens={v.competenciasTecnicas} /></Info><Info rotulo="Competências comportamentais"><Chips itens={v.competenciasComportamentais} /></Info>
@@ -102,7 +106,7 @@ export default function VagaDetalhe() {
                   </Card>
                   <Card><CardHead title="Divulgação" /><dl className="px-5 pb-3">
                     <Info rotulo="Canais"><Chips itens={(v.canais as string[]).map((c) => opcoes.dados?.canais.find((x) => x.chave === c)?.nome ?? c)} /></Info>
-                    <Info rotulo="Publicação agendada">{dataBR(v.publicarEm)}</Info><Info rotulo="Encerramento das candidaturas">{dataBR(v.encerraCandidaturasEm)}</Info>
+                    <Info rotulo="Etapas do processo (página pública)"><Chips itens={v.etapasProcesso} /></Info><Info rotulo="Publicação agendada">{dataBR(v.publicarEm)}</Info><Info rotulo="Encerramento das candidaturas">{dataBR(v.encerraCandidaturasEm)}</Info>
                     <Info rotulo="Texto público">{v.textoPublico}</Info><Info rotulo="Critérios de encerramento">{v.criteriosEncerramento}</Info>
                     {'observacoesRh' in v && <Info rotulo="Observações do RH">{v.observacoesRh}</Info>}
                     {v.motivoEncerramento && <Info rotulo="Motivo do encerramento/cancelamento">{v.motivoEncerramento}</Info>}
@@ -123,20 +127,15 @@ export default function VagaDetalhe() {
               {aba === 'candidaturas' && (
                 <div className="space-y-5">
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    <StatCard icon="Users" value={d!.contagens.total} label="Candidaturas recebidas" />
-                    <StatCard icon="Activity" tone="warning" value={d!.contagens.ativas} label="Em andamento" />
-                    <StatCard icon="UserCheck" tone="success" value={d!.contagens.contratadas} label="Contratadas" />
-                    <StatCard icon="Armchair" tone="ink" value={Math.max(0, v.qtdPosicoes - v.posicoesPreenchidas)} label="Posições em aberto" />
+                    <StatCard compacto icon="Users" value={d!.contagens.total} label="Candidaturas recebidas" />
+                    <StatCard compacto icon="Activity" tone="warning" value={d!.contagens.ativas} label="Em andamento" />
+                    <StatCard compacto icon="UserCheck" tone="success" value={d!.contagens.contratadas} label="Contratadas" />
+                    <StatCard compacto icon="Armchair" tone="ink" value={Math.max(0, v.qtdPosicoes - v.posicoesPreenchidas)} label="Posições em aberto" />
                   </div>
                   <Card className="p-5 flex items-center justify-between gap-4 flex-wrap">
                     <div><div className="font-semibold text-ink text-[14px]">Pipeline de candidatos</div><div className="text-[12.5px] text-muted">Acompanhe e mova as candidaturas desta vaga no ATS.</div></div>
                     <Link to={`/recrutamento/candidatos?vaga=${v.id}`}><Button icon="KanbanSquare">Abrir pipeline</Button></Link>
                   </Card>
-                  {v.status === 'publicada' ? (
-                    <Card className="p-5"><div className="text-[13px] font-semibold text-ink mb-2">Link público de candidatura</div>
-                      <div className="flex gap-2 flex-wrap items-center"><code className="text-[12.5px] bg-winter rounded-lg px-3 py-2 break-all">{`${window.location.origin}/carreiras/${v.slug}`}</code>
-                        <Button size="sm" variant="ghost" icon="Copy" onClick={() => navigator.clipboard?.writeText(`${window.location.origin}/carreiras/${v.slug}`).then(() => toast('Link copiado.'), () => toast('Não foi possível copiar.', 'danger'))}>Copiar</Button></div></Card>
-                  ) : <Callout tone="neutral" icon="Info">O link público só funciona enquanto a vaga estiver <b>publicada</b>. Situação atual: {v.status === 'aprovada' ? 'aprovada, aguardando publicação' : v.status}.</Callout>}
                 </div>
               )}
 
@@ -169,7 +168,38 @@ export default function VagaDetalhe() {
       {decisao && d && <ModalDecisao passo={decisao} vagaId={d.vaga.id} onClose={() => setDecisao(null)} onFeito={() => { setDecisao(null); r.recarregar() }} />}
       {reatribuir && d && <ModalReatribuir passo={reatribuir} vagaId={d.vaga.id} opcoes={opcoes.dados} onClose={() => setReatribuir(null)} onFeito={() => { setReatribuir(null); r.recarregar() }} />}
       {modal}
+      {v && <ModalPdfVaga d={documentoDaVagaInterna(v, v.setorNome ?? null)} open={pdf} onClose={() => setPdf(false)} onEditar={p?.editar ? () => nav(`/recrutamento/vagas/${v.id}/editar`) : undefined} />}
     </>
+  )
+}
+
+/** Link público e compartilhamento, sempre à vista. Fora do ar, explica o motivo e oferece a prévia. */
+function Divulgacao({ v, onPdf }: { v: D; onPdf: () => void }) {
+  const url = `${window.location.origin}/carreiras/${v.slug}`
+  const noAr = v.status === 'publicada'
+  const copiar = () => navigator.clipboard?.writeText(url).then(() => toast('Link copiado. Cole onde quiser divulgar.'), () => toast('Não foi possível copiar. Selecione o link e copie manualmente.', 'danger'))
+  const whatsapp = `https://wa.me/?text=${encodeURIComponent(`Vaga aberta na 4JURIS: ${v.titulo}\n${url}`)}`
+  const situacao: Record<string, string> = {
+    rascunho: 'Rascunho: o link só funciona depois de publicar.', em_aprovacao: 'Em aprovação: o link só funciona depois de publicar.', ajustes: 'Em ajustes: o link só funciona depois de publicar.',
+    aprovada: 'Aprovada: publique para ativar o link.', pausada: 'Pausada: o link mostra que a vaga não recebe candidaturas.', encerrada: 'Encerrada: o link mostra que a vaga não recebe mais candidaturas.', cancelada: 'Cancelada: o link não exibe a vaga.',
+  }
+  return (
+    <Card className="p-4 mb-5">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <div className="text-[12px] font-bold uppercase tracking-wide text-muted">Link da vaga</div>
+          {noAr
+            ? <code className="block text-[13px] text-ink break-all mt-0.5">{url}</code>
+            : <div className="text-[13px] text-ink-2 mt-0.5">{situacao[v.status] ?? 'O link só funciona com a vaga publicada.'}</div>}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {noAr && <Button size="sm" icon="Copy" onClick={copiar}>Copiar link</Button>}
+          {noAr && <a href={whatsapp} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="ghost" icon="Share2">WhatsApp</Button></a>}
+          {noAr && <a href={url} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="ghost" icon="ExternalLink">Abrir página</Button></a>}
+          <Button size="sm" variant="ghost" icon="FileText" onClick={onPdf}>{noAr ? 'PDF' : 'Pré-visualizar / PDF'}</Button>
+        </div>
+      </div>
+    </Card>
   )
 }
 

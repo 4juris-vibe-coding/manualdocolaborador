@@ -77,18 +77,24 @@ export function DetalheNota({ id, fechar, mudou }: { id: string; fechar: () => v
   const r = useApi<{ nota: NotaLinha; acoes: { conferir: boolean; aceitar: boolean; reenviar: boolean; cancelar: boolean }; historico: { id: number; em: string; autor: string | null; acao: string; detalhes: Record<string, unknown> }[] }>(id ? `financeiro/notas/${id}` : null)
   const [justificativa, setJustificativa] = useState('')
   const motivo = useMotivo()
-  const agir = async (rota: string, corpo: unknown, msg: string) => { if (await executar(() => api.post(`financeiro/notas/${id}/${rota}`, corpo), msg)) { r.recarregar(); mudou() } }
+  // Uma ação por vez: o aceite cria a conta a pagar, então um clique duplo não pode disparar duas chamadas.
+  const [ocupado, setOcupado] = useState(false)
+  const agir = async (rota: string, corpo: unknown, msg: string) => {
+    if (ocupado) return
+    setOcupado(true)
+    try { if (await executar(() => api.post(`financeiro/notas/${id}/${rota}`, corpo), msg)) { r.recarregar(); mudou() } } finally { setOcupado(false) }
+  }
   const n = r.dados?.nota
   const a = r.dados?.acoes
   return (
     <Drawer open={!!id} onClose={fechar} titulo={n ? `NF ${n.numero}${n.serie ? `/${n.serie}` : ''}` : 'Nota fiscal'} subtitulo={n && `${n.fornecedorNome} · ${competenciaBR(n.competencia)}`}
-      rodape={n && a && <>
+      rodape={n && a && <fieldset disabled={ocupado} className="contents">
         {a.cancelar && <Button variant="ghost" onClick={async () => { const m = await motivo.pedir('Cancelar nota fiscal', 'A conta a pagar ligada (se houver e não paga) também é cancelada.', 'Cancelar nota'); if (m) agir('cancelar', { motivo: m }, 'Nota cancelada.') }}>Cancelar nota</Button>}
         {a.conferir && <><Button variant="ghost" onClick={async () => { const m = await motivo.pedir('Devolver para correção', 'A pessoa que enviou será avisada e poderá reenviar.', 'Devolver'); if (m) agir('conferir', { decisao: 'devolver', motivo: m }, 'Nota devolvida.') }}>Devolver</Button>
           <Button icon="CheckCheck" onClick={() => agir('conferir', { decisao: 'conferir' }, 'Nota conferida. Segue para o aceite do serviço.')}>Conferir documento</Button></>}
         {a.aceitar && <><Button variant="ghost" onClick={async () => { const m = await motivo.pedir('Devolver para correção', 'Explique o que precisa ser corrigido no serviço ou na nota.', 'Devolver'); if (m) agir('aceite', { decisao: 'devolver', motivo: m }, 'Nota devolvida.') }}>Devolver</Button>
           <Button icon="BadgeCheck" disabled={n.divergencias.length > 0 && justificativa.trim().length < 10} onClick={() => agir('aceite', { decisao: 'aprovar', justificativa: justificativa || undefined }, 'Serviço aceito. A conta a pagar foi criada.')}>Aceitar serviço</Button></>}
-      </>}>
+      </fieldset>}>
       {r.carregando && !n ? <p className="text-muted text-[13px]">Carregando…</p> : n && (
         <div className="space-y-5">
           <div className="flex flex-wrap gap-2"><BadgeNota valor={n.status} />{n.contaStatus && <BadgeConta valor={n.contaStatus} />}{n.legado && <Badge>Importada do controle anterior</Badge>}</div>

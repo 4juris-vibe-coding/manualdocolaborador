@@ -157,7 +157,7 @@ function Historico({ id, onFechar }: { id: string | null; onFechar: () => void }
 }
 
 function Comparativo() {
-  const r = useApi<{ referencia: string; ressalva: string; cargos: { cargoId: string; cargoNome: string; abaixo: number; dentro: number; acima: number; semFaixa: number; semContrato: number; moedaDiferente: number }[] }>('cargos/faixas/comparativo')
+  const r = useApi<{ referencia: string; ressalva: string; cargos: { cargoId: string; cargoNome: string; abaixo: number | null; dentro: number | null; acima: number | null; suprimido?: boolean; semFaixa: number; semContrato: number; moedaDiferente: number }[]; minGrupo?: number }>('cargos/faixas/comparativo')
   return (
     <Card>
       <CardHead title="Contratos vigentes em relação à faixa" sub="Somente contagens por cargo; nenhum valor individual é exibido." />
@@ -169,7 +169,9 @@ function Comparativo() {
               <thead><tr><th className={TH}>Cargo</th><th className={TH}>Abaixo</th><th className={TH}>Dentro</th><th className={TH}>Acima</th><th className={TH}>Sem faixa vigente</th><th className={TH}>Sem contrato</th><th className={TH}>Outra moeda</th></tr></thead>
               <tbody>{d.cargos.map((c) => (
                 <tr key={c.cargoId}><td className={TD}><Link to={`/cargos/${c.cargoId}`} className="font-semibold text-ink hover:text-brand">{c.cargoNome}</Link></td>
-                  <td className={TD}>{c.abaixo ? <Badge tone="warning">{c.abaixo}</Badge> : 0}</td><td className={TD}>{c.dentro}</td><td className={TD}>{c.acima ? <Badge tone="warning">{c.acima}</Badge> : 0}</td>
+                  {c.suprimido
+                    ? <td className={TD} colSpan={3}><span className="text-muted">Oculto: menos de {d.minGrupo ?? 5} contratos</span></td>
+                    : <><td className={TD}>{c.abaixo ? <Badge tone="warning">{c.abaixo}</Badge> : 0}</td><td className={TD}>{c.dentro}</td><td className={TD}>{c.acima ? <Badge tone="warning">{c.acima}</Badge> : 0}</td></>}
                   <td className={TD}>{c.semFaixa}</td><td className={TD}>{c.semContrato}</td><td className={TD}>{c.moedaDiferente}</td></tr>
               ))}</tbody>
             </Tabela>

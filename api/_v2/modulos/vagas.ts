@@ -93,11 +93,12 @@ const ESPECIFICACOES: Spec[] = [
   S('perguntasTriagem', 'perguntas_triagem', 'perguntas'), S('documentosNecessarios', 'documentos_necessarios', 'lista'),
   S('canais', 'canais', 'lista'), S('sobreEmpresa', 'sobre_empresa', 'longo', { max: 4000 }), S('textoPublico', 'texto_publico', 'longo', { max: 8000 }), S('mensagemConfirmacao', 'mensagem_confirmacao', 'longo', { max: 1000 }),
   S('criteriosEncerramento', 'criterios_encerramento', 'longo', { max: 1000 }),
+  S('desafios', 'desafios', 'longo', { max: 4000 }), S('jornada', 'jornada', 'texto', { max: 300 }), S('etapasProcesso', 'etapas_processo', 'lista'),
   S('dataAbertura', 'data_abertura', 'data'), S('prazoPreenchimento', 'prazo_preenchimento', 'data'), S('dataInicioPrevista', 'data_inicio_prevista', 'data'),
   S('publicarEm', 'publicar_em', 'data'), S('encerraCandidaturasEm', 'encerra_candidaturas_em', 'data'),
   S('observacoesRh', 'observacoes_rh', 'longo', { max: 4000, perm: 'notasRh' }),
 ]
-const COLUNAS_JSON = new Set(['beneficios', 'requisitos_obrigatorios', 'requisitos_desejaveis', 'competencias_tecnicas', 'competencias_comportamentais', 'idiomas', 'certificacoes', 'criterios_avaliacao', 'perguntas_triagem', 'documentos_necessarios', 'canais'])
+const COLUNAS_JSON = new Set(['beneficios', 'requisitos_obrigatorios', 'requisitos_desejaveis', 'competencias_tecnicas', 'competencias_comportamentais', 'idiomas', 'certificacoes', 'criterios_avaliacao', 'perguntas_triagem', 'documentos_necessarios', 'canais', 'etapas_processo'])
 const COLUNAS_COPIA = ESPECIFICACOES.map((e) => e.col).filter((c) => !['titulo', 'data_abertura', 'prazo_preenchimento', 'data_inicio_prevista', 'publicar_em', 'encerra_candidaturas_em'].includes(c))
 
 function normalizarPerguntas(v: unknown): unknown[] {

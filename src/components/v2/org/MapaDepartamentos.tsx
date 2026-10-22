@@ -1,13 +1,14 @@
-/* Organograma estrutural: departamentos e subdepartamentos com líder, cargos e pessoas. Rola na própria caixa. */
+/* Organograma estrutural: departamentos e subdepartamentos com líder, cargos e pessoas, no mesmo visor do mapa de pessoas. */
 import { useMemo, useState } from 'react'
-import { Avatar, Badge, Button, Card, EmptyState, Icon } from '@/components/ui'
+import { Avatar, Badge, Button, Card, EmptyState, Icon, Segmentado } from '@/components/ui'
 import { Drawer } from '@/components/v2/Drawer'
 import { cn } from '@/lib/utils'
 import { plural } from '@/lib/fmt'
 import type { ArvoreDepartamentos, NoDepartamento } from '@/domain/v2/departamentos'
 import { calcularLayout, type Medidas, type NoLayout } from './layoutArvore'
+import { Conexoes, VisorMapa, estiloNo } from './VisorMapa'
 
-const M: Medidas = { largura: 236, altura: 118, espacoH: 22, espacoV: 52 }
+const M: Medidas = { largura: 224, altura: 110, espacoH: 18, espacoV: 44 }
 
 export function MapaDepartamentos({ arvore, onEditar }: { arvore: ArvoreDepartamentos; onEditar?: (id: string) => void }) {
   const [sel, setSel] = useState<string | null>(null)
@@ -43,27 +44,17 @@ export function MapaDepartamentos({ arvore, onEditar }: { arvore: ArvoreDepartam
   return (
     <>
       <div className="flex justify-end mb-3">
-        <div role="group" aria-label="Forma de exibição" className="inline-flex rounded-lg border border-line overflow-hidden">
-          {(['mapa', 'lista'] as const).map((k) => (
-            <button key={k} type="button" aria-pressed={modo === k} onClick={() => setModo(k)} className={`h-9 px-3 text-[12.5px] font-semibold ${modo === k ? 'bg-brand text-white' : 'bg-surface text-ink-2 hover:bg-winter'}`}>{k === 'mapa' ? 'Mapa' : 'Lista'}</button>
-          ))}
-        </div>
+        <Segmentado tamanho="sm" rotulo="Forma de exibição" valor={modo} onChange={setModo} opcoes={[['mapa', 'Mapa'], ['lista', 'Lista']] as const} />
       </div>
       {modo === 'lista' ? <Card className="p-4">{lista(arvore.raizes)}</Card> : (
-        <div className="rounded-2xl border border-line bg-surface-2 overflow-auto max-h-[70vh] p-6">
-          <div style={{ width: layout.largura, height: layout.altura, position: 'relative' }} className="mx-auto">
-            <svg width={layout.largura} height={layout.altura} className="absolute inset-0 overflow-visible pointer-events-none" aria-hidden>
-              {layout.arestas.map((a) => {
-                const meio = a.y1 + (a.y2 - a.y1) / 2
-                return <path key={a.de + a.para} d={`M${a.x1},${a.y1} V${meio} H${a.x2} V${a.y2}`} fill="none" stroke="rgb(var(--c-line-strong))" strokeWidth="1.5" />
-              })}
-            </svg>
+        <VisorMapa largura={layout.largura} altura={layout.altura} rotulo="Mapa de departamentos">
+            <Conexoes largura={layout.largura} altura={layout.altura} arestas={layout.arestas} />
             {layout.nos.map((p) => {
               const n = porId.get(p.chave)!
               return (
-                <button key={p.chave} type="button" onClick={() => setSel(n.id)} style={{ left: p.x, top: p.y, width: M.largura, height: M.altura, borderTop: `4px solid ${n.cor ?? 'rgb(var(--c-line-strong))'}` }}
+                <button key={p.chave} type="button" onClick={() => setSel(n.id)} style={{ ...estiloNo(p.x, p.y, M.largura, M.altura), borderTop: `4px solid ${n.cor ?? 'rgb(var(--c-line-strong))'}` }}
                   aria-label={`${n.nome}. ${n.lider ? `Líder: ${n.lider.nome}` : 'Sem líder definido'}. ${plural(n.pessoasTotal, 'pessoa', 'pessoas')}. Abrir detalhes.`}
-                  className={cn('absolute text-left rounded-2xl border bg-surface px-3.5 py-3 flex flex-col gap-2 shadow-sm hover:shadow-md transition outline-none focus-visible:ring-2 focus-visible:ring-brand', sel === n.id ? 'border-brand ring-2 ring-brand/30' : 'border-line')}>
+                  className={cn('absolute animate-scale-in text-left rounded-xl border bg-surface px-3 py-2.5 flex flex-col gap-1.5 shadow-sm hover:shadow-md transition outline-none focus-visible:ring-2 focus-visible:ring-brand', sel === n.id ? 'border-brand ring-2 ring-brand/30' : 'border-line')}>
                   <span className="flex items-center gap-2 min-w-0">
                     <span className="shrink-0 h-6 w-6 rounded-lg flex items-center justify-center text-white" style={{ background: n.cor ?? 'rgb(var(--c-line-strong))' }}><Icon name={n.icon ?? 'Building2'} className="h-3.5 w-3.5" /></span>
                     <span className="text-[13.5px] font-bold text-ink truncate">{n.nome}</span>
@@ -75,8 +66,7 @@ export function MapaDepartamentos({ arvore, onEditar }: { arvore: ArvoreDepartam
                 </button>
               )
             })}
-          </div>
-        </div>
+        </VisorMapa>
       )}
       <Drawer open={!!d} onClose={() => setSel(null)} titulo={d?.nome ?? ''} subtitulo={d ? caminho(d, porId) : undefined}
         rodape={d && onEditar ? <Button icon="Pencil" onClick={() => { onEditar(d.id); setSel(null) }}>Editar departamento</Button> : undefined}>

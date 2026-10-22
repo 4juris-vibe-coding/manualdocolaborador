@@ -147,6 +147,7 @@ const documento = (v: Celula, tamanho: number) => {
 
 const PAPEIS: Record<string, Papel> = {
   colaborador: 'colaborador', colaboradora: 'colaborador', gestor: 'gestor', gestora: 'gestor', lider: 'gestor', lideranca: 'gestor',
+  financeiro: 'financeiro', financeira: 'financeiro', financas: 'financeiro',
   rh: 'rh', 'recursos humanos': 'rh', diretoria: 'diretoria', diretor: 'diretoria', diretora: 'diretoria', ceo: 'diretoria',
   admin: 'admin', administrador: 'admin', administradora: 'admin', administracao: 'admin',
 }

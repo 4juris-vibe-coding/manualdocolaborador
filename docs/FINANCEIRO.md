@@ -57,15 +57,39 @@ Regras aplicadas no servidor:
 
 | Capacidade | Quem tem |
 |---|---|
-| `fin:ver` | RH, administração, diretoria, analista financeiro, autorizador de pagamentos |
-| `fin:cadastrar`, `fin:aprovar` | RH, administração |
-| `fin:conferir`, `fin:pagar` | RH, administração, analista financeiro |
-| `fin:autorizar` | Administração e quem recebe a função "Autorização de pagamentos" |
+| `fin:ver` | Financeiro, RH, administração, diretoria, analista financeiro, autorizador de pagamentos |
+| `fin:cadastrar`, `fin:aprovar` | Financeiro, RH, administração |
+| `fin:conferir`, `fin:pagar` | Financeiro, RH, administração, analista financeiro |
+| `fin:autorizar` | Financeiro, administração e quem recebe a função "Autorização de pagamentos" |
+| `fin:disparar` | Financeiro, RH, administração (cobrança de notas, manual e automática) |
 | `fin:config` | Administração |
+
+O **papel Financeiro** (concedido só pela administração) opera o ciclo inteiro das notas: kanban, cobranças, conferência, aceite, autorização e registro do pagamento, além dos reembolsos. Não acessa cadastro de pessoas nem as ferramentas de RH.
 
 O RH **não autoriza** pagamentos por padrão. Para isso, conceda a função adicional em *Administração › Funções adicionais*.
 
 Gestores veem e aceitam as notas dos contratos em que são gestores ou que pertencem às áreas que lideram, sem acesso a dados bancários. Prestadores veem os próprios contratos, notas, pagamentos e retenções aplicadas.
+
+### Kanban de notas (`/financeiro/kanban`, `kanban.ts`)
+
+Visão por competência de todos que prestam contratos mensais:
+
+| Coluna | O que entra |
+|---|---|
+| Aguardando | Contrato mensal vigente sem nota na competência (com quantas cobranças já recebeu) |
+| Recebida | Nota recebida ou conferida |
+| Aprovada | Serviço aceito; conta a pagar prevista ou autorizada |
+| Recusada | Nota devolvida, aguardando o reenvio corrigido |
+| Paga | Pagamento registrado |
+
+Arrastar o cartão (ou usar "Mover para…") chama `POST financeiro/notas/:id/mover`, que executa numa transação as etapas do fluxo acima, com as mesmas travas: nota própria bloqueada, divergência exige justificativa, recusa exige motivo e a segregação de funções vale (quem aprovou não autoriza). Para **Paga**, as retenções de regra são marcadas como revisadas por quem registra, a conta é autorizada (se ainda prevista) e o pagamento é registrado com referência ou comprovante. A pessoa recebe a notificação "Pagamento realizado" no portal. Também é possível registrar uma nota que chegou por outro canal a partir do cartão "Aguardando". Diretoria vê o kanban sem mover.
+
+### Disparos de cobrança (`disparos.ts`, tabelas `fin_disparos`, `fin_disparo_envios`, `fin_disparo_auto`)
+
+- **Entrega só dentro do sistema:** cada cobrança é uma notificação no portal (sino e página de notificações) que leva a pessoa a Notas fiscais. Não há e-mail.
+- **Manual** ("Cobrar notas"): público "não enviou", "recusada sem reenvio", ambos, todos os contratos mensais ou pessoas escolhidas; modelo com `{{nome}}`, `{{competencia}}`, `{{prazo}}` e `{{contratos}}`.
+- **Automático**: nos dias configurados em relação ao dia limite de envio (padrão −5, −1, 0 e +3), o processamento diário de alertas cobra quem ainda não enviou (e, se marcado, quem teve a nota recusada). Cada lembrete tem chave `auto:<competência>:<dia>` e não se repete. Com os automáticos ligados, o aviso simples "Envie a nota fiscal" do passo 6 dos alertas é substituído por eles.
+- Todo disparo fica no histórico, com quem recebeu e se já leu a notificação.
 
 ## 4. Indicadores (painel financeiro)
 
@@ -117,7 +141,8 @@ Valor contratado, faturado, aprovado, previsto e pago são números **diferentes
 | Nota parada há N dias | Quem confere ou dá o aceite |
 | Pagamento a vencer ou vencido | Autorizadores (contas previstas) ou pagadores (contas autorizadas) |
 | Documento a vencer ou vencido | Titular e conferentes |
-| Nota do mês não enviada (a partir de 5 dias antes do dia limite) | Prestador |
+| Nota do mês não enviada (a partir de 5 dias antes do dia limite), só com os disparos automáticos desligados | Prestador |
+| Disparos automáticos de cobrança (notificação no portal) nos dias configurados | Quem não enviou / teve a nota recusada |
 
 Cada aviso tem uma chave por evento (`ntf_notificacoes.unique(destinatario, chave)`), então rodar de novo não duplica. A renovação acontece uma vez por término, porque o aditivo muda o término. As execuções ficam em `fin_execucoes_alertas`.
 

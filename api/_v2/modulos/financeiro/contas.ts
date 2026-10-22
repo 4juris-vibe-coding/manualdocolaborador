@@ -36,14 +36,14 @@ export function contaJson(c: Linha, gente: Map<string, Linha>, hojeStr: string) 
   }
 }
 
-async function contaOu404(ex: Executor, id: string, travar = false): Promise<Linha> {
+export async function contaOu404(ex: Executor, id: string, travar = false): Promise<Linha> {
   const r = await ex.query(`select c.*, c.vencimento::text as venc_t from fin_contas c where c.id = $1 ${travar ? 'for update' : ''}`, [uuid(id)])
   if (!r.rows[0]) throw naoEncontrado('Conta a pagar não encontrada.')
   return r.rows[0]
 }
 
 /** Beneficiário(s) da conta: prestador do contrato, representante do fornecedor ou pessoa do reembolso. Nunca decidem a própria conta. */
-async function beneficiarios(ex: Executor, c: Linha): Promise<string[]> {
+export async function beneficiarios(ex: Executor, c: Linha): Promise<string[]> {
   const ids: string[] = []
   if (c.pessoa_id) ids.push(c.pessoa_id)
   if (c.fornecedor_id) { const f = (await ex.query('select representante_id from fin_fornecedores where id = $1', [c.fornecedor_id])).rows[0]; if (f?.representante_id) ids.push(f.representante_id) }
@@ -59,7 +59,7 @@ async function recalcularRetencoes(ex: Executor, contaId: string) {
 }
 
 /** Atualiza o reembolso legado (app_reembolsos) quando a conta de reembolso muda. */
-async function atualizarReembolso(ex: Executor, reembolsoId: string, status: 'pagamento' | 'pago' | 'aprovado', pagoEm?: string) {
+export async function atualizarReembolso(ex: Executor, reembolsoId: string, status: 'pagamento' | 'pago' | 'aprovado', pagoEm?: string) {
   const r = (await ex.query('select dados from app_reembolsos where id = $1', [reembolsoId])).rows[0]
   if (!r) return
   const dados = { ...r.dados, status, ...(pagoEm ? { pagoEm } : {}) }

@@ -113,12 +113,12 @@ function Organograma({ onAbrir }: { onAbrir: (c: Cargo) => void }) {
   const filhos = (id: string) => s.cargos.filter((c) => c.funcaoSuperiorId === id)
   const No = ({ c, nivel }: { c: Cargo; nivel: number }): JSX.Element => (
     <li>
-      <button type="button" onClick={() => onAbrir(c)} className="flex items-center gap-2.5 rounded-xl border border-line bg-surface px-3 py-2 hover:border-brand hover:shadow-sm transition text-left" style={{ marginLeft: nivel * 24 }}>
-        <span className="h-2 w-2 rounded-full" style={{ background: s.setores.find((a) => a.id === c.setorId)?.cor }} />
-        <span className="text-[13px] font-semibold text-ink">{c.nome}</span>
-        <span className="text-[11.5px] text-muted">{c.nivel} · {s.colaboradores.filter((p) => p.cargoId === c.id && p.status !== 'encerrado').length} pessoa(s)</span>
+      <button type="button" onClick={() => onAbrir(c)} className="w-full min-w-0 flex items-center gap-2.5 rounded-xl border border-line bg-surface px-3 py-2 hover:border-brand hover:shadow-sm transition text-left" data-nivel={nivel}>
+        <span className="h-2 w-2 rounded-full shrink-0" style={{ background: s.setores.find((a) => a.id === c.setorId)?.cor }} />
+        <span className="text-[13px] font-semibold text-ink truncate">{c.nome}</span>
+        <span className="text-[11.5px] text-muted ml-auto shrink-0 whitespace-nowrap">{c.nivel} · {s.colaboradores.filter((p) => p.cargoId === c.id && p.status !== 'encerrado').length} pessoa(s)</span>
       </button>
-      {filhos(c.id).length > 0 && <ul className="mt-2 space-y-2 border-l-2 border-dashed border-line ml-4 pl-0">{filhos(c.id).map((f) => <No key={f.id} c={f} nivel={nivel + 1} />)}</ul>}
+      {filhos(c.id).length > 0 && <ul className="mt-2 space-y-2 border-l-2 border-dashed border-line ml-3 pl-3">{filhos(c.id).map((f) => <No key={f.id} c={f} nivel={nivel + 1} />)}</ul>}
     </li>
   )
   return (
@@ -232,14 +232,14 @@ function FuncaoForm({ c, onClose }: { c?: Cargo; onClose: () => void }) {
         </>
       )}
       {aba === 'perfil' && (
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="space-y-5">
           <div>
             <h4 className="text-[12px] font-bold uppercase text-muted mb-2">Perfil DISC ideal</h4>
-            {CATEGORIAS_DISC.map((d) => <SliderBipolar key={d.chave} esquerda={`${d.label}: ${f.perfilIdeal!.disc[d.chave]}`} valor={f.perfilIdeal!.disc[d.chave]} cor={d.cor} onChange={(v) => setDisc(d.chave, v)} />)}
+            <div className="grid sm:grid-cols-2 gap-x-6">{CATEGORIAS_DISC.map((d) => <SliderBipolar key={d.chave} esquerda={`${d.label}: ${f.perfilIdeal!.disc[d.chave]}`} valor={f.perfilIdeal!.disc[d.chave]} cor={d.cor} onChange={(v) => setDisc(d.chave, v)} />)}</div>
           </div>
-          <div className="max-h-[52vh] overflow-y-auto pr-1">
+          <div>
             <h4 className="text-[12px] font-bold uppercase text-muted mb-2">Traços comportamentais (24)</h4>
-            {TRACOS.map((t) => <SliderBipolar key={t.chave} esquerda={t.esquerda} direita={t.direita} valor={f.perfilIdeal!.tracos[t.chave] ?? 50} onChange={(v) => set({ perfilIdeal: { ...f.perfilIdeal!, tracos: { ...f.perfilIdeal!.tracos, [t.chave]: v } } })} />)}
+            <div className="grid sm:grid-cols-2 gap-x-6">{TRACOS.map((t) => <SliderBipolar key={t.chave} esquerda={t.esquerda} direita={t.direita} valor={f.perfilIdeal!.tracos[t.chave] ?? 50} onChange={(v) => set({ perfilIdeal: { ...f.perfilIdeal!, tracos: { ...f.perfilIdeal!.tracos, [t.chave]: v } } })} />)}</div>
           </div>
         </div>
       )}

@@ -1,5 +1,6 @@
 /* Peças compartilhadas das telas de vagas: tipos, filtros na URL, badges, menu de ações. */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Badge, Button, Callout, Icon, Select } from '@/components/ui'
 import { Modal } from '@/components/Modal'
@@ -70,46 +71,62 @@ export const queryDe = (v: Record<string, string>) => {
   return s ? `?${s}` : ''
 }
 
+/** Filtros secundários: ficam recolhidos em "Mais filtros" (abrem sozinhos quando algum está ativo). */
+const FILTROS_SECUNDARIOS = ['de', 'ate', 'unidade', 'recrutador', 'gestor', 'modalidade', 'prioridade'] as const
+
 export function BarraFiltros({ valores, definir, limpar, ativos, opcoes, comBusca = true, comStatus = true }: {
   valores: Record<string, string>; definir: (k: string, v: string) => void; limpar: () => void; ativos: number; opcoes?: Opcoes; comBusca?: boolean; comStatus?: boolean
 }) {
   const todos = opcoes?.todosSetores ?? []
+  const secundariosAtivos = FILTROS_SECUNDARIOS.filter((k) => valores[k]).length
+  const [mais, setMais] = useState(secundariosAtivos > 0)
+  const abertos = mais
+  const campo = 'block min-w-0'
   return (
     <div className="card p-4 mb-5" role="search" aria-label="Filtros de vagas">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))_auto] gap-3 items-end">
         {comBusca && (
-          <label className="block"><span className="label">Buscar</span>
+          <label className={campo}><span className="label">Buscar</span>
             <input type="search" className="input" placeholder="Título, código ou cidade" value={valores.q} onChange={(e) => definir('q', e.target.value)} /></label>
         )}
-        <label className="block"><span className="label">Abertas de</span><input type="date" className="input" value={valores.de} onChange={(e) => definir('de', e.target.value)} /></label>
-        <label className="block"><span className="label">até</span><input type="date" className="input" value={valores.ate} onChange={(e) => definir('ate', e.target.value)} /></label>
-        <div><span className="label">Departamento</span>
-          <Select label="Departamento" className="w-full" value={valores.setor} onChange={(v) => definir('setor', v)}><option value="">Todos</option>{todos.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select></div>
-        <div><span className="label">Unidade</span>
-          <Select label="Unidade" className="w-full" value={valores.unidade} onChange={(v) => definir('unidade', v)}><option value="">Todas</option>{(opcoes?.unidades ?? []).map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select></div>
-        <div><span className="label">Recrutador(a)</span>
-          <Select label="Recrutador" className="w-full" value={valores.recrutador} onChange={(v) => definir('recrutador', v)}><option value="">Todos</option>{(opcoes?.recrutadores ?? []).map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select></div>
-        <div><span className="label">Gestor(a)</span>
-          <Select label="Gestor" className="w-full" value={valores.gestor} onChange={(v) => definir('gestor', v)}><option value="">Todos</option>{(opcoes?.pessoas ?? []).map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select></div>
         {comStatus && (
-          <div><span className="label">Situação</span>
+          <div className={campo}><span className="label">Situação</span>
             <Select label="Situação" className="w-full" value={valores.status} onChange={(v) => definir('status', v)}>
               <option value="">Todas</option>
               {(Object.keys(MAPA_STATUS_VAGA) as StatusVaga[]).map((s) => <option key={s} value={s}>{MAPA_STATUS_VAGA[s].rotulo}</option>)}
               <option value="em_aprovacao,ajustes,aprovada,publicada,pausada">Em aberto (qualquer etapa)</option>
             </Select></div>
         )}
-        <div><span className="label">Modalidade</span>
-          <Select label="Modalidade" className="w-full" value={valores.modalidade} onChange={(v) => definir('modalidade', v)}>
-            <option value="">Todas</option><option value="presencial">Presencial</option><option value="hibrido">Híbrido</option><option value="remoto">Remoto</option></Select></div>
-        <div><span className="label">Prioridade</span>
-          <Select label="Prioridade" className="w-full" value={valores.prioridade} onChange={(v) => definir('prioridade', v)}>
-            <option value="">Todas</option>{Object.entries(ROTULO_PRIORIDADE).map(([k, n]) => <option key={k} value={k}>{n}</option>)}</Select></div>
-        <div><span className="label">Prazo</span>
+        <div className={campo}><span className="label">Departamento</span>
+          <Select label="Departamento" className="w-full" value={valores.setor} onChange={(v) => definir('setor', v)}><option value="">Todos</option>{todos.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select></div>
+        <div className={campo}><span className="label">Prazo</span>
           <Select label="Prazo" className="w-full" value={valores.prazo} onChange={(v) => definir('prazo', v)}>
             <option value="">Qualquer</option><option value="proxima">Próximo do prazo (7 dias)</option><option value="vencida">Prazo vencido</option></Select></div>
+        <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-1">
+          <Button variant={abertos ? 'soft' : 'ghost'} icon="SlidersHorizontal" aria-expanded={abertos} aria-controls="filtros-vagas-mais" onClick={() => setMais(!abertos)}>
+            Mais filtros{secundariosAtivos > 0 && <span className="ml-0.5 rounded-full bg-brand text-white text-[10.5px] px-1.5 py-0.5 leading-none">{secundariosAtivos}</span>}
+          </Button>
+        </div>
       </div>
-      {ativos > 0 && <div className="mt-3"><Button size="sm" variant="subtle" icon="FilterX" onClick={limpar}>Limpar {ativos} filtro{ativos > 1 ? 's' : ''}</Button></div>}
+      {abertos && (
+        <div id="filtros-vagas-mais" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 pt-3 border-t border-line">
+          <label className={campo}><span className="label">Abertas de</span><input type="date" className="input" value={valores.de} onChange={(e) => definir('de', e.target.value)} /></label>
+          <label className={campo}><span className="label">até</span><input type="date" className="input" value={valores.ate} onChange={(e) => definir('ate', e.target.value)} /></label>
+          <div className={campo}><span className="label">Unidade</span>
+            <Select label="Unidade" className="w-full" value={valores.unidade} onChange={(v) => definir('unidade', v)}><option value="">Todas</option>{(opcoes?.unidades ?? []).map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select></div>
+          <div className={campo}><span className="label">Recrutador(a)</span>
+            <Select label="Recrutador" className="w-full" value={valores.recrutador} onChange={(v) => definir('recrutador', v)}><option value="">Todos</option>{(opcoes?.recrutadores ?? []).map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select></div>
+          <div className={campo}><span className="label">Gestor(a)</span>
+            <Select label="Gestor" className="w-full" value={valores.gestor} onChange={(v) => definir('gestor', v)}><option value="">Todos</option>{(opcoes?.pessoas ?? []).map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</Select></div>
+          <div className={campo}><span className="label">Modalidade</span>
+            <Select label="Modalidade" className="w-full" value={valores.modalidade} onChange={(v) => definir('modalidade', v)}>
+              <option value="">Todas</option><option value="presencial">Presencial</option><option value="hibrido">Híbrido</option><option value="remoto">Remoto</option></Select></div>
+          <div className={campo}><span className="label">Prioridade</span>
+            <Select label="Prioridade" className="w-full" value={valores.prioridade} onChange={(v) => definir('prioridade', v)}>
+              <option value="">Todas</option>{Object.entries(ROTULO_PRIORIDADE).map(([k, n]) => <option key={k} value={k}>{n}</option>)}</Select></div>
+        </div>
+      )}
+      {ativos > 0 && <div className="mt-3 flex items-center gap-2 flex-wrap text-[12.5px] text-muted"><span>{ativos} filtro{ativos > 1 ? 's' : ''} ativo{ativos > 1 ? 's' : ''}</span><Button size="sm" variant="subtle" icon="FilterX" onClick={() => { limpar(); setMais(false) }}>Limpar filtros</Button></div>}
     </div>
   )
 }
@@ -173,23 +190,59 @@ export function acoesDaLinha(v: VagaLinha, gestao: boolean, euId: string): { aco
   return { acoes, editar }
 }
 
+/**
+ * Menu de ações (⋯). A lista abre num portal com posição fixa: dentro de tabelas e quadros com rolagem horizontal
+ * (overflow-x: auto também liga a rolagem vertical) ela não é cortada nem cria barra de rolagem dentro da tabela.
+ */
 export function Menu({ rotulo, children }: { rotulo: string; children: (fechar: () => void) => ReactNode }) {
   const [aberto, setAberto] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null)
+  const botao = useRef<HTMLButtonElement>(null)
+  const lista = useRef<HTMLDivElement>(null)
+  const fechar = useCallback(() => setAberto(false), [])
+  const posicionar = useCallback(() => {
+    const r = botao.current?.getBoundingClientRect()
+    if (!r) return
+    const right = Math.max(8, window.innerWidth - r.right)
+    // Abre para cima quando falta espaço abaixo do botão.
+    const abaixo = window.innerHeight - r.bottom
+    setPos(abaixo < 300 && r.top > abaixo ? { bottom: window.innerHeight - r.top + 6, right } : { top: r.bottom + 6, right })
+  }, [])
   useEffect(() => {
     if (!aberto) return
-    const fora = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setAberto(false) }
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setAberto(false)
-    document.addEventListener('mousedown', fora); document.addEventListener('keydown', esc)
-    return () => { document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', esc) }
-  }, [aberto])
+    posicionar()
+    const fora = (e: MouseEvent) => { const t = e.target as Node; if (!lista.current?.contains(t) && !botao.current?.contains(t)) setAberto(false) }
+    const teclas = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setAberto(false); botao.current?.focus(); return }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+      const itens = [...(lista.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])]
+      if (!itens.length) return
+      e.preventDefault()
+      const i = itens.indexOf(document.activeElement as HTMLElement)
+      itens[(i + (e.key === 'ArrowDown' ? 1 : -1) + itens.length) % itens.length].focus()
+    }
+    // Rolar a página ou a tabela desloca o botão: fecha em vez de deixar a lista flutuando longe dele.
+    const rolou = (e: Event) => { if (!lista.current?.contains(e.target as Node)) setAberto(false) }
+    document.addEventListener('mousedown', fora); document.addEventListener('keydown', teclas)
+    window.addEventListener('scroll', rolou, true); window.addEventListener('resize', fechar)
+    return () => {
+      document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', teclas)
+      window.removeEventListener('scroll', rolou, true); window.removeEventListener('resize', fechar)
+    }
+  }, [aberto, posicionar, fechar])
   return (
-    <div className="relative inline-block" ref={ref}>
-      <button type="button" aria-haspopup="menu" aria-expanded={aberto} aria-label={rotulo} onClick={() => setAberto((a) => !a)}
-        className="h-9 w-9 rounded-lg border border-line text-muted hover:bg-winter hover:text-ink flex items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-brand">
+    <div className="relative inline-block">
+      <button ref={botao} type="button" aria-haspopup="menu" aria-expanded={aberto} aria-label={rotulo} onClick={() => setAberto((a) => !a)}
+        className={cn('h-9 w-9 rounded-lg border text-muted hover:bg-winter hover:text-ink flex items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-brand transition', aberto ? 'border-line-strong bg-winter text-ink' : 'border-line')}>
         <Icon name="MoreHorizontal" className="h-[18px] w-[18px]" />
       </button>
-      {aberto && <div role="menu" className="absolute right-0 top-10 z-30 min-w-[210px] rounded-xl border border-line bg-surface shadow-lg p-1.5">{children(() => setAberto(false))}</div>}
+      {aberto && pos && createPortal(
+        <div ref={lista} role="menu" aria-label={rotulo} style={{ position: 'fixed', ...pos }}
+          className="z-[150] min-w-[210px] max-h-[min(420px,calc(100vh-24px))] overflow-y-auto rounded-xl border border-line bg-surface shadow-lg p-1.5 animate-scale-in">
+          {children(fechar)}
+        </div>,
+        document.body,
+      )}
     </div>
   )
 }

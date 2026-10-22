@@ -73,8 +73,10 @@ export type Capacidade =
   | 'fin:pagar'                // retenções, registro manual de pagamento e conciliação
   | 'fin:autorizar'            // autorização de pagamento
   | 'fin:config'               // configurações financeiras e segregação de funções
+  | 'fin:disparar'             // disparos (manuais e automáticos) pedindo as notas fiscais do mês
   // Administração da plataforma
   | 'admin:usuarios'
+  | 'acessos:equipe'           // liderança: cadastra pessoas e cria/envia acessos (login) de colaboradores das áreas que lidera
   | 'admin:auditoria'
   | 'admin:privacidade'
   | 'admin:dados_demo'
@@ -82,7 +84,7 @@ export type Capacidade =
 const LIDERANCA: Capacidade[] = [
   'vagas:solicitar', 'vagas:ver', 'ats:ver', 'ats:avaliar', 'org:ver', 'cargos:ver',
   'lideranca:painel', 'lideranca:ver_disponibilidade_equipe', 'eventos:gerenciar_area',
-  'iniciativas:gerenciar', 'reembolsos:aprovar_area', 'comunicados:publicar', 'feedbacks:registrar',
+  'iniciativas:gerenciar', 'reembolsos:aprovar_area', 'comunicados:publicar', 'feedbacks:registrar', 'acessos:equipe',
 ]
 
 /** Recrutamento/pesquisas/cargos: o que o RH completo faz. */
@@ -95,7 +97,10 @@ const RH_V2: Capacidade[] = [
 ]
 
 /** Financeiro PJ do RH: cadastra, confere, aceita e registra pagamentos. Autorizar pagamento é de outra função (segregação). */
-const RH_FIN: Capacidade[] = ['fin:ver', 'fin:cadastrar', 'fin:conferir', 'fin:aprovar', 'fin:pagar']
+const RH_FIN: Capacidade[] = ['fin:ver', 'fin:cadastrar', 'fin:conferir', 'fin:aprovar', 'fin:pagar', 'fin:disparar']
+
+/** Papel Financeiro: opera todo o ciclo das notas (cobrança, conferência, aceite, autorização e pagamento) e os reembolsos. */
+const FINANCEIRO: Capacidade[] = [...RH_FIN, 'fin:autorizar', 'financeiro:gerenciar', 'relatorios:exportar']
 
 const RH: Capacidade[] = [
   ...LIDERANCA,
@@ -111,6 +116,7 @@ const RH: Capacidade[] = [
 export const MATRIZ: Record<Papel, Capacidade[]> = {
   colaborador: ['portal:usar', 'org:ver'],
   gestor: ['portal:usar', ...LIDERANCA],
+  financeiro: ['portal:usar', 'org:ver', ...FINANCEIRO],
   rh: ['portal:usar', ...RH],
   // Diretoria: visão executiva (indicadores agregados), sem editar cadastros.
   diretoria: ['portal:usar', 'lideranca:painel', 'lideranca:ver_disponibilidade_equipe', 'rh:painel', 'relatorios:exportar', 'comunicados:publicar', 'eventos:gerenciar',
@@ -121,6 +127,7 @@ export const MATRIZ: Record<Papel, Capacidade[]> = {
 export const PAPEL_LABEL: Record<Papel, string> = {
   colaborador: 'Colaborador(a)',
   gestor: 'Liderança',
+  financeiro: 'Financeiro',
   rh: 'RH & Pessoas',
   diretoria: 'Diretoria',
   admin: 'Administração',
@@ -129,6 +136,7 @@ export const PAPEL_LABEL: Record<Papel, string> = {
 export const PAPEL_DESC: Record<Papel, string> = {
   colaborador: 'Acessa a área pessoal: perfil, agenda, comunidade e as próprias solicitações.',
   gestor: 'Coordena áreas sob sua responsabilidade: disponibilidade da equipe, iniciativas e eventos da área.',
+  financeiro: 'Acompanha as notas fiscais de todos (kanban), dispara cobranças, confere, aprova, autoriza e registra pagamentos.',
   rh: 'Administra pessoas, contratos, documentos, notas fiscais, integração, eventos, pesquisas e gamificação.',
   diretoria: 'Consulta indicadores agregados e publica comunicados; não edita cadastros.',
   admin: 'Tudo do RH, mais usuários e papéis, auditoria, privacidade e dados de demonstração.',

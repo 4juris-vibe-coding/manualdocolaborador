@@ -368,11 +368,15 @@ export function PerfilComportamentalEditor({ pessoaId }: { pessoaId: string }) {
         <div>
           <h4 className="text-[12px] font-bold uppercase text-muted mb-2">DISC</h4>
           {CATEGORIAS_DISC.map((d) => <SliderBipolar key={d.chave} esquerda={`${d.label}: ${disc[d.chave]}`} valor={disc[d.chave]} cor={d.cor} onChange={(v) => setDisc({ ...disc, [d.chave]: v })} />)}
-          <div className="mt-4"><BarrasDisc compacto valores={CATEGORIAS_DISC.map((d) => ({ rotulo: d.label, valor: disc[d.chave], cor: d.cor }))} /></div>
+        </div>
+        <div>
+          <div className="md:mt-7"><BarrasDisc compacto valores={CATEGORIAS_DISC.map((d) => ({ rotulo: d.label, valor: disc[d.chave], cor: d.cor }))} /></div>
           {!proprio && <Field label="Fonte" htmlFor="pc-f" className="mt-4"><Dropdown id="pc-f" className="input" value={fonte} onChange={(e) => setFonte(e.target.value as typeof fonte)}><option value="assessment">Assessment aplicado</option><option value="autodeclarado">Autodeclarado</option></Dropdown></Field>}
         </div>
-        <div className="max-h-[420px] overflow-y-auto pr-1">
-          <h4 className="text-[12px] font-bold uppercase text-muted mb-2">Traços (24)</h4>
+      </div>
+      <div className="mt-5">
+        <h4 className="text-[12px] font-bold uppercase text-muted mb-2">Traços (24)</h4>
+        <div className="grid sm:grid-cols-2 gap-x-6">
           {TRACOS.map((t) => <SliderBipolar key={t.chave} esquerda={t.esquerda} direita={t.direita} valor={tracos[t.chave] ?? 50} onChange={(v) => setTracos({ ...tracos, [t.chave]: v })} />)}
         </div>
       </div>

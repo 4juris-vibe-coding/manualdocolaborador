@@ -42,12 +42,12 @@ export function Modal({
   if (!open) return null
   return (
     <div
-      className="fixed inset-0 z-[200] bg-midnight/40 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto flex items-start justify-center animate-fade-in"
+      className="fixed inset-0 z-[200] bg-midnight/40 backdrop-blur-sm p-3 sm:p-6 flex items-center justify-center animate-fade-in"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div ref={caixa} role="dialog" aria-modal="true" aria-labelledby={title ? tituloId : undefined} tabIndex={-1} className={cn('bg-surface rounded-3xl shadow-lg w-full my-auto animate-scale-in outline-none', wide ? 'max-w-3xl' : 'max-w-lg')}>
+      <div ref={caixa} role="dialog" aria-modal="true" aria-labelledby={title ? tituloId : undefined} tabIndex={-1} className={cn('bg-surface rounded-3xl shadow-lg w-full max-h-full flex flex-col animate-scale-in outline-none', wide ? 'max-w-3xl' : 'max-w-lg')}>
         {(title || subtitle) && (
-          <div className="flex items-start justify-between gap-4 px-6 pt-6 pb-4">
+          <div className="flex items-start justify-between gap-4 px-5 sm:px-6 pt-5 sm:pt-6 pb-4 shrink-0">
             <div>
               {title && <h2 id={tituloId} className="text-[19px] font-bold text-ink">{title}</h2>}
               {subtitle && <p className="text-[13px] text-muted mt-1">{subtitle}</p>}
@@ -57,8 +57,9 @@ export function Modal({
             </button>
           </div>
         )}
-        <div className="px-5 sm:px-6 pb-2 max-h-[64vh] overflow-y-auto">{children}</div>
-        {footer && <div className="flex items-center justify-end gap-2.5 px-5 sm:px-6 py-4 sm:py-5 border-t border-line mt-3 flex-wrap">{footer}</div>}
+        {/* Uma única área rolável: cabeçalho e ações ficam sempre visíveis, e a janela nunca passa da altura da tela. */}
+        <div className={cn('px-5 sm:px-6 pb-2 flex-1 min-h-0 overflow-y-auto overscroll-contain', !(title || subtitle) && 'pt-5 sm:pt-6')}>{children}</div>
+        {footer && <div className="flex items-center justify-end gap-2.5 px-5 sm:px-6 py-4 border-t border-line mt-3 flex-wrap shrink-0">{footer}</div>}
       </div>
     </div>
   )

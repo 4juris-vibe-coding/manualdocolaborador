@@ -33,7 +33,7 @@ export function notaJson(n: Linha, gente: Map<string, Linha>) {
   }
 }
 
-async function notaOu404(ex: Executor, id: string, travar = false): Promise<Linha> {
+export async function notaOu404(ex: Executor, id: string, travar = false): Promise<Linha> {
   const r = await ex.query(`select n.*, n.data_emissao::text as emissao_t from fin_notas n where n.id = $1 ${travar ? 'for update' : ''}`, [uuid(id)])
   if (!r.rows[0]) throw naoEncontrado('Nota fiscal não encontrada.')
   return r.rows[0]

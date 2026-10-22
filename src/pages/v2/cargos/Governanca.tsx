@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PageHeader, Card, CardHead, Button, Badge, EmptyState, Field } from '@/components/ui'
+import { PageHeader, Card, CardHead, Button, Badge, EmptyState, Field, useMostrarMais } from '@/components/ui'
 import { Modal } from '@/components/Modal'
 import { Aguardar } from '@/components/v2/estados'
 import { TelaCargos, MOTIVO_DUP } from '@/components/v2/cargos/comum'
@@ -83,7 +83,7 @@ export default function Governanca() {
             <Card>
               <CardHead title="Cargos sem ficha oficial" sub={`${d.semFicha.length} cargo(s)`} />
               {d.semFicha.length === 0 ? <EmptyState icon="BadgeCheck" title="Todos os cargos têm ficha" /> : (
-                <ul className="divide-y divide-line max-h-72 overflow-y-auto">{d.semFicha.map((x) => <li key={x.cargoId} className="px-5 py-3 text-[13px]"><Link to={`/cargos/${x.cargoId}`} className="font-semibold text-ink hover:text-brand">{x.nome}</Link></li>)}</ul>
+                <ListaSemFicha itens={d.semFicha} />
               )}
             </Card>
           </div>
@@ -95,5 +95,16 @@ export default function Governanca() {
         {dec && <Field label={dec.tipo === 'rejeitar' ? 'Justificativa' : 'Comentário (opcional)'} required={dec.tipo === 'rejeitar'}><textarea className="input !h-auto py-2.5" rows={3} value={dec.just} onChange={(e) => setDec({ ...dec, just: e.target.value })} /></Field>}
       </Modal>
     </TelaCargos>
+  )
+}
+
+/** Cargos sem ficha: lista com "mostrar mais" no lugar de uma caixa com rolagem própria. */
+function ListaSemFicha({ itens }: { itens: { cargoId: string; nome: string }[] }) {
+  const mais = useMostrarMais(itens.length, 8, 20)
+  return (
+    <div className="pb-2">
+      <ul className="divide-y divide-line">{itens.slice(0, mais.limite).map((x) => <li key={x.cargoId} className="px-5 py-3 text-[13px]"><Link to={`/cargos/${x.cargoId}`} className="font-semibold text-ink hover:text-brand">{x.nome}</Link></li>)}</ul>
+      {mais.botao}
+    </div>
   )
 }

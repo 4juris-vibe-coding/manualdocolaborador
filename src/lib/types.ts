@@ -8,7 +8,7 @@
    IDs: strings estáveis (no backend, recomenda-se UUID).
    ============================================================ */
 
-export type Papel = 'colaborador' | 'gestor' | 'rh' | 'admin' | 'diretoria'
+export type Papel = 'colaborador' | 'gestor' | 'financeiro' | 'rh' | 'admin' | 'diretoria'
 
 /** Situação da parceria na plataforma (não é status trabalhista). */
 export type StatusParceria = 'integracao' | 'ativo' | 'pendente' | 'encerrado'

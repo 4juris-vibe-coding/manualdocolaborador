@@ -17,6 +17,7 @@ interface Painel {
   respostasPorDia: { data: string; qtd: number }[]
   participacaoPorArea: { setorId: string; area: string; convidados: number; respostas: number | null; taxa: number | null; suprimido: boolean }[]
   resultadosRecentes: { id: string; titulo: string; respostas: number; taxaResposta: number | null; encerradaEm?: string }[]
+  acoes?: { abertas: number; atrasadas: number; itens: { id: string; pesquisaId: string; pesquisaTitulo: string; acao: string; prazo: string | null; responsavelNome: string | null; atrasada: boolean }[] }
 }
 
 export default function PainelPesquisas() {
@@ -77,6 +78,23 @@ export default function PainelPesquisas() {
                     )}
                   </Card>
                 </div>
+
+                {d.acoes && d.acoes.abertas > 0 && (
+                  <Card>
+                    <CardHead title="Planos de ação em aberto" sub={`${d.acoes.abertas} em aberto${d.acoes.atrasadas ? ` · ${d.acoes.atrasadas} atrasada(s)` : ''}. Ações registradas a partir dos resultados.`} />
+                    <ul className="divide-y divide-line">
+                      {d.acoes.itens.map((a) => (
+                        <li key={a.id} className="px-5 py-3 flex items-center gap-3 flex-wrap">
+                          <div className="min-w-0 flex-1">
+                            <Link to={`/pesquisas-rh/${a.pesquisaId}/resultados`} className="font-semibold text-ink hover:text-brand block truncate">{a.acao}</Link>
+                            <div className="text-[12px] text-muted truncate">{a.pesquisaTitulo} · {a.responsavelNome ?? 'sem responsável'} · {a.prazo ? `prazo ${dataBR(a.prazo)}` : 'sem prazo'}</div>
+                          </div>
+                          {a.atrasada && <Badge tone="danger">Atrasada</Badge>}
+                        </li>
+                      ))}
+                    </ul>
+                  </Card>
+                )}
 
                 <Card>
                   <CardHead title="Participação por área" sub="Áreas com poucas respostas ficam ocultas para proteger o anonimato." />

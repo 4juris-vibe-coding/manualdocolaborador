@@ -75,8 +75,8 @@ export const enviarEmailRedefinicao = (para: string, link: string) =>
 
 /** Coluna com a data do último e-mail de acesso enviado (aditiva; também está em db/schema.sql). */
 let colunaConvite: Promise<unknown> | undefined
-export function garantirColunaConvite(): Promise<unknown> {
-  colunaConvite ??= db().query('alter table usuarios add column if not exists convite_enviado_em timestamptz').catch((e) => { colunaConvite = undefined; throw e })
+export function garantirColunaConvite(ex: Pick<pg.Pool, 'query'> = db()): Promise<unknown> {
+  colunaConvite ??= ex.query('alter table usuarios add column if not exists convite_enviado_em timestamptz').catch((e) => { colunaConvite = undefined; throw e })
   return colunaConvite
 }
 
@@ -120,8 +120,8 @@ create table if not exists solicitacoes_acesso (
 create unique index if not exists solicitacoes_pendente_email_uk on solicitacoes_acesso (lower(email)) where status = 'pendente';
 alter table solicitacoes_acesso enable row level security;`
 let tabelasCadastro: Promise<unknown> | undefined
-export function garantirTabelasCadastro(): Promise<unknown> {
-  tabelasCadastro ??= db().query(SQL_CADASTRO).catch((e) => { tabelasCadastro = undefined; throw e })
+export function garantirTabelasCadastro(ex: Pick<pg.Pool, 'query'> = db()): Promise<unknown> {
+  tabelasCadastro ??= ex.query(SQL_CADASTRO).catch((e) => { tabelasCadastro = undefined; throw e })
   return tabelasCadastro
 }
 

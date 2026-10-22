@@ -1,7 +1,7 @@
 /* Organograma inteligente: gerado dos cadastros reais (gestor imediato, área, função, unidade). */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Button, Callout, Card, EmptyState, PageHeader, Select, Tabs } from '@/components/ui'
+import { Button, Callout, Card, EmptyState, PageHeader, Segmentado, Select, Tabs } from '@/components/ui'
 import { Aguardar, SoComBanco } from '@/components/v2/estados'
 import { Drawer } from '@/components/v2/Drawer'
 import { useTem } from '@/data/v2/acesso'
@@ -33,6 +33,8 @@ function MapaTab() {
   const [foco, setFoco] = useState<string | null>(null)
   const [texto, setTexto] = useState('')
   const mapa = useRef<MapaHandle>(null)
+  // Expandir/recolher tudo muda o tamanho do mapa de uma vez: o visor reenquadra (expandir um único nó não mexe na vista).
+  const [geracao, setGeracao] = useState(0)
 
   const o = useOrganograma(filtros)
   const { resultados, buscando } = useBusca(texto)
@@ -92,12 +94,8 @@ function MapaTab() {
                 </div>
                 <div>
                   <span className="label" id="org-visao-rotulo">Visão</span>
-                  <div role="group" aria-labelledby="org-visao-rotulo" className="inline-flex rounded-xl border border-line overflow-hidden">
-                    {([['toda', 'Toda a organização'], ['departamento', 'Departamento'], ['equipe', 'Equipe']] as const).map(([k, rot]) => (
-                      <button key={k} type="button" aria-pressed={visao === k} onClick={() => mudarVisao(k)}
-                        className={`h-10 px-3.5 text-[12.5px] font-semibold transition ${visao === k ? 'bg-brand text-white' : 'bg-surface text-ink-2 hover:bg-winter'}`}>{rot}</button>
-                    ))}
-                  </div>
+                  <Segmentado rotuloId="org-visao-rotulo" valor={visao} onChange={mudarVisao}
+                    opcoes={[['toda', 'Toda a organização'], ['departamento', 'Departamento'], ['equipe', 'Equipe']] as const} />
                 </div>
                 {visao === 'departamento' && (
                   <div><label className="label" htmlFor="org-f-area">Departamento</label>
@@ -123,12 +121,9 @@ function MapaTab() {
                   {d.encerradas.length > 0 ? ` · ${plural(d.encerradas.length, 'parceria encerrada fora do mapa', 'parcerias encerradas fora do mapa')}` : ''}
                 </p>
                 <div className="flex gap-2 flex-wrap">
-                  <Button size="sm" variant="ghost" icon="ChevronsDown" onClick={o.expandirTudo} disabled={d.parcial}>Expandir tudo</Button>
-                  <Button size="sm" variant="ghost" icon="ChevronsUp" onClick={o.recolherTudo}>Recolher tudo</Button>
-                  <div role="group" aria-label="Forma de exibição" className="inline-flex rounded-lg border border-line overflow-hidden">
-                    <button type="button" aria-pressed={modo === 'mapa'} onClick={() => setModo('mapa')} className={`h-9 px-3 text-[12.5px] font-semibold ${modo === 'mapa' ? 'bg-brand text-white' : 'bg-surface text-ink-2 hover:bg-winter'}`}>Mapa</button>
-                    <button type="button" aria-pressed={modo === 'lista'} onClick={() => setModo('lista')} className={`h-9 px-3 text-[12.5px] font-semibold ${modo === 'lista' ? 'bg-brand text-white' : 'bg-surface text-ink-2 hover:bg-winter'}`}>Lista</button>
-                  </div>
+                  <Button size="sm" variant="ghost" icon="ChevronsDown" onClick={() => { o.expandirTudo(); setGeracao((g) => g + 1) }} disabled={d.parcial}>Expandir tudo</Button>
+                  <Button size="sm" variant="ghost" icon="ChevronsUp" onClick={() => { o.recolherTudo(); setGeracao((g) => g + 1) }}>Recolher tudo</Button>
+                  <Segmentado tamanho="sm" rotulo="Forma de exibição" valor={modo} onChange={setModo} opcoes={[['mapa', 'Mapa'], ['lista', 'Lista']] as const} />
                 </div>
               </div>
             </Card>
@@ -147,7 +142,8 @@ function MapaTab() {
                 action={temFiltro ? <Button variant="ghost" onClick={() => { setFiltros(SEM_FILTRO); setVisao('toda') }}>Limpar filtros</Button> : undefined} /></Card>
             ) : modo === 'mapa' ? (
               <MapaOrg ref={mapa} visiveis={lista} expandidos={o.expandidos} carregandoRamo={o.carregandoRamo} faltaCarregar={o.faltaCarregar}
-                selecionado={selecionado} onSelecionar={setSelecionado} onAlternar={(id) => void o.alternar(id)} />
+                selecionado={selecionado} onSelecionar={setSelecionado} onAlternar={(id) => void o.alternar(id)}
+                chaveAjuste={`${visao}|${filtros.setor}|${filtros.unidade}|${filtros.gestor}|${geracao}`} />
             ) : (
               <ArvoreLista visiveis={lista} expandidos={o.expandidos} carregandoRamo={o.carregandoRamo} faltaCarregar={o.faltaCarregar}
                 selecionado={selecionado} focoChave={foco} onSelecionar={setSelecionado} onAlternar={(id) => void o.alternar(id)} />

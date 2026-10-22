@@ -129,7 +129,8 @@ export interface Politica {
 
 const soPriv: Politica = { escrever: (_a, n, c) => { exigirPriv(c); return n } }
 const comCap = (cap: Capacidade): Politica => ({ escrever: (_a, n, c) => { exigirCap(c, cap); return n } })
-const proprioOuPriv = (campo = 'colaboradorId', gerencial = false) => (r: Obj, c: CtxLegado) => c.priv || (gerencial && c.diretoria) || r[campo] === meuId(c)
+// Leitura gerencial: diretoria e quem opera o financeiro (fin:ver) também veem.
+const proprioOuPriv = (campo = 'colaboradorId', gerencial = false) => (r: Obj, c: CtxLegado) => c.priv || (gerencial && (c.diretoria || tem(c, 'fin:ver'))) || r[campo] === meuId(c)
 
 /* ---------- pessoas ---------- */
 /** Campos de terceiros visíveis a quem não é RH (diretório e organização). */
@@ -138,6 +139,9 @@ const PUBLICOS = ['id', 'nome', 'nomeSocial', 'email', 'telefone', 'avatarCor', 
 const AUTO_EDITAVEIS = new Set(['nomeSocial', 'telefone', 'cidade', 'uf', 'nascimento', 'banco', 'agencia', 'conta', 'pixTipo', 'pixChave',
   'emergenciaNome', 'emergenciaTelefone', 'emergenciaParentesco', 'endereco', 'celular', 'emailPessoal', 'escolaridade', 'curso',
   'tamanhoCamisa', 'fusoHorario', 'privacidade', 'diversidade', 'perfil'])
+
+/** Campos que a liderança informa ao cadastrar alguém da equipe (o restante do cadastro é do RH). */
+const CADASTRO_LIDERANCA = new Set([...PUBLICOS, 'razaoSocial', 'cnpj'])
 
 const colaboradores: Politica = {
   redigir: (r, c) => {
@@ -155,7 +159,19 @@ const colaboradores: Politica = {
   },
   escrever: (antes, novo, c) => {
     if (!antes) {
-      exigir(tem(c, 'pessoas:gerenciar'), 'Apenas RH ou administração cadastram pessoas.')
+      if (!tem(c, 'pessoas:gerenciar')) {
+        // Liderança: cadastra colaboradores (só esse papel) nas áreas que lidera, com o cadastro mínimo; o resto é com o RH.
+        exigir(tem(c, 'acessos:equipe') && c.lidera.size > 0, 'Apenas RH, administração ou a liderança da área cadastram pessoas.')
+        exigir(novo!.papel === 'colaborador', 'A liderança cadastra apenas colaboradores. Outros papéis são concedidos pela administração.')
+        exigir(c.lidera.has(novo!.setorId), 'Você só cadastra pessoas nas áreas que lidera.')
+        exigir(['integracao', 'ativo'].includes(novo!.status), 'Situação inválida para um novo cadastro.')
+        exigir(Object.keys(novo!).every((k) => CADASTRO_LIDERANCA.has(k)), 'Dados contratuais, bancários e pessoais são registrados pelo RH.')
+        const resp = novo!.responsavelId
+        exigir(!resp || resp === meuId(c) || lideraPessoa(c, resp), 'Gestor imediato inválido.')
+        const cargo = novo!.cargoId ? (c.estado.cargos as Obj[] | undefined ?? []).find((g) => g.id === novo!.cargoId) : null
+        exigir(!novo!.cargoId || (!!cargo && (!cargo.setorId || c.lidera.has(cargo.setorId))), 'Função inválida para esta área.')
+        return novo
+      }
       if (!c.admin && !['colaborador', 'gestor'].includes(novo!.papel)) recusa('Apenas a administração concede este papel.')
       return novo
     }
@@ -190,12 +206,12 @@ const colaboradores: Politica = {
 
 /* ---------- financeiro legado ---------- */
 const reembolsos: Politica = {
-  ver: (r, c) => c.priv || c.diretoria || r.colaboradorId === meuId(c) || (tem(c, 'reembolsos:aprovar_area') && c.lidera.has(setorDe(c, r.colaboradorId) ?? '')),
+  ver: (r, c) => c.priv || c.diretoria || tem(c, 'financeiro:gerenciar') || r.colaboradorId === meuId(c) || (tem(c, 'reembolsos:aprovar_area') && c.lidera.has(setorDe(c, r.colaboradorId) ?? '')),
   escrever: (antes, novo, c) => {
     const me = meuId(c)
     if (!antes) {
-      if (tem(c, 'financeiro:gerenciar')) return novo
-      exigir(novo!.colaboradorId === me, 'Você só pode pedir reembolso em seu nome.')
+      // O financeiro registra pedidos em nome de outras pessoas, mas todo pedido nasce pendente (a aprovação é outra etapa).
+      exigir(tem(c, 'financeiro:gerenciar') || novo!.colaboradorId === me, 'Você só pode pedir reembolso em seu nome.')
       exigir(novo!.status === 'pendente' && !novo!.aprovadorId && !novo!.pagoEm && !novo!.aprovadoEm, 'Pedido de reembolso inválido.')
       return novo
     }
@@ -210,7 +226,12 @@ const reembolsos: Politica = {
     if (!igual(antes.status, novo.status) && (['pagamento', 'pago'].includes(novo.status) || ['pagamento', 'pago'].includes(antes.status))) {
       recusa('O pagamento de reembolsos é feito em Financeiro › Contas a pagar.')
     }
-    if (tem(c, 'financeiro:gerenciar')) return novo
+    if (tem(c, 'financeiro:gerenciar')) {
+      // Depois de aprovado, o pedido é a base da conta a pagar (contas.ts copia o valor): só a decisão pode mudar.
+      exigir(antes.status === 'pendente' || soMudou(antes, novo, ['status', 'aprovadorId', 'aprovadoEm']),
+        'Reembolso já decidido: valor, categoria e dados do pedido não podem mais ser alterados.')
+      return novo
+    }
     const lider = tem(c, 'reembolsos:aprovar_area') && c.lidera.has(setorDe(c, antes.colaboradorId) ?? '')
     exigir(lider && antes.status === 'pendente' && ['aprovado', 'recusado'].includes(novo.status) && soMudou(antes, novo, ['status', 'aprovadorId', 'aprovadoEm'])
       && (novo.status !== 'aprovado' || novo.aprovadorId === me), 'A liderança aprova ou recusa pedidos pendentes da própria área; pagamento é com o financeiro.')
@@ -520,7 +541,8 @@ export const POLITICAS: Record<string, Politica> = {
   unidades: comCap('estrutura:gerenciar'),
   cargos: {
     redigir: (r, c) => {
-      if (c.priv || tem(c, 'cargos:ver_faixas') || !r.faixaValor || r.faixaValor.visivel) return r
+      // "Visível para as pessoas desta função" (Funcoes.tsx): só quem exerce a função, não toda a empresa.
+      if (c.priv || tem(c, 'cargos:ver_faixas') || !r.faixaValor || (r.faixaValor.visivel && c.eu.cargoId === r.id)) return r
       const { faixaValor: _f, ...resto } = r
       return resto
     },

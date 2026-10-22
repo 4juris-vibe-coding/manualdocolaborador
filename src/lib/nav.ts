@@ -94,6 +94,7 @@ export const NAV: NavGroup[] = [
   {
     title: 'Gestão de prestadores', area: 'rh',
     items: [
+      { to: '/financeiro/kanban', label: 'Kanban de notas', icon: 'KanbanSquare', desc: 'Quem já mandou a nota, quem falta, cobranças e pagamentos, por competência.', cap: 'fin:ver', soApi: true },
       { to: '/financeiro', label: 'Painel financeiro', icon: 'Landmark', desc: 'Contratado, faturado, aprovado, previsto e pago; alertas e agenda.', cap: 'fin:ver', soApi: true },
       { to: '/financeiro/contratos', label: 'Contratos', icon: 'FileSignature', desc: 'Contratos PJ: vigência, aditivos, renovação e encerramento.', cap: 'fin:ver', soApi: true },
       { to: '/financeiro/fornecedores', label: 'Fornecedores', icon: 'Building2', desc: 'Empresas e autônomos contratados, dados fiscais e de pagamento.', cap: 'fin:ver', soApi: true },

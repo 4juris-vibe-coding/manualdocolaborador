@@ -12,6 +12,7 @@ import { ORIGENS, ROTULO_ORIGEM, ROTULO_STATUS_CANDIDATURA } from '@/domain/v2/a
 import { cn } from '@/lib/utils'
 import { numero } from '@/lib/fmt'
 import { Dropdown } from '@/components/Dropdown'
+import { BadgeStatus } from '@/components/v2/vagas/comum'
 
 interface Cartao {
   id: string; nome: string; email: string; cidade?: string; uf?: string; etapaId: string; status: string; origem: string
@@ -43,7 +44,7 @@ export default function Pipeline() {
                 <button key={v.id} onClick={() => setSp({ vaga: v.id })} className="card p-5 text-left hover:border-brand transition outline-none focus-visible:ring-2 focus-visible:ring-brand">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0"><div className="text-[11.5px] text-muted font-semibold">{v.codigo}</div><div className="font-bold text-ink truncate">{v.titulo}</div></div>
-                    <Badge tone={v.status === 'publicada' ? 'success' : v.status === 'pausada' ? 'warning' : 'neutral'} dot>{v.status}</Badge>
+                    <BadgeStatus valor={v.status} />
                   </div>
                   <div className="mt-4 flex gap-5 text-[12.5px] text-muted">
                     <span><b className="text-ink text-[18px]">{v.ativas}</b> em andamento</span>

@@ -335,3 +335,25 @@ export function resultadosParaCsv(r: ResultadosPesquisa): string {
   }
   return '﻿' + linhas.map((l) => l.map(csvCelula).join(';')).join('\n') + '\n'
 }
+
+/* ---------------- destaques por dimensão ----------------
+   Critério (escala de 1 a 5, Likert/estrelas):
+   - ponto forte: média ≥ 4,0 (a resposta típica é "concordo");
+   - merece investigação: média < 3,5 (a resposta típica fica entre neutro e discordo).
+   Só entram dimensões com ao menos `minRespostas` respostas. É um resultado OBSERVADO;
+   a causa é hipótese a investigar com a equipe, nunca conclusão. */
+export const LIMIAR_FORTE = 4
+export const LIMIAR_ATENCAO = 3.5
+
+export interface Destaques {
+  fortes: ResultadosPesquisa['dimensoes']
+  atencao: ResultadosPesquisa['dimensoes']
+}
+
+export function destaquesDimensoes(dims: ResultadosPesquisa['dimensoes'], minRespostas = 1, max = 3): Destaques {
+  const validas = dims.filter((d) => d.n >= minRespostas)
+  return {
+    fortes: validas.filter((d) => d.media >= LIMIAR_FORTE).sort((a, b) => b.media - a.media).slice(0, max),
+    atencao: validas.filter((d) => d.media < LIMIAR_ATENCAO).sort((a, b) => a.media - b.media).slice(0, max),
+  }
+}
