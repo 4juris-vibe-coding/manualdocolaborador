@@ -13,6 +13,8 @@ import { gerarSenha } from '@/components/AcessoPortal'
 import { hojeISO } from '@/domain/datas'
 import { Dropdown } from '@/components/Dropdown'
 import { ImportarColaboradores } from '@/components/ImportarColaboradores'
+import { enviarAcessos } from '@/components/envioAcesso'
+import { dataBR } from '@/lib/fmt'
 
 const CAP_LABEL: Partial<Record<Capacidade, string>> = {
   'portal:usar': 'Área pessoal', 'lideranca:painel': 'Painel da liderança', 'lideranca:ver_disponibilidade_equipe': 'Ver disponibilidade da equipe',
@@ -38,6 +40,14 @@ export default function Admin() {
   const [verSenha, setVerSenha] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [importar, setImportar] = useState(false)
+  const [enviando, setEnviando] = useState<string | null>(null)
+  const [confirmarEnvio, setConfirmarEnvio] = useState(false)
+  const enviarEmailAcesso = async (ids: string[], chave: string) => {
+    setEnviando(chave)
+    await enviarAcessos(ids)
+    setEnviando(null)
+    void recarregarAcessos()
+  }
   const recarregarAcessos = () => listarAcessos().then((l) => setAcessos(Object.fromEntries(l.map((a) => [a.colaboradorId, a]))))
   useEffect(() => { if (MODO_API && tab === 'usuarios') void recarregarAcessos() }, [tab])
   const [novo, setNovo] = useState<{ nome: string; email: string; papel: Papel; setorId: string; senha: string } | null>(null)
@@ -132,6 +142,8 @@ export default function Admin() {
     .filter((c) => papel === 'todos' || c.papel === papel)
     .filter((c) => !q.trim() || `${c.nome} ${c.email}`.toLowerCase().includes(q.trim().toLowerCase()))
     .sort((a, b) => a.nome.localeCompare(b.nome)), [s.colaboradores, q, papel])
+  // Quem ainda não entrou no portal (com ou sem login criado): candidatos ao e-mail de acesso.
+  const nuncaEntraram = s.colaboradores.filter((c) => c.status !== 'encerrado' && c.id !== me.id && !acessos[c.id]?.ultimoAcesso && acessos[c.id]?.ativo !== false)
   const caps = Object.keys(CAP_LABEL) as Capacidade[]
 
   return (
@@ -260,6 +272,11 @@ export default function Admin() {
           <div className="flex flex-wrap gap-3 mb-4">
             <SearchBox value={q} onChange={setQ} placeholder="Nome ou e-mail" label="Buscar usuários" />
             <Select label="Papel" value={papel} onChange={setPapel}><option value="todos">Todos os papéis</option>{PAPEIS.map((p) => <option key={p} value={p}>{PAPEL_LABEL[p]}</option>)}</Select>
+            {MODO_API && nuncaEntraram.length > 0 && (
+              <Button icon="Mail" variant="soft" className="ml-auto" disabled={!!enviando} onClick={() => setConfirmarEnvio(true)}>
+                {enviando === 'todos' ? 'Enviando…' : `Enviar acesso por e-mail (${nuncaEntraram.length})`}
+              </Button>
+            )}
           </div>
           <Card>
             <Tabela minWidth={720}>
@@ -283,6 +300,11 @@ export default function Admin() {
                           {acessos[c.id]
                             ? <Badge tone={acessos[c.id].ativo ? 'success' : 'neutral'} dot>{acessos[c.id].ativo ? 'Com acesso' : 'Desativado'}</Badge>
                             : <Badge tone="warning" dot>Sem acesso</Badge>}
+                          {c.id !== me.id && !acessos[c.id]?.ultimoAcesso && acessos[c.id]?.ativo !== false && (
+                            <Button size="sm" variant="soft" icon="Mail" disabled={!!enviando} onClick={() => void enviarEmailAcesso([c.id], c.id)}>
+                              {enviando === c.id ? 'Enviando…' : acessos[c.id]?.conviteEnviadoEm ? 'Reenviar e-mail' : 'Enviar por e-mail'}
+                            </Button>
+                          )}
                           <Button size="sm" variant={acessos[c.id] ? 'soft' : 'primary'} icon={acessos[c.id] ? 'KeyRound' : 'UserPlus'} onClick={() => abrirAcesso(c.id)}>
                             {acessos[c.id] ? 'Nova senha' : 'Criar acesso'}
                           </Button>
@@ -290,6 +312,11 @@ export default function Admin() {
                             <Button size="sm" variant="ghost" onClick={() => void alternarAtivo(c.id, !acessos[c.id].ativo)}>{acessos[c.id].ativo ? 'Desativar' : 'Reativar'}</Button>
                           )}
                         </div>
+                        {acessos[c.id] && (
+                          <div className="text-[11px] text-muted mt-1">
+                            {acessos[c.id].ultimoAcesso ? `Último acesso em ${dataBR(acessos[c.id].ultimoAcesso)}` : acessos[c.id].conviteEnviadoEm ? `E-mail enviado em ${dataBR(acessos[c.id].conviteEnviadoEm)} · ainda não entrou` : 'Ainda não entrou'}
+                          </div>
+                        )}
                       </td>
                     )}
                   </tr>
@@ -401,6 +428,9 @@ export default function Admin() {
         texto={recusando ? `${recusando.nome} (${recusando.email}) não terá acesso ao portal. Se tentar entrar, verá que o cadastro não foi aprovado.` : ''}
         onConfirm={() => void recusar()} />
 
+      <ConfirmModal open={confirmarEnvio} onClose={() => setConfirmarEnvio(false)} titulo="Enviar o acesso por e-mail?" confirmar={`Enviar para ${nuncaEntraram.length}`} perigo={false}
+        onConfirm={() => { setConfirmarEnvio(false); void enviarEmailAcesso(nuncaEntraram.map((c) => c.id), 'todos') }}
+        texto={<>Cada uma das <b>{nuncaEntraram.length} pessoa(s)</b> que ainda não entraram no portal recebe um e-mail com o login e um link para criar a senha (válido por 7 dias). Quem ainda não tem login ganha um agora. Um novo envio invalida o link anterior da pessoa.</>} />
       <ConfirmModal open={novoLink} onClose={() => setNovoLink(false)} titulo="Gerar um novo link?" confirmar="Gerar novo link" perigo={false}
         texto="O link atual deixa de funcionar. Quem ainda não se cadastrou vai precisar do link novo. Solicitações já enviadas continuam aqui."
         onConfirm={() => void trocarLink('gerar')} />

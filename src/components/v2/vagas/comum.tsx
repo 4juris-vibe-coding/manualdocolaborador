@@ -118,7 +118,7 @@ export function BarraFiltros({ valores, definir, limpar, ativos, opcoes, comBusc
 export type AcaoMenu = AcaoVaga | 'arquivar' | 'desarquivar'
 export const ROTULO_ACAO: Record<AcaoMenu, { rotulo: string; icon: string; sucesso: string; motivo?: boolean; perigo?: boolean }> = {
   solicitar: { rotulo: 'Solicitar aprovação', icon: 'Send', sucesso: 'Solicitação enviada para aprovação.' },
-  publicar: { rotulo: 'Publicar', icon: 'Globe', sucesso: 'Vaga publicada.' },
+  publicar: { rotulo: 'Publicar vaga', icon: 'Globe', sucesso: 'Vaga publicada no portal de carreiras.' },
   pausar: { rotulo: 'Pausar', icon: 'Pause', sucesso: 'Vaga pausada.' },
   retomar: { rotulo: 'Retomar', icon: 'Play', sucesso: 'Vaga retomada.' },
   encerrar: { rotulo: 'Encerrar', icon: 'CircleCheck', sucesso: 'Vaga encerrada.', motivo: true },
@@ -165,8 +165,9 @@ export function acoesDaLinha(v: VagaLinha, gestao: boolean, euId: string): { aco
   const editar = q === 'solicitante' ? gestao || sol : q === 'gestao' ? gestao : false
   const acoes: AcaoMenu[] = []
   const add = (a: AcaoVaga) => { if (proximoStatus(v.status, a)) acoes.push(a) }
-  if (gestao || sol) add('solicitar')
-  if (gestao) { add('publicar'); add('pausar'); add('retomar'); add('encerrar'); add('reabrir') }
+  // Sem aprovação: do rascunho a vaga vai direto ao ar (quem criou também pode publicar).
+  if (gestao || (sol && ['rascunho', 'ajustes'].includes(v.status))) add('publicar')
+  if (gestao) { add('pausar'); add('retomar'); add('encerrar'); add('reabrir') }
   if (gestao || (sol && ['rascunho', 'em_aprovacao', 'ajustes'].includes(v.status))) add('cancelar')
   if (gestao && ['encerrada', 'cancelada'].includes(v.status)) acoes.push(v.arquivada ? 'desarquivar' : 'arquivar')
   return { acoes, editar }

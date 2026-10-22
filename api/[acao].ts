@@ -1,7 +1,8 @@
 /* Rotas: POST /api/login · POST /api/logout · POST /api/esqueci-senha · POST /api/redefinir-senha · GET /api/convite · POST /api/cadastro
-   · GET /api/sessao · GET|PUT /api/estado · GET|POST /api/usuarios · GET|POST /api/solicitacoes · GET|POST /api/convites (RH/admin) */
+   · GET /api/sessao · GET|PUT /api/estado · GET|POST /api/usuarios · GET|POST /api/solicitacoes · GET|POST /api/convites · POST /api/enviar-acesso (RH/admin) */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { confereSenha, cookieLimpo, db, emitirCookie, enviarEmail, enviarEmailRedefinicao, garantirTabelasCadastro, hashSenha, hashToken, lerSessao, urlPortal } from './_lib.js'
+import { confereSenha, cookieLimpo, db, emitirCookie, enviarBoasVindas, enviarEmail, enviarEmailRedefinicao, garantirColunaConvite, garantirTabelasCadastro, hashSenha, hashToken, lerSessao, urlPortal } from './_lib.js'
+import { emailAcessoLiberado } from './_emailsPortal.js'
 import { randomBytes } from 'node:crypto'
 import { Recusa } from './_v2/guarda.js'
 import { aplicarLote, estadoPara, type Lote } from './_v2/estadoLegado.js'
@@ -135,11 +136,11 @@ export default async function handler(req: Req, res: ServerResponse) {
     if (acao === 'sessao' && req.method === 'GET') return json(res, 200, { colaboradorId: sessao.colaboradorId })
 
     // Acessos (logins): a administração gerencia todos; o RH, apenas de colaboradores e gestores (nunca de RH, diretoria ou admin).
-    if (acao === 'usuarios' || acao === 'solicitacoes' || acao === 'convites') {
+    if (acao === 'usuarios' || acao === 'solicitacoes' || acao === 'convites' || acao === 'enviar-acesso') {
       const quem = (await db().query("select dados->>'papel' as papel from app_colaboradores where id = $1", [sessao.colaboradorId])).rows[0]
       if (quem?.papel !== 'admin' && quem?.papel !== 'rh') return json(res, 403, { erro: 'Apenas RH ou administração gerenciam acessos.' })
       const podeGerir = (papelAlvo: string) => quem.papel === 'admin' || papelAlvo === 'colaborador' || papelAlvo === 'gestor'
-      if (acao !== 'usuarios') await garantirTabelasCadastro()
+      if (acao === 'solicitacoes' || acao === 'convites') await garantirTabelasCadastro()
 
       // Link de cadastro: um ativo por vez; gerar um novo invalida o anterior.
       if (acao === 'convites' && req.method === 'GET') {
@@ -190,20 +191,44 @@ export default async function handler(req: Req, res: ServerResponse) {
           await cli.query('rollback').catch(() => undefined)
           throw e
         } finally { cli.release() }
-        const primeiro = String(sol.nome).split(' ')[0].replace(/[<>&"]/g, '')
-        await enviarEmail(sol.email, 'Seu acesso foi liberado · Portal 4JURIS',
-          `<p>Olá, ${primeiro}!</p><p>Seu cadastro foi aprovado e o acesso ao Portal 4JURIS já está liberado.</p><p><a href="${urlPortal()}/login">Entrar no portal</a> com o e-mail e a senha que você cadastrou.</p>`,
-          `Acesso liberado para ${sol.email}.`).catch((e) => console.error('[e-mail] aprovação', e))
+        await enviarEmail(sol.email, emailAcessoLiberado({ nome: String(sol.nome), email: sol.email, portal: urlPortal() }), `Acesso liberado para ${sol.email}.`).catch((e) => console.error('[e-mail] aprovação', e))
         return json(res, 200, { ok: true })
+      }
+      // E-mail de boas-vindas com link para criar a senha (7 dias). Cria o login se a pessoa ainda não tiver.
+      if (acao === 'enviar-acesso' && req.method === 'POST') {
+        await garantirColunaConvite()
+        const { colaboradorIds } = await corpoJSON(req) as { colaboradorIds?: unknown }
+        if (!Array.isArray(colaboradorIds) || !colaboradorIds.length || colaboradorIds.length > 200 || colaboradorIds.some((x) => typeof x !== 'string')) return json(res, 400, { erro: 'Informe as pessoas.' })
+        const resultados: { colaboradorId: string; status: string; erro?: string }[] = []
+        for (const colaboradorId of colaboradorIds as string[]) {
+          const pessoa = (await db().query("select dados->>'nome' as nome, dados->>'email' as email, dados->>'papel' as papel, dados->>'status' as status from app_colaboradores where id = $1", [colaboradorId])).rows[0]
+          const falha = (erro: string) => resultados.push({ colaboradorId, status: 'falhou', erro })
+          if (!pessoa?.email) { falha('Pessoa não encontrada.'); continue }
+          if (!podeGerir(pessoa.papel)) { falha('Apenas a administração envia acesso de RH, diretoria e administradores.'); continue }
+          if (pessoa.status === 'encerrado') { falha('Parceria encerrada.'); continue }
+          let u = (await db().query('select id, email, ativo from usuarios where colaborador_id = $1', [colaboradorId])).rows[0]
+          if (!u) {
+            const dono = (await db().query('select 1 from usuarios where lower(email) = lower($1)', [pessoa.email])).rows[0]
+            if (dono) { falha('Este e-mail já está em uso por outro acesso.'); continue }
+            u = (await db().query('insert into usuarios (email, senha_hash, colaborador_id, papel, ativo) values ($1, $2, $3, $4, true) returning id, email, ativo',
+              [String(pessoa.email).trim(), hashSenha(randomBytes(18).toString('base64url')), colaboradorId, pessoa.papel])).rows[0]
+          }
+          if (!u.ativo) { falha('O acesso desta pessoa está desativado.'); continue }
+          const r = await enviarBoasVindas({ id: u.id, email: u.email, nome: pessoa.nome ?? '' })
+          if (r.status === 'enviado') await db().query('update usuarios set convite_enviado_em = now() where id = $1', [u.id])
+          resultados.push({ colaboradorId, status: r.status, ...(r.status === 'enviado' ? {} : { erro: r.erro }) })
+        }
+        return json(res, 200, { resultados })
       }
       if (acao !== 'usuarios') return json(res, 405, { erro: 'Método não permitido.' })
 
       if (req.method === 'GET') {
+        await garantirColunaConvite()
         const um = new URL(req.url ?? '/', 'http://x').searchParams.get('colaboradorId')
         const r = um
-          ? await db().query('select colaborador_id, ativo, ultimo_acesso from usuarios where colaborador_id = $1', [um])
-          : await db().query('select colaborador_id, ativo, ultimo_acesso from usuarios')
-        return json(res, 200, { acessos: r.rows.map((u) => ({ colaboradorId: u.colaborador_id, ativo: u.ativo, ultimoAcesso: u.ultimo_acesso })) })
+          ? await db().query('select colaborador_id, ativo, ultimo_acesso, convite_enviado_em from usuarios where colaborador_id = $1', [um])
+          : await db().query('select colaborador_id, ativo, ultimo_acesso, convite_enviado_em from usuarios')
+        return json(res, 200, { acessos: r.rows.map((u) => ({ colaboradorId: u.colaborador_id, ativo: u.ativo, ultimoAcesso: u.ultimo_acesso, conviteEnviadoEm: u.convite_enviado_em })) })
       }
 
       if (req.method === 'POST') {

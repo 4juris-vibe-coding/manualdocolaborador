@@ -88,24 +88,32 @@ describe('vagas · ciclo de vida', () => {
     for (const t of ['criada', 'aprovacao_solicitada', 'aprovada', 'publicada', 'pausada', 'retomada', 'encerrada', 'reaberta']) expect(tipos).toContain(t)
   })
 
-  it('vaga não aprovada NUNCA é publicada', async () => {
+  it('rascunho é publicado direto, sem aprovação (inclusive por quem o criou)', async () => {
     const d = await criar(m.c.rh1)
-    const id = d.vaga.id
-    for (const [passo, esperado] of [['rascunho', 409]] as const) expect((await POST(m, `vagas/${id}/acoes/publicar`, m.c.rh1)).status).toBe(esperado)
-    await POST(m, `vagas/${id}/acoes/solicitar`, m.c.rh1)
-    expect((await POST(m, `vagas/${id}/acoes/publicar`, m.c.rh1)).status).toBe(409) // em aprovação
-    expect((await GET(m, `vagas/${id}`, m.c.rh1)).json.vaga.status).toBe('em_aprovacao')
+    expect(d.permissoes.acoes).toContain('publicar')
+    expect(d.permissoes.acoes).not.toContain('solicitar')
+    const pub = await POST(m, `vagas/${d.vaga.id}/acoes/publicar`, m.c.rh1)
+    expect(pub.status).toBe(200)
+    expect(pub.json.vaga.status).toBe('publicada')
+    const g = await criar(m.c.ger1)
+    expect((await POST(m, `vagas/${g.vaga.id}/acoes/publicar`, m.c.ger1)).json.vaga.status).toBe('publicada')
+    // vaga antiga que ficou em aprovação não é publicada por fora do fluxo
+    const e = await criar(m.c.rh1)
+    await POST(m, `vagas/${e.vaga.id}/acoes/solicitar`, m.c.rh1)
+    expect((await POST(m, `vagas/${e.vaga.id}/acoes/publicar`, m.c.rh1)).status).toBe(409)
   })
 
-  it('publicar exige campos mínimos e data de encerramento futura', async () => {
+  it('publicar exige o texto da vaga e, se houver encerramento, data futura', async () => {
     const d = await criar(m.c.rh1, { encerraCandidaturasEm: '2020-01-01', canais: [] })
-    const id = d.vaga.id
-    const s = await POST(m, `vagas/${id}/acoes/solicitar`, m.c.rh1)
-    await POST(m, `vagas/${id}/aprovacoes/${s.json.aprovacoes[0].id}/decidir`, m.c.rh1, { decisao: 'aprovar' })
-    const pub = await POST(m, `vagas/${id}/acoes/publicar`, m.c.rh1)
+    const pub = await POST(m, `vagas/${d.vaga.id}/acoes/publicar`, m.c.rh1)
     expect(pub.status).toBe(400)
     expect(pub.json.campos.encerraCandidaturasEm).toBeTruthy()
-    expect(pub.json.campos.canais).toBeTruthy()
+    const vazia = await POST(m, 'vagas', m.c.rh1, { titulo: 'Só o título' })
+    const p2 = await POST(m, `vagas/${vazia.json.vaga.id}/acoes/publicar`, m.c.rh1)
+    expect(p2.status).toBe(400)
+    expect(p2.json.campos.textoPublico).toBeTruthy()
+    const minima = await POST(m, 'vagas', m.c.rh1, { titulo: 'SDR Pleno', modalidade: 'presencial', regimeContratacao: 'pj', textoPublico: 'Buscamos um SDR.', requisitosObrigatorios: ['Experiência como SDR'], beneficios: ['Wellhub'], endereco: 'Fortaleza - CE' })
+    expect((await POST(m, `vagas/${minima.json.vaga.id}/acoes/publicar`, m.c.rh1)).json.vaga.status).toBe('publicada')
   })
 
   it('transições inválidas retornam 409', async () => {
@@ -118,7 +126,7 @@ describe('vagas · ciclo de vida', () => {
     const r = await POST(m, 'vagas', m.c.rh1, { titulo: 'Incompleta' })
     const s = await POST(m, `vagas/${r.json.vaga.id}/acoes/solicitar`, m.c.rh1)
     expect(s.status).toBe(400)
-    expect(Object.keys(s.json.campos)).toEqual(expect.arrayContaining(['setorId', 'responsabilidades']))
+    expect(Object.keys(s.json.campos)).toEqual(expect.arrayContaining(['setorId', 'textoPublico']))
   })
 })
 
@@ -442,7 +450,7 @@ describe('vagas · lista, painel e alertas', () => {
     await m.pg.query('update rec_vagas set publicar_em = $2::date where id = $1', [ok1, hoje])
     const naoAprovada = await criar(m.c.rh1, { titulo: 'Agendada sem aprovação' })
     await m.pg.query('update rec_vagas set publicar_em = $2::date where id = $1', [naoAprovada.vaga.id, hoje])
-    const incompleta = await criarAprovada({ titulo: 'Agendada incompleta', canais: [] })
+    const incompleta = await criarAprovada({ titulo: 'Agendada incompleta', encerraCandidaturasEm: '2020-01-01' })
     await m.pg.query('update rec_vagas set publicar_em = $2::date where id = $1', [incompleta, hoje])
     const r = await POST(m, 'recrutamento/alertas/processar', m.c.rh1)
     expect(r.json.publicadasAgendadas).toContain(ok1)

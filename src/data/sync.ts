@@ -161,7 +161,17 @@ export async function salvarAgora(): Promise<boolean> {
 }
 
 /* ---------- acessos (logins) — somente administração ---------- */
-export interface AcessoUsuario { colaboradorId: string; ativo: boolean; ultimoAcesso: string | null }
+export interface AcessoUsuario { colaboradorId: string; ativo: boolean; ultimoAcesso: string | null; conviteEnviadoEm?: string | null }
+
+export interface EnvioAcesso { colaboradorId: string; status: 'enviado' | 'nao_configurado' | 'falhou'; erro?: string }
+
+/** Envia o e-mail de boas-vindas com o link para criar a senha (cria o login de quem ainda não tem). */
+export async function enviarAcessoPorEmail(colaboradorIds: string[]): Promise<{ resultados: EnvioAcesso[] } | { erro: string }> {
+  try {
+    const r = await chamar<{ resultados: EnvioAcesso[] }>('enviar-acesso', { method: 'POST', body: JSON.stringify({ colaboradorIds }) })
+    return r.ok ? { resultados: r.dados.resultados } : { erro: r.dados.erro ?? 'Não foi possível enviar.' }
+  } catch { return { erro: 'Servidor indisponível. Tente novamente.' } }
+}
 
 export async function listarAcessos(colaboradorId?: string): Promise<AcessoUsuario[]> {
   const r = await chamar<{ acessos: AcessoUsuario[] }>(colaboradorId ? `usuarios?colaboradorId=${encodeURIComponent(colaboradorId)}` : 'usuarios')

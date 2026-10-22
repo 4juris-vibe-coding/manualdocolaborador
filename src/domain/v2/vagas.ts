@@ -82,7 +82,8 @@ export const ACOES_VAGA: readonly AcaoVaga[] = ['solicitar', 'publicar', 'pausar
 
 const TRANSICOES: Record<AcaoVaga, Partial<Record<StatusVaga, StatusVaga>>> = {
   solicitar: { rascunho: 'em_aprovacao', ajustes: 'em_aprovacao' },
-  publicar: { aprovada: 'publicada' },
+  // Sem etapa de aprovação: o rascunho já vai ao ar. (Aprovada/ajustes: vagas antigas, do fluxo com aprovação.)
+  publicar: { rascunho: 'publicada', ajustes: 'publicada', aprovada: 'publicada' },
   pausar: { publicada: 'pausada' },
   retomar: { pausada: 'publicada' },
   encerrar: { aprovada: 'encerrada', publicada: 'encerrada', pausada: 'encerrada' },
@@ -118,17 +119,11 @@ export function camposFaltantes(v: VagaCampos, para: 'solicitar' | 'publicar', h
   const f: Record<string, string> = {}
   const vazio = (s: unknown) => !(typeof s === 'string' && s.trim())
   if (vazio(v.titulo)) f.titulo = 'Informe o título da vaga'
-  if (vazio(v.setorId)) f.setorId = 'Escolha a área (departamento)'
-  if (!v.qtdPosicoes || v.qtdPosicoes < 1) f.qtdPosicoes = 'Informe a quantidade de posições'
-  if (vazio(v.responsabilidades) && vazio(v.resumo)) f.responsabilidades = 'Descreva as responsabilidades ou o resumo da vaga'
-  if (vazio(v.modalidade)) f.modalidade = 'Informe a modalidade de trabalho'
-  if (para === 'publicar') {
-    if (vazio(v.textoPublico) && vazio(v.resumo)) f.textoPublico = 'Escreva o texto público da vaga (ou o resumo)'
-    if (v.modalidade !== 'remoto' && (vazio(v.cidade) || vazio(v.estado))) f.cidade = 'Informe cidade e estado (vaga não remota)'
-    if (!v.canais || v.canais.length === 0) f.canais = 'Escolha ao menos um canal de divulgação'
-    if (!v.encerraCandidaturasEm) f.encerraCandidaturasEm = 'Defina a data de encerramento das candidaturas'
-    else if (v.encerraCandidaturasEm < hoje) f.encerraCandidaturasEm = 'A data de encerramento das candidaturas já passou'
-  }
+  if (vazio(v.modalidade)) f.modalidade = 'Informe o modelo de trabalho'
+  if (para === 'solicitar' && vazio(v.setorId)) f.setorId = 'Escolha a área (departamento)'
+  if (para === 'solicitar' && (!v.qtdPosicoes || v.qtdPosicoes < 1)) f.qtdPosicoes = 'Informe a quantidade de posições'
+  if (vazio(v.responsabilidades) && vazio(v.resumo) && vazio(v.textoPublico)) f.textoPublico = 'Descreva a oportunidade ou as responsabilidades'
+  if (para === 'publicar' && v.encerraCandidaturasEm && v.encerraCandidaturasEm < hoje) f.encerraCandidaturasEm = 'A data de encerramento das candidaturas já passou'
   return f
 }
 

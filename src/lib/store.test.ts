@@ -36,6 +36,13 @@ describe('permissões na camada de dados', () => {
     expect(st().salvarPessoa({ nome: 'Outra Pessoa', email: 'o@t.com', papel: 'colaborador', setorId: 's1', status: 'ativo', dataEntrada: hojeISO(), regime: 'PJ', cnpj: '11.222.333/0001-82', razaoSocial: 'Y' }).ok).toBe(false) // CNPJ inválido
   })
 
+  it('cadastro pendente (contratação pelo ATS) dispensa empresa e CNPJ até ser completado', () => {
+    como('c9')
+    expect(st().salvarPessoa({ nome: 'Contratada ATS', email: 'ats@t.com', papel: 'colaborador', setorId: 's1', status: 'pendente', dataEntrada: hojeISO(), regime: 'PJ' }).ok).toBe(true)
+    expect(st().salvarPessoa({ nome: 'Sem CNPJ Ativa', email: 'ativa@t.com', papel: 'colaborador', setorId: 's1', status: 'ativo', dataEntrada: hojeISO(), regime: 'PJ' }).ok).toBe(false)
+    expect(st().salvarPessoa({ nome: 'Pendente CNPJ ruim', email: 'ruim@t.com', papel: 'colaborador', setorId: 's1', status: 'pendente', dataEntrada: hojeISO(), regime: 'PJ', razaoSocial: 'X', cnpj: '11.222.333/0001-82' }).ok).toBe(false)
+  })
+
   it('ninguém aprova o próprio reembolso; liderança só aprova da própria área', () => {
     como('c1') // admin
     const proprio = st().reembolsos.find((r) => r.colaboradorId === 'c1' && r.status === 'pendente')!

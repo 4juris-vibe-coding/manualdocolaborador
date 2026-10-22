@@ -7,7 +7,10 @@ import { redefinirSenha } from '@/data/sync'
 
 export default function RedefinirSenha() {
   const navigate = useNavigate()
-  const token = useSearchParams()[0].get('token') ?? ''
+  const [params] = useSearchParams()
+  const token = params.get('token') ?? ''
+  // Link do e-mail de boas-vindas: primeira senha, não redefinição.
+  const primeira = params.has('boas-vindas')
   const [senha, setSenha] = useState('')
   const [confirma, setConfirma] = useState('')
   const [ver, setVer] = useState(false)
@@ -22,7 +25,7 @@ export default function RedefinirSenha() {
     const falha = await redefinirSenha(token, senha)
     setLoading(false)
     if (falha) { setErro(falha); return }
-    toast('Senha redefinida. Entre com a nova senha.', 'success')
+    toast(primeira ? 'Senha criada! Agora é só entrar com o seu e-mail.' : 'Senha redefinida. Entre com a nova senha.', 'success')
     navigate('/login', { replace: true })
   }
 
@@ -37,12 +40,12 @@ export default function RedefinirSenha() {
           </div>
         </div>
 
-        <h2 className="text-[25px] font-bold text-ink">Criar nova senha</h2>
+        <h2 className="text-[25px] font-bold text-ink">{primeira ? 'Boas-vindas! Crie sua senha' : 'Criar nova senha'}</h2>
         {!token ? (
           <p className="text-[14px] text-danger mt-2">Link inválido. Peça um novo em “Esqueceu a senha?”.</p>
         ) : (
           <>
-            <p className="text-muted text-[14px] mt-2 mb-6">Escolha uma senha com ao menos 10 caracteres.</p>
+            <p className="text-muted text-[14px] mt-2 mb-6">{primeira ? 'Esta é a senha que você vai usar para entrar no portal, junto com o seu e-mail. Use ao menos 10 caracteres.' : 'Escolha uma senha com ao menos 10 caracteres.'}</p>
             <label className="label" htmlFor="nova-senha">Nova senha</label>
             <div className="relative">
               <Lock className="h-4 w-4 text-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />

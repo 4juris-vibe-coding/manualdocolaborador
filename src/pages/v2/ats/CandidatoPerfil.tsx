@@ -6,6 +6,7 @@ import { SeletorPessoas } from '@/components/inputs'
 import { Aguardar, SoComBanco } from '@/components/v2/estados'
 import { StatusBadge } from '@/components/v2/StatusBadge'
 import { MotivoModal } from '@/components/v2/ats/ModaisCandidato'
+import { ContratarModal } from '@/components/v2/ats/ContratarModal'
 import { Linha, Secao, TEXTAREA, camposDoErro, useTitulo } from '@/components/v2/ats/comuns'
 import { api, executar, useApi } from '@/data/v2/api'
 import { useStore } from '@/lib/store'
@@ -323,7 +324,7 @@ function Proposta({ x, recarregar }: { x: any; recarregar: () => void }) {
   const [aceitar, setAceitar] = useState<any | null>(null)
   const ver = x.permissoes.verRemuneracao
   const aberta = x.propostas.some((p: any) => ['rascunho', 'enviada', 'negociacao'].includes(p.status))
-  const acao = async (p: any, corpo: Record<string, unknown>, ok: string) => { await executar(() => api.patch(`ats/propostas/${p.id}`, corpo), ok); recarregar() }
+  const acao = async (p: any, corpo: Record<string, unknown>, ok: string) => { const r = await executar(() => api.patch(`ats/propostas/${p.id}`, corpo), ok); recarregar(); return !!r }
   return (
     <div className="space-y-4">
       {!ver && <Callout tone="neutral" icon="EyeOff">Você acompanha o andamento das propostas, mas os valores e benefícios ficam restritos a quem tem permissão de remuneração.</Callout>}
@@ -354,9 +355,9 @@ function Proposta({ x, recarregar }: { x: any; recarregar: () => void }) {
       <Modal open={!!recusa} onClose={() => setRecusa(null)} title="Proposta recusada" footer={<><Button variant="ghost" onClick={() => setRecusa(null)}>Voltar</Button><Button variant="danger" onClick={async () => { const p = recusa; setRecusa(null); await acao(p, { acao: 'recusar', motivo: motivoRec }, 'Recusa registrada.') }}>Registrar recusa</Button></>}>
         <Field label="Motivo (se informado pelo candidato)" htmlFor="rc-m"><textarea id="rc-m" className={TEXTAREA} value={motivoRec} onChange={(e) => setMotivoRec(e.target.value)} /></Field>
       </Modal>
-      <ConfirmModal open={!!aceitar} onClose={() => setAceitar(null)} perigo={false} confirmar="Confirmar contratação" titulo="Registrar aceite e concluir contratação?"
+      <ContratarModal open={!!aceitar} onClose={() => setAceitar(null)} titulo="Registrar aceite e concluir contratação?" pessoa={x.candidato}
         texto="A candidatura passa a “Contratado(a)”, a vaga conta uma posição preenchida e, se esta for a última posição, a vaga é encerrada. Essa ação não pode ser desfeita por aqui."
-        onConfirm={async () => { const p = aceitar; setAceitar(null); await acao(p, { acao: 'aceitar' }, 'Contratação concluída.') }} />
+        onContratar={() => acao(aceitar, { acao: 'aceitar' }, 'Contratação concluída.')} />
     </div>
   )
 }

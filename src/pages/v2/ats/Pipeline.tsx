@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { PageHeader, Card, Badge, Button, Avatar, EmptyState, Select, SearchBox } from '@/components/ui'
-import { ConfirmModal } from '@/components/Modal'
+import { ContratarModal } from '@/components/v2/ats/ContratarModal'
 import { Aguardar, SoComBanco, CarregandoBloco } from '@/components/v2/estados'
 import { StatusBadge } from '@/components/v2/StatusBadge'
 import { CadastroManualModal, ImportarModal, MotivoModal } from '@/components/v2/ats/ModaisCandidato'
@@ -170,9 +170,9 @@ function Quadro({ vagaId, vagas, aoTrocar }: { vagaId: string; vagas: any[]; aoT
       <ImportarModal vagaId={vagaId} open={importar} onClose={() => setImportar(false)} onFeito={r.recarregar} />
       <MotivoModal aberto={!!motivo} titulo={motivo?.titulo ?? ''} avisarCandidato={motivo?.status === 'reprovado'} onClose={() => setMotivo(null)}
         onConfirmar={async (m, avisar) => { if (motivo) { await mover(motivo.c, { status: motivo.status, motivo: m, notificarCandidato: avisar }); setMotivo(null) } }} />
-      <ConfirmModal open={!!contratar} onClose={() => setContratar(null)} perigo={false} confirmar="Concluir contratação" titulo="Concluir contratação?"
+      <ContratarModal open={!!contratar} onClose={() => setContratar(null)} titulo="Concluir contratação?" pessoa={contratar?.c ?? null}
         texto={<>Isto marca <b>{contratar?.c.nome}</b> como contratado(a), conta uma posição preenchida na vaga e, se for a última, encerra a vaga. Não pode ser desfeito por aqui.</>}
-        onConfirm={async () => { if (contratar) { const c = contratar; setContratar(null); await mover(c.c, { etapaId: c.etapaId }, 'Contratação concluída.') } }} />
+        onContratar={async () => !!contratar && !!(await mover(contratar.c, { etapaId: contratar.etapaId }, 'Contratação concluída.'))} />
     </>
   )
 }

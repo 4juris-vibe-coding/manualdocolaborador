@@ -44,7 +44,7 @@ export default function VagaPublica() {
               <header className="mb-6">
                 {v.imagemUrl && <img src={v.imagemUrl} alt="" className="w-full max-h-72 rounded-2xl object-cover mb-5 bg-winter" />}
                 <div className="flex flex-wrap gap-2 mb-3">
-                  {v.area && <Badge tone="brand">{v.area}</Badge>}<Badge tone="neutral">{v.tipoRotulo}</Badge>{v.regimeContratacao && v.regimeContratacao !== 'nao_informado' && <Badge tone="neutral">{ROTULO_REGIME_CONTRATACAO[v.regimeContratacao]}</Badge>}<Badge tone="neutral">{ROTULO_MODALIDADE[v.modalidade] ?? v.modalidade}</Badge>
+                  {v.area && <Badge tone="brand">{v.area}</Badge>}{v.regimeContratacao && v.regimeContratacao !== 'nao_informado' ? <Badge tone="neutral">{ROTULO_REGIME_CONTRATACAO[v.regimeContratacao]}</Badge> : <Badge tone="neutral">{v.tipoRotulo}</Badge>}<Badge tone="neutral">{v.modalidade === 'presencial' ? '100% presencial' : ROTULO_MODALIDADE[v.modalidade] ?? v.modalidade}</Badge>
                   {v.senioridade && <Badge tone="neutral">{v.senioridade}</Badge>}
                 </div>
                 <h1 className="text-[26px] sm:text-[32px] font-extrabold tracking-tight text-ink">{v.titulo}</h1>

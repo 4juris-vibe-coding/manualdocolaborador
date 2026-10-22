@@ -219,12 +219,17 @@ function permissoes(v: Record<string, any>, u: Usuario, passos: any[]): Permisso
   const editar = q === 'solicitante' ? gestao || sol : q === 'gestao' ? gestao : false
   const atual = st === 'em_aprovacao' ? passoAtual(passos.filter((p) => p.rodada === Math.max(...passos.map((x) => x.rodada)))) : null
   const dec = atual && podeDecidirPasso({ aprovadorTipo: atual.aprovador_tipo, aprovadorRef: atual.aprovador_ref }, u) ? [atual.id as string] : []
-  const acoes = acoesPossiveis(st).filter((a) => {
+  const pode = (a: AcaoVaga) => {
     if (a === 'solicitar') return gestao || sol
     if (a === 'cancelar') return gestao || (sol && ['rascunho', 'em_aprovacao', 'ajustes'].includes(st))
+    // Sem aprovação: quem criou a vaga também pode colocá-la no ar a partir do rascunho.
+    if (a === 'publicar') return gestao || (sol && ['rascunho', 'ajustes'].includes(st))
     return gestao
-  })
-  return { editar, solicitar: acoes.includes('solicitar'), acoes, arquivar: gestao && STATUS_FINAIS.includes(st) && !v.arquivada, desarquivar: gestao && v.arquivada, duplicar: gestao || u.caps.has('vagas:solicitar'), decidir: dec, gerenciar: gestao, verRemuneracao: u.caps.has('vagas:ver_remuneracao'), verObservacoesRh: u.caps.has('ats:notas_rh'), anexar: editar }
+  }
+  const possiveis = acoesPossiveis(st).filter(pode)
+  // "Solicitar aprovação" segue disponível na API, mas não é mais oferecida: a vaga é publicada direto.
+  const acoes = possiveis.filter((a) => a !== 'solicitar')
+  return { editar, solicitar: possiveis.includes('solicitar'), acoes, arquivar: gestao && STATUS_FINAIS.includes(st) && !v.arquivada, desarquivar: gestao && v.arquivada, duplicar: gestao || u.caps.has('vagas:solicitar'), decidir: dec, gerenciar: gestao, verRemuneracao: u.caps.has('vagas:ver_remuneracao'), verObservacoesRh: u.caps.has('ats:notas_rh'), anexar: editar }
 }
 
 /* ---------- filtros (lista, CSV, painel) ---------- */
@@ -338,12 +343,13 @@ async function executarAcao(c: Ctx, acao: AcaoVaga, corpo: Record<string, unknow
     const sol = ehSolicitante(v, u) && (u.caps.has('vagas:solicitar') || gestao)
     if (acao === 'solicitar') { if (!gestao && !sol) throw proibido() }
     else if (acao === 'cancelar') { if (!gestao && !(sol && ['rascunho', 'em_aprovacao', 'ajustes'].includes(de))) throw proibido() }
+    else if (acao === 'publicar') { if (!gestao && !(sol && ['rascunho', 'ajustes'].includes(de))) throw proibido() }
     else if (!gestao) throw proibido()
 
     const motivo = acao === 'encerrar' || acao === 'cancelar' ? texto(corpo.motivo, 'motivo', { min: 3, max: 500 }) : corpo.motivo ? texto(corpo.motivo, 'motivo', { max: 500 }) : null
 
     if (acao === 'solicitar') {
-      const falta = camposFaltantes({ titulo: v.titulo, setorId: v.setor_id, qtdPosicoes: v.qtd_posicoes, responsabilidades: v.responsabilidades, resumo: v.resumo, modalidade: v.modalidade }, 'solicitar', hoje)
+      const falta = camposFaltantes({ titulo: v.titulo, setorId: v.setor_id, qtdPosicoes: v.qtd_posicoes, responsabilidades: v.responsabilidades, resumo: v.resumo, textoPublico: v.texto_publico, modalidade: v.modalidade }, 'solicitar', hoje)
       if (Object.keys(falta).length) throw invalido('Complete os campos obrigatórios antes de solicitar a aprovação.', falta)
       const { aprovadaDireto } = await abrirRodada(t, v, u, hoje)
       await auditar(t, u.colaboradorId, 'vaga', v.id, 'solicitar_aprovacao', { codigo: v.codigo })
@@ -353,6 +359,7 @@ async function executarAcao(c: Ctx, acao: AcaoVaga, corpo: Record<string, unknow
       if (Object.keys(falta).length) throw invalido('Complete os campos para publicar a vaga.', falta)
       const nEtapas = (await t.query('select count(*)::int as n from rec_vaga_etapas where vaga_id = $1', [v.id])).rows[0].n
       if (nEtapas < 2) throw invalido('A vaga precisa ter etapas seletivas configuradas.', { etapas: 'Configure as etapas' })
+      await t.query("update rec_vaga_aprovacoes set status = 'cancelada' where vaga_id = $1 and status = 'pendente'", [v.id])
       await t.query("update rec_vagas set status = 'publicada', publicada_em = coalesce(publicada_em, now()), versao = versao + 1, atualizado_em = now(), atualizado_por = $2 where id = $1", [v.id, u.colaboradorId])
       await evento(t, v.id, u.colaboradorId, 'publicada', { de, para })
       await auditar(t, u.colaboradorId, 'vaga', v.id, 'publicar', { codigo: v.codigo })

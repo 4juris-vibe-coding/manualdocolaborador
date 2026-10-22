@@ -328,7 +328,8 @@ export const useStore = create<AppState>()(
         if (!d.setores.some((s) => s.id === i.setorId)) return 'Selecione uma área válida.'
         if (i.cargoId && !d.cargos.some((g) => g.id === i.cargoId)) return 'Selecione uma função válida.'
         if (!i.dataEntrada) return 'Informe a data de início da parceria.'
-        if (i.regime !== 'autonomo') {
+        // Cadastro pendente (ex.: criado na contratação pelo ATS): os dados da empresa são completados depois.
+        if (i.status === 'pendente' && !i.razaoSocial?.trim() && !i.cnpj?.trim()) { /* completa depois */ } else if (i.regime !== 'autonomo') {
           if (!i.razaoSocial?.trim()) return 'Informe a razão social da empresa prestadora.'
           if (!cnpjValido(i.cnpj ?? '')) return 'CNPJ inválido.'
         } else if (i.cpf && !cpfValido(i.cpf)) return 'CPF inválido.'

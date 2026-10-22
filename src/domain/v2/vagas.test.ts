@@ -9,9 +9,9 @@ import {
 } from './indicadoresRecrutamento'
 
 describe('máquina de estados da vaga', () => {
-  it('só publica a partir de aprovada', () => {
-    for (const s of ['rascunho', 'em_aprovacao', 'ajustes', 'pausada', 'encerrada', 'cancelada'] as const) expect(proximoStatus(s, 'publicar')).toBeNull()
-    expect(proximoStatus('aprovada', 'publicar')).toBe('publicada')
+  it('publica direto do rascunho (sem aprovação)', () => {
+    for (const s of ['em_aprovacao', 'pausada', 'encerrada', 'cancelada'] as const) expect(proximoStatus(s, 'publicar')).toBeNull()
+    for (const s of ['rascunho', 'ajustes', 'aprovada'] as const) expect(proximoStatus(s, 'publicar')).toBe('publicada')
   })
   it('fluxo feliz e reabertura', () => {
     expect(proximoStatus('rascunho', 'solicitar')).toBe('em_aprovacao')
@@ -34,14 +34,13 @@ describe('máquina de estados da vaga', () => {
 describe('requisitos de preenchimento', () => {
   const base = { titulo: 'Advogado', setorId: 's1', qtdPosicoes: 1, responsabilidades: 'x', modalidade: 'remoto' }
   it('solicitar exige o básico', () => {
-    expect(Object.keys(camposFaltantes({}, 'solicitar', '2026-01-01')).sort()).toEqual(['modalidade', 'qtdPosicoes', 'responsabilidades', 'setorId', 'titulo'])
+    expect(Object.keys(camposFaltantes({}, 'solicitar', '2026-01-01')).sort()).toEqual(['modalidade', 'qtdPosicoes', 'setorId', 'textoPublico', 'titulo'])
     expect(camposFaltantes(base, 'solicitar', '2026-01-01')).toEqual({})
   })
-  it('publicar exige texto, canais e encerramento futuro; cidade só se não for remota', () => {
-    const f = camposFaltantes({ ...base, resumo: 'r', canais: ['portal'], encerraCandidaturasEm: '2025-12-31' }, 'publicar', '2026-01-01')
-    expect(f.encerraCandidaturasEm).toMatch(/já passou/)
-    expect(camposFaltantes({ ...base, resumo: 'r', canais: ['portal'], encerraCandidaturasEm: '2026-02-01' }, 'publicar', '2026-01-01')).toEqual({})
-    expect(camposFaltantes({ ...base, modalidade: 'presencial', resumo: 'r', canais: ['portal'], encerraCandidaturasEm: '2026-02-01' }, 'publicar', '2026-01-01').cidade).toBeTruthy()
+  it('publicar exige só título, modelo de trabalho e texto; encerramento, se houver, no futuro', () => {
+    expect(Object.keys(camposFaltantes({}, 'publicar', '2026-01-01')).sort()).toEqual(['modalidade', 'textoPublico', 'titulo'])
+    expect(camposFaltantes({ titulo: 'SDR', modalidade: 'presencial', textoPublico: 't' }, 'publicar', '2026-01-01')).toEqual({})
+    expect(camposFaltantes({ titulo: 'SDR', modalidade: 'presencial', textoPublico: 't', encerraCandidaturasEm: '2025-12-31' }, 'publicar', '2026-01-01').encerraCandidaturasEm).toMatch(/já passou/)
   })
 })
 

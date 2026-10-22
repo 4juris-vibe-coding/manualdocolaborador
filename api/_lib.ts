@@ -6,6 +6,7 @@
    ============================================================ */
 import pg from 'pg'
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
+import { emailBoasVindas, emailRedefinicao, type Email } from './_emailsPortal.js'
 
 export const COLECOES = [
   'colaboradores', 'setores', 'unidades', 'cargos', 'contratos', 'documentos', 'reembolsos', 'notas', 'periodos',
@@ -48,21 +49,51 @@ export function confereSenha(senha: string, guardado: string): boolean {
 export const hashToken = (t: string) => createHash('sha256').update(t).digest('hex')
 export const urlPortal = () => (process.env.PORTAL_URL || 'https://portaldocolaborador.somos4juris.com.br').replace(/\/$/, '')
 
+export type EnvioEmail = { status: 'enviado' } | { status: 'nao_configurado' | 'falhou'; erro: string }
+
 /** Envia pelo Resend (RESEND_API_KEY + RESEND_FROM). Sem a chave, só registra no log do servidor. */
-export async function enviarEmail(para: string, assunto: string, html: string, log: string): Promise<void> {
+export async function enviarEmail(para: string, e: Email, log: string): Promise<EnvioEmail> {
   const chave = process.env.RESEND_API_KEY
-  if (!chave) { console.warn(`[e-mail] RESEND_API_KEY ausente. ${log}`); return }
-  const r = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${chave}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: process.env.RESEND_FROM || '4JURIS <nao-responda@4jurismarketing.com.br>', to: [para], subject: assunto, html }),
-  })
-  if (!r.ok) console.error('[e-mail] Resend respondeu', r.status, await r.text())
+  if (!chave) { console.warn(`[e-mail] RESEND_API_KEY ausente. ${log}`); return { status: 'nao_configurado', erro: 'O envio de e-mails não está configurado no servidor (RESEND_API_KEY).' } }
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${chave}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: process.env.RESEND_FROM || '4JURIS <nao-responda@4jurismarketing.com.br>', to: [para], subject: e.assunto, html: e.html, text: e.texto }),
+    })
+    if (r.ok) return { status: 'enviado' }
+    const detalhe = (await r.text()).slice(0, 300)
+    console.error('[e-mail] Resend respondeu', r.status, detalhe)
+    return { status: 'falhou', erro: `O provedor de e-mail recusou (${r.status}): ${detalhe}` }
+  } catch (err) {
+    return { status: 'falhou', erro: err instanceof Error ? err.message.slice(0, 200) : 'Falha de rede ao enviar.' }
+  }
 }
 
-export const enviarEmailRedefinicao = (para: string, link: string) => enviarEmail(para, 'Redefinição de senha · Portal 4JURIS',
-  `<p>Recebemos um pedido para redefinir a sua senha no Portal 4JURIS.</p><p><a href="${link}">Criar nova senha</a></p><p>O link vale por 1 hora. Se não foi você, ignore este e-mail.</p>`,
-  `Link de redefinição para ${para}: ${link}`)
+export const enviarEmailRedefinicao = (para: string, link: string) =>
+  enviarEmail(para, emailRedefinicao({ link, portal: urlPortal() }), `Link de redefinição para ${para}: ${link}`)
+
+/** Coluna com a data do último e-mail de acesso enviado (aditiva; também está em db/schema.sql). */
+let colunaConvite: Promise<unknown> | undefined
+export function garantirColunaConvite(): Promise<unknown> {
+  colunaConvite ??= db().query('alter table usuarios add column if not exists convite_enviado_em timestamptz').catch((e) => { colunaConvite = undefined; throw e })
+  return colunaConvite
+}
+
+/** Validade do link de boas-vindas (criação da primeira senha). */
+export const DIAS_LINK_ACESSO = 7
+
+/**
+ * Gera um link de criação de senha (mesmo fluxo de /redefinir-senha, válido por DIAS_LINK_ACESSO)
+ * e envia o e-mail de boas-vindas. Um link novo invalida os anteriores da mesma pessoa.
+ */
+export async function enviarBoasVindas(u: { id: string; email: string; nome: string }): Promise<EnvioEmail> {
+  const token = randomBytes(32).toString('base64url')
+  await db().query('delete from redefinicoes_senha where usuario_id = $1', [u.id])
+  await db().query(`insert into redefinicoes_senha (token_hash, usuario_id, expira_em) values ($1, $2, now() + interval '${DIAS_LINK_ACESSO} days')`, [hashToken(token), u.id])
+  const link = `${urlPortal()}/redefinir-senha?token=${token}&boas-vindas=1`
+  return enviarEmail(u.email, emailBoasVindas({ nome: u.nome, email: u.email, link, portal: urlPortal(), validadeDias: DIAS_LINK_ACESSO }), `Link de acesso para ${u.email}: ${link}`)
+}
 
 /* ---------- cadastro por link (solicitações de acesso) ----------
    Mesmo SQL de db/schema.sql; criado aqui também para funcionar mesmo antes de rodar o db:setup. */

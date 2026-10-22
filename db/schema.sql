@@ -21,6 +21,7 @@ create table if not exists usuarios (
   ultimo_acesso timestamptz
 );
 create unique index if not exists usuarios_email_uk on usuarios (lower(email));
+alter table usuarios add column if not exists convite_enviado_em timestamptz;
 alter table usuarios enable row level security;
 
 create table if not exists redefinicoes_senha (

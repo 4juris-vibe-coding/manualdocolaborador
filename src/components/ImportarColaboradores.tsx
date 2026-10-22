@@ -11,6 +11,7 @@ import { PAPEL_LABEL } from '@/domain/permissions'
 import { MODO_API } from '@/data/config'
 import { salvarAcesso, salvarAgora } from '@/data/sync'
 import { cn } from '@/lib/utils'
+import { enviarAcessos } from '@/components/envioAcesso'
 
 async function lerArquivo(f: File): Promise<{ rows: Celula[][]; aba?: string }> {
   if (/\.csv$/i.test(f.name) || f.type === 'text/csv') return { rows: lerCSV(await f.text()) }
@@ -38,6 +39,7 @@ export function ImportarColaboradores({ onClose, onConcluido }: { onClose: () =>
   const [soProblemas, setSoProblemas] = useState(false)
   const [criarAcesso, setCriarAcesso] = useState(true)
   const [gravando, setGravando] = useState(false)
+  const [emails, setEmails] = useState<'pendente' | 'enviando' | 'enviados'>('pendente')
   const [resultado, setResultado] = useState<(ResultadoImportacao & { acessos: number; falhasAcesso: string[] }) | null>(null)
 
   // Refaz a prévia quando o modo muda; usa sempre o cadastro atual.
@@ -48,7 +50,7 @@ export function ImportarColaboradores({ onClose, onConcluido }: { onClose: () =>
   }, [planilha, modo])
 
   const ler = async (f: File) => {
-    setErroArquivo(''); setResultado(null); setPlanilha(null); setArquivo(f.name); setLendo(true)
+    setErroArquivo(''); setResultado(null); setEmails('pendente'); setPlanilha(null); setArquivo(f.name); setLendo(true)
     try {
       const p = await lerArquivo(f)
       const st = useStore.getState()
@@ -202,6 +204,15 @@ export function ImportarColaboradores({ onClose, onConcluido }: { onClose: () =>
             {MODO_API && resultado.acessos ? `, ${resultado.acessos} acesso(s) ao portal criado(s)` : ''}.
             {resultado.erros.length > 0 && ` ${resultado.erros.length} linha(s) não foram gravadas.`}
           </Callout>
+          {MODO_API && resultado.acessos > 0 && (
+            <div className="rounded-xl bg-surface-2 p-3 flex flex-wrap items-center gap-3">
+              <p className="text-[12.5px] text-ink-2 flex-1 min-w-[220px]">Mande para as pessoas novas o e-mail com o login e o link para criar a senha. Também dá para enviar depois, em Usuários e papéis.</p>
+              <Button size="sm" icon="Mail" disabled={emails !== 'pendente'} onClick={async () => {
+                setEmails('enviando')
+                setEmails((await enviarAcessos(resultado.criadas)) ? 'enviados' : 'pendente')
+              }}>{emails === 'enviando' ? 'Enviando…' : emails === 'enviados' ? 'E-mails enviados' : `Enviar e-mail de acesso (${resultado.criadas.length})`}</Button>
+            </div>
+          )}
           {resultado.funcoesCriadas.length > 0 && <p className="text-[12.5px] text-ink-2"><b>Funções criadas:</b> {resultado.funcoesCriadas.join(', ')}.</p>}
           {resultado.liderancas.length > 0 && (
             <div className="text-[12.5px] text-ink-2"><b>Lideranças conectadas:</b>

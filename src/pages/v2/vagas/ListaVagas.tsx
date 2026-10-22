@@ -13,6 +13,8 @@ import { MAPA_STATUS_VAGA, STATUS_VAGA, ROTULO_MODALIDADE } from '@/domain/v2/va
 import { dataBR } from '@/lib/fmt'
 
 const EXTRAS = ['pagina', 'ordem', 'visao']
+/** Colunas do antigo fluxo de aprovação: só aparecem enquanto houver vaga nelas. */
+const ETAPAS_APROVACAO: string[] = ['em_aprovacao', 'ajustes', 'aprovada']
 interface Resposta { itens: VagaLinha[]; total: number; pagina: number; por: number; porStatus: Record<string, number> }
 
 export default function ListaVagas() {
@@ -105,9 +107,9 @@ export default function ListaVagas() {
             </Card>
           ) : (
             <div>
-              <p className="text-[12px] text-muted mb-3">As mudanças de situação seguem o fluxo de aprovação e exigem confirmação: use o menu <b>⋯</b> de cada cartão. {d.total > d.itens.length && 'Exibindo as 200 mais recentes: use os filtros para refinar.'}</p>
+              <p className="text-[12px] text-muted mb-3">Para publicar, pausar ou encerrar uma vaga, use o menu <b>⋯</b> de cada cartão. {d.total > d.itens.length && 'Exibindo as 200 mais recentes: use os filtros para refinar.'}</p>
               <div className="flex gap-3 overflow-x-auto pb-3 -mx-4 px-4 sm:mx-0 sm:px-0" role="list" aria-label="Vagas por situação">
-                {STATUS_VAGA.map((s) => {
+                {STATUS_VAGA.filter((s) => !ETAPAS_APROVACAO.includes(s) || d.porStatus[s]).map((s) => {
                   const col = d.itens.filter((v) => v.status === s)
                   return (
                     <section key={s} role="listitem" aria-label={MAPA_STATUS_VAGA[s].rotulo} className="w-[270px] shrink-0 rounded-2xl bg-surface-3 border border-line p-2.5">
