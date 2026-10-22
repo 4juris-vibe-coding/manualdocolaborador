@@ -25,13 +25,14 @@ export function TagInput({ valor, onChange, placeholder = 'Digite e pressione En
 /** Slider 0–100 com rótulos opostos nas pontas (traços comportamentais / DISC). */
 export function SliderBipolar({ esquerda, direita, valor, onChange, cor, disabled }: { esquerda: string; direita?: string; valor: number; onChange?: (v: number) => void; cor?: string; disabled?: boolean }) {
   return (
-    <div className="py-1.5">
+    <div className="py-2">
       <div className="flex justify-between gap-3 text-[11.5px] mb-1">
         <span className={cn('font-semibold', valor < 50 ? 'text-ink' : 'text-muted')}>{esquerda}</span>
         {direita && <span className={cn('font-semibold text-right', valor > 50 ? 'text-ink' : 'text-muted')}>{direita}</span>}
       </div>
       <input type="range" min={0} max={100} step={5} value={valor} disabled={disabled} aria-label={direita ? `${esquerda} ↔ ${direita}` : esquerda}
-        onChange={(e) => onChange?.(Number(e.target.value))} className="w-full accent-brand disabled:opacity-70" style={cor ? { accentColor: cor } : undefined} />
+        onChange={(e) => onChange?.(Number(e.target.value))} className="w-full disabled:opacity-70"
+        style={{ '--p': `${valor}%`, ...(cor ? { '--rc': cor } : {}) } as React.CSSProperties} />
     </div>
   )
 }

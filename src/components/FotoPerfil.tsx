@@ -149,7 +149,7 @@ function FotoModal({ pessoa, open, onClose }: { pessoa: Pessoa; open: boolean; o
           </div>
           <div className="w-full max-w-[320px] flex items-center gap-3">
             <Icon name="ZoomOut" className="h-4 w-4 text-muted shrink-0" />
-            <input type="range" min={1} max={ZOOM_MAX} step={0.01} value={zoom} onChange={(e) => mudarZoom(+e.target.value)} aria-label="Zoom" className="flex-1 accent-brand" />
+            <input type="range" min={1} max={ZOOM_MAX} step={0.01} value={zoom} onChange={(e) => mudarZoom(+e.target.value)} aria-label="Zoom" className="flex-1" style={{ '--p': `${((zoom - 1) / (ZOOM_MAX - 1)) * 100}%` } as React.CSSProperties} />
             <Icon name="ZoomIn" className="h-4 w-4 text-muted shrink-0" />
           </div>
           <div className="flex flex-wrap gap-2 justify-center">
