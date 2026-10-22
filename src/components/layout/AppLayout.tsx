@@ -9,6 +9,7 @@ import { useSync, sairCompleto } from '@/data/sync'
 import { useAcesso } from '@/data/v2/acesso'
 import { Eye, FlaskConical, AlertTriangle } from 'lucide-react'
 import { CaixaSugestoes } from '@/components/CaixaSugestoes'
+import { CarregandoArea, TelaCarregamento } from '@/components/TelaCarregamento'
 
 export function AppLayout() {
   const { pathname } = useLocation()
@@ -29,7 +30,7 @@ export function AppLayout() {
   useEffect(() => { window.scrollTo(0, 0) }, [pathname])
   useEffect(() => { if (sessaoInvalida) void sairCompleto() }, [sessaoInvalida])
 
-  if (MODO_API && sessaoApi === 'carregando') return <div className="min-h-screen flex items-center justify-center text-muted text-[14px]" aria-busy="true">Carregando…</div>
+  if (MODO_API && sessaoApi === 'carregando') return <TelaCarregamento mensagem="Conferindo sua sessão…" />
   if (MODO_API && sessaoApi === 'erro') return <div role="alert" className="min-h-screen flex items-center justify-center text-danger text-[14px] px-6 text-center">Não foi possível conectar ao servidor. Recarregue a página em instantes.</div>
   if (!sessaoId || sessaoInvalida) return <Navigate to="/login" replace state={{ de: pathname }} />
 
@@ -70,7 +71,7 @@ export function AppLayout() {
         )}
         <main id="conteudo" className="flex-1 px-4 pt-5 pb-24 sm:px-7 sm:pt-7 sm:pb-24" tabIndex={-1}>
           <div className="mx-auto max-w-[1240px] animate-fade-in" key={pathname + (preview ? '-p' : '')}>
-            {bloqueado ? <Navigate to="/" replace /> : aguardandoAcesso ? <div className="text-muted text-[14px]" aria-busy="true">Carregando…</div> : <Outlet />}
+            {bloqueado ? <Navigate to="/" replace /> : aguardandoAcesso ? <CarregandoArea mensagem="Carregando suas permissões…" /> : <Outlet />}
           </div>
         </main>
       </div>

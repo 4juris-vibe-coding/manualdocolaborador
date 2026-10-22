@@ -16,9 +16,36 @@
       href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <style>
+      /* Tela de carregamento 4JURIS. Usada aqui (antes do JS) e pelo componente TelaCarregamento (mesmas classes),
+         para a passagem de uma para a outra ser invisível. */
+      .tc { position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+        background: radial-gradient(1200px 600px at 50% 38%, #1c2f3a 0%, #122029 60%); color: #fff; font-family: Sora, system-ui, sans-serif;
+        animation: tc-entra .35s ease-out both; }
+      .tc-marca { position: relative; width: 76px; height: 76px; margin: 16px 0 6px; }
+      .tc-marca svg { position: relative; z-index: 1; width: 76px; height: 76px; border-radius: 20px; box-shadow: 0 12px 40px rgba(0, 50, 210, .45); animation: tc-pulso 1.8s ease-in-out infinite; }
+      .tc-anel { position: absolute; inset: -16px; border-radius: 50%; border: 2.5px solid rgba(157, 176, 255, .14); border-top-color: #9db0ff; border-right-color: #4d6bec; animation: tc-gira 1s linear infinite; }
+      .tc-nome { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+      .tc-nome span { font-weight: 400; color: #aeb9c1; }
+      .tc-barra { width: 160px; height: 3px; border-radius: 9px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+      .tc-barra::after { content: ''; display: block; width: 40%; height: 100%; border-radius: 9px; background: linear-gradient(90deg, transparent, #4d6bec, #9db0ff); animation: tc-corre 1.3s ease-in-out infinite; }
+      .tc-msg { font-size: 12.5px; color: #8b98a3; min-height: 1em; }
+      @keyframes tc-gira { to { transform: rotate(360deg) } }
+      @keyframes tc-pulso { 50% { transform: scale(.94) } }
+      @keyframes tc-corre { from { transform: translateX(-100%) } to { transform: translateX(260%) } }
+      @keyframes tc-entra { from { opacity: 0 } }
+      @media (prefers-reduced-motion: reduce) { .tc *, .tc *::after, .tc { animation-duration: 0s !important; animation-iteration-count: 1 !important } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="tc" role="status" aria-live="polite">
+        <div class="tc-marca"><div class="tc-anel"></div><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#0032D2"/><text x="50%" y="53%" dominant-baseline="middle" text-anchor="middle" font-family="Sora, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="-2" fill="#fff">4J</text></svg></div>
+        <div class="tc-nome">4JURIS <span>Pessoas</span></div>
+        <div class="tc-barra"></div>
+        <div class="tc-msg">Carregando o portal…</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

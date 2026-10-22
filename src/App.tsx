@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { ToastHost } from '@/components/toast'
 import { ErroPagina } from '@/components/ErroPagina'
 import Login from '@/pages/Login'
+import { TelaCarregamento } from '@/components/TelaCarregamento'
 import RedefinirSenha from '@/pages/RedefinirSenha'
 
 // Páginas carregadas sob demanda (reduz o tamanho do carregamento inicial).
@@ -108,7 +109,7 @@ function RedirecionarCanva() {
 /** Layout das páginas públicas: sem menu, sem login, com rede de segurança contra erros. */
 function PublicoSeguro() {
   const { pathname } = useLocation()
-  return <ErroPagina key={pathname}><Suspense fallback={<Carregando />}><Outlet /></Suspense></ErroPagina>
+  return <ErroPagina key={pathname}><Suspense fallback={<TelaCarregamento mensagem="Carregando…" />}><Outlet /></Suspense></ErroPagina>
 }
 
 function Carregando() {

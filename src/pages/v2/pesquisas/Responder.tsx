@@ -5,6 +5,7 @@ import { Card, EmptyState, Logo } from '@/components/ui'
 import { api, ErroApi, useApi } from '@/data/v2/api'
 import { Respondente, type DadosResposta, type ResultadoEnvio } from '@/components/v2/pesquisas/Respondente'
 import type { Respostas } from '@/domain/v2/pesquisaTipos'
+import { TelaCarregamento } from '@/components/TelaCarregamento'
 
 /** Identificador aleatório do navegador, usado só para limitar repetições no link público. */
 function marcaDoNavegador(): string {
@@ -41,7 +42,7 @@ export default function Responder() {
   const progresso = useCallback((respostas: Respostas) => { void api.put(`responder/${encodeURIComponent(token)}/progresso`, { respostas }).catch(() => undefined) }, [token])
   const chaveLocal = useMemo(() => (r.dados?.modo === 'anonima' ? `pq-prog-${r.dados.pesquisaId ?? token.slice(0, 12)}` : undefined), [r.dados?.modo, r.dados?.pesquisaId, token])
 
-  if (r.carregando && !r.dados) return <div className="min-h-screen flex items-center justify-center text-muted text-[14px]" aria-busy="true">Carregando…</div>
+  if (r.carregando && !r.dados) return <TelaCarregamento mensagem="Abrindo a pesquisa…" />
   if (r.erro && !r.dados) {
     const e = r.erro
     if (e.status === 0) return <Aviso icone="WifiOff" titulo="Sem conexão" texto={e.message} />
