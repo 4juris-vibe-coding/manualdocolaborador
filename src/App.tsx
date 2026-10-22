@@ -59,11 +59,25 @@ const Sugestoes = lazy(() => import('@/pages/Sugestoes'))
 const Apresentacoes = lazy(() => import('@/pages/Apresentacoes'))
 const ApresentacaoEditor = lazy(() => import('@/pages/ApresentacaoEditor'))
 const Admin = lazy(() => import('@/pages/Admin'))
+const Cadastro = lazy(() => import('@/pages/Cadastro'))
 const Seguranca = lazy(() => import('@/pages/Seguranca'))
 const NaoEncontrada = lazy(() => import('@/pages/NaoEncontrada'))
 
 // ---- Módulos v2: recrutamento, pesquisas, cargos, organograma, analytics ----
 const PainelVagas = lazy(() => import('@/pages/v2/vagas/PainelVagas'))
+// Gestão de prestadores PJ (financeiro)
+const FinPainel = lazy(() => import('@/pages/v2/financeiro/Painel'))
+const FinContratos = lazy(() => import('@/pages/v2/financeiro/Contratos'))
+const FinContratoForm = lazy(() => import('@/pages/v2/financeiro/ContratoForm'))
+const FinContrato = lazy(() => import('@/pages/v2/financeiro/ContratoDetalhe'))
+const FinFornecedores = lazy(() => import('@/pages/v2/financeiro/Fornecedores'))
+const FinFornecedor = lazy(() => import('@/pages/v2/financeiro/Fornecedores').then((m) => ({ default: m.FornecedorDetalhe })))
+const FinNotas = lazy(() => import('@/pages/v2/financeiro/Notas'))
+const FinContas = lazy(() => import('@/pages/v2/financeiro/Contas'))
+const FinDocumentos = lazy(() => import('@/pages/v2/financeiro/Outros').then((m) => ({ default: m.DocumentosRepo })))
+const FinConfig = lazy(() => import('@/pages/v2/financeiro/Outros').then((m) => ({ default: m.ConfigFinanceiro })))
+const MeusContratos = lazy(() => import('@/pages/v2/financeiro/Outros').then((m) => ({ default: m.MeusContratos })))
+const MeusDocumentos = lazy(() => import('@/pages/v2/financeiro/Outros').then((m) => ({ default: m.MeusDocumentos })))
 const ListaVagas = lazy(() => import('@/pages/v2/vagas/ListaVagas'))
 const VagaForm = lazy(() => import('@/pages/v2/vagas/VagaForm'))
 const VagaDetalhe = lazy(() => import('@/pages/v2/vagas/VagaDetalhe'))
@@ -137,6 +151,7 @@ export function App() {
           <Route path="/carreiras/:slug" element={<VagaPublica />} />
           <Route path="/carreiras/:slug/candidatar" element={<Candidatar />} />
           <Route path="/responder/:token" element={<ResponderPesquisa />} />
+          <Route path="/cadastro/:token" element={<Cadastro />} />
         </Route>
         <Route element={<AppLayout />}>
           <Route element={<PaginaSegura />}>
@@ -224,6 +239,19 @@ export function App() {
             {/* v2 · Organograma, analytics, administração */}
             <Route path="/organograma" element={<OrganogramaPagina />} />
             <Route path="/rh/analytics" element={<PeopleAnalytics />} />
+            <Route path="/financeiro" element={<FinPainel />} />
+            <Route path="/financeiro/contratos" element={<FinContratos />} />
+            <Route path="/financeiro/contratos/novo" element={<FinContratoForm />} />
+            <Route path="/financeiro/contratos/:id" element={<FinContrato />} />
+            <Route path="/financeiro/contratos/:id/editar" element={<FinContratoForm />} />
+            <Route path="/financeiro/fornecedores" element={<FinFornecedores />} />
+            <Route path="/financeiro/fornecedores/:id" element={<FinFornecedor />} />
+            <Route path="/financeiro/notas" element={<FinNotas />} />
+            <Route path="/financeiro/contas" element={<FinContas />} />
+            <Route path="/financeiro/documentos" element={<FinDocumentos />} />
+            <Route path="/financeiro/config" element={<FinConfig />} />
+            <Route path="/meus-contratos" element={<MeusContratos />} />
+            <Route path="/meus-documentos" element={<MeusDocumentos />} />
             <Route path="/admin/funcoes" element={<FuncoesAdicionais />} />
             {/* Rotas antigas → novos módulos */}
             <Route path="/recesso" element={<Navigate to="/disponibilidade" replace />} />

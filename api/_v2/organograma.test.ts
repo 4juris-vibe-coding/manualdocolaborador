@@ -28,7 +28,12 @@ describe('GET organograma', () => {
     const por = Object.fromEntries(r.itens.map((p: any) => [p.id, p]))
     expect(por.col1.gestorId).toBe('ger1')
     expect(por.col2.gestorId).toBe('ger2')
-    expect(por.ger1.diretos).toBe(1)
+    // col1 responde a ger1 no cadastro; quem está no Jurídico sem gestor imediato fica abaixo do líder (ger1).
+    expect(por.ger1.diretos).toBe(5)
+    expect(por.col1.gestorViaDepartamento).toBe(false)
+    expect(por.admin1.gestorId).toBe('ger1')
+    expect(por.admin1.gestorViaDepartamento).toBe(true)
+    expect(por.ger2.gestorId).toBeNull() // líder do próprio departamento, sem departamento pai
     expect(por.ger1.lidera).toBe(true)
     expect(por.col1.cargo).toBe('Advogado(a)')
     expect(por.col1.setor).toBe('Jurídico')
@@ -67,7 +72,7 @@ describe('GET organograma', () => {
     const s = await ver(m.c.col1, { setor: 's2' })
     expect(s.itens.map((p: any) => p.id).sort()).toEqual(['col2', 'ger2'].sort())
     const e = await ver(m.c.col1, { gestor: 'ger1' })
-    expect(e.itens.map((p: any) => p.id).sort()).toEqual(['col1', 'ger1'])
+    expect(e.itens.map((p: any) => p.id).sort()).toEqual(['admin1', 'col1', 'dir1', 'ger1', 'rec1', 'rh1'])
     // recorte sem o gestor: a pessoa vira raiz do recorte, apontando o gestor que ficou de fora
     const so = (await ver(m.c.col1, { setor: 's1' })).itens.find((p: any) => p.id === 'col1')
     expect(so.gestorId).toBe('ger1')
@@ -89,6 +94,8 @@ describe('GET organograma', () => {
 describe('estruturas grandes: carga progressiva', () => {
   it('acima do limite devolve só os primeiros níveis e o ramo vem sob demanda', async () => {
     const g = await mundoPadrao()
+    // Sem líder no Jurídico: a árvore depende só dos vínculos explícitos.
+    await g.pg.query(`update app_setores set dados = jsonb_set(dados, '{gestorId}', 'null') where id = 's1'`)
     const itens = Array.from({ length: 320 }, (_, i) => ({ id: `x${i}`, nome: `Pessoa ${String(i).padStart(3, '0')}`, status: 'ativo', papel: 'colaborador', setorId: 's1', cargoId: 'g1', responsavelId: i === 0 ? null : i < 6 ? 'x0' : `x${(i % 5) + 1}`, email: `x${i}@t.l` }))
     for (let i = 0; i < itens.length; i++) await g.pg.query('insert into app_colaboradores (ord, id, dados) values ($1,$2,$3::jsonb)', [100 + i, itens[i].id, JSON.stringify(itens[i])])
     const r = (await GET(g, 'organograma', g.c.rh1)).json
@@ -124,7 +131,8 @@ describe('análise, validação e snapshots', () => {
     const r = (await GET(m, 'organograma/analise', m.c.rh1)).json
     expect(r.indicadores.totalAtivos).toBe(8)
     expect(r.indicadores.porSetor.find((s: any) => s.nome === 'Jurídico').qtd).toBeGreaterThan(0)
-    expect(r.pendencias.some((p: any) => p.tipo === 'sem_gestor' && p.pessoa)).toBe(true)
+    expect(r.indicadores.equipes.find((e: any) => e.id === 'ger1').diretos).toBe(5)
+    expect(r.pendencias.every((p: any) => !p.pessoaId || p.pessoa)).toBe(true)
     expect(r.evolucao).toBeNull()
     expect(r.mensagemEvolucao).toMatch(/histórico/)
     expect(r.retratos).toBe(1) // retrato do mês criado na primeira leitura

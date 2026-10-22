@@ -14,7 +14,7 @@ import { ORIGENS_PUBLICAS, statusPublico, somarMeses, vagaAceitaCandidaturas } f
 void _nao
 
 const DIA = (c: string) => `to_char(${c}, 'YYYY-MM-DD')`
-const CAMPOS_PUBLICOS = `v.id, v.slug, v.titulo, v.resumo, v.tipo, v.modalidade, v.cidade, v.estado, v.pais, v.senioridade, v.setor_id, v.publicada_em, (v.imagem_arquivo_id is not null) as tem_imagem,
+const CAMPOS_PUBLICOS = `v.id, v.slug, v.titulo, v.resumo, v.tipo, v.regime_contratacao, v.modalidade, v.cidade, v.estado, v.pais, v.senioridade, v.setor_id, v.publicada_em, (v.imagem_arquivo_id is not null) as tem_imagem,
   ${DIA('v.encerra_candidaturas_em')} as encerra_candidaturas_em, ${DIA('v.publicar_em')} as publicar_em`
 const FILTRO_PUBLICADA = `v.status = 'publicada' and not v.arquivada and (v.publicar_em is null or v.publicar_em <= $1::date) and (v.encerra_candidaturas_em is null or v.encerra_candidaturas_em >= $1::date)`
 
@@ -229,7 +229,7 @@ export const rotas: Rota[] = [
 function itemPublico(v: any, mapa: Map<string, string>) {
   return {
     slug: v.slug, titulo: v.titulo, resumo: v.resumo, area: mapa.get(v.setor_id) ?? null, tipo: v.tipo, tipoRotulo: TIPOS[v.tipo] ?? v.tipo,
-    modalidade: v.modalidade, cidade: v.cidade, estado: v.estado, pais: v.pais, senioridade: v.senioridade,
+    regimeContratacao: v.regime_contratacao, modalidade: v.modalidade, cidade: v.cidade, estado: v.estado, pais: v.pais, senioridade: v.senioridade,
     publicadaEm: v.publicada_em, encerraEm: v.encerra_candidaturas_em,
     imagemUrl: v.tem_imagem ? `/api/v2/publico/vagas/${encodeURIComponent(v.slug)}/imagem` : null,
   }

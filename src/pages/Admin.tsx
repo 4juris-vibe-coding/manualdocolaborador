@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '@/lib/store'
 import type { Papel } from '@/lib/types'
-import { PageHeader, Card, CardHead, Button, Avatar, Tabs, SearchBox, Select, Badge, Callout, Icon, Tabela, TH, TD } from '@/components/ui'
+import { PageHeader, Card, CardHead, Button, Avatar, Tabs, SearchBox, Select, Badge, Callout, Icon, Tabela, TH, TD, EmptyState } from '@/components/ui'
 import { ConfirmModal, Modal } from '@/components/Modal'
 import { feedback, toast } from '@/components/toast'
-import { STATUS_COLAB, cn } from '@/lib/utils'
+import { STATUS_COLAB, cn, fmtDateTime } from '@/lib/utils'
 import { MATRIZ, PAPEL_DESC, PAPEL_LABEL, type Capacidade } from '@/domain/permissions'
 import { MODO_DEMO, MODO_API } from '@/data/config'
-import { listarAcessos, salvarAcesso, salvarAgora, type AcessoUsuario } from '@/data/sync'
+import { alterarConvite, decidirSolicitacao, lerConvite, linkCadastro, listarAcessos, listarSolicitacoes, salvarAcesso, salvarAgora, type AcessoUsuario, type Convite, type Solicitacao } from '@/data/sync'
 import { gerarSenha } from '@/components/AcessoPortal'
 import { hojeISO } from '@/domain/datas'
 import { Dropdown } from '@/components/Dropdown'
@@ -55,6 +55,57 @@ export default function Admin() {
     setNovo(null)
     void recarregarAcessos()
   }
+  /* ---------- cadastro por link: o link enviado às pessoas e as solicitações que chegam por ele ---------- */
+  const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([])
+  const [convite, setConvite] = useState<Convite | null | undefined>(undefined)
+  const [aprovando, setAprovando] = useState<{ sol: Solicitacao; nome: string; papel: Papel; setorId: string } | null>(null)
+  const [recusando, setRecusando] = useState<Solicitacao | null>(null)
+  const [novoLink, setNovoLink] = useState(false)
+  const recarregarSolicitacoes = () => listarSolicitacoes().then(setSolicitacoes)
+  useEffect(() => { if (MODO_API) void recarregarSolicitacoes() }, [tab])
+  useEffect(() => { if (MODO_API && tab === 'solicitacoes') void lerConvite().then(setConvite) }, [tab])
+  const pendentes = solicitacoes.filter((x) => x.status === 'pendente')
+  const analisadas = solicitacoes.filter((x) => x.status !== 'pendente')
+  const link = convite ? linkCadastro(convite.token) : ''
+  const trocarLink = async (acao: 'gerar' | 'revogar') => {
+    const r = await alterarConvite(acao)
+    if (r.erro) { toast(r.erro, 'danger'); return }
+    setConvite(r.convite)
+    setNovoLink(false)
+    toast(acao === 'gerar' ? 'Link de cadastro pronto. Copie e envie para as pessoas.' : 'Link desativado. Ninguém mais consegue se cadastrar por ele.')
+  }
+  const copiarLink = () => { void navigator.clipboard?.writeText(link); toast('Link copiado.') }
+  const existenteDe = (email: string) => s.colaboradores.find((c) => c.email.toLowerCase() === email.toLowerCase())
+  const aprovar = async () => {
+    if (!aprovando) return
+    const { sol } = aprovando
+    setSalvando(true)
+    // Quem já tem cadastro com o mesmo e-mail (feito pelo RH antes) só ganha o login; os demais ganham o cadastro mínimo.
+    let id = existenteDe(sol.email)?.id
+    if (!id) {
+      const r = s.salvarPessoa({ nome: aprovando.nome.trim(), email: sol.email, papel: aprovando.papel, setorId: aprovando.setorId, status: 'ativo', dataEntrada: hojeISO(), regime: 'autonomo' })
+      if (!r.ok) { setSalvando(false); toast(r.erro ?? 'Não foi possível cadastrar a pessoa.', 'danger'); return }
+      id = r.id
+    }
+    if (!(await salvarAgora())) { setSalvando(false); toast('Não foi possível salvar o cadastro no servidor. Tente de novo.', 'danger'); return }
+    const falha = await decidirSolicitacao(sol.id, 'aprovar', id)
+    setSalvando(false)
+    if (falha) { toast(falha, 'danger'); return }
+    toast(`Acesso de ${sol.nome.split(' ')[0]} liberado.`)
+    setAprovando(null)
+    void recarregarSolicitacoes()
+    void recarregarAcessos()
+  }
+  const recusar = async () => {
+    if (!recusando) return
+    const falha = await decidirSolicitacao(recusando.id, 'recusar')
+    if (falha) { toast(falha, 'danger'); return }
+    toast('Solicitação recusada.')
+    setRecusando(null)
+    void recarregarSolicitacoes()
+  }
+  const existenteAprovando = aprovando ? existenteDe(aprovando.sol.email) : undefined
+
   const pessoaAlvo = s.colaboradores.find((c) => c.id === alvo)
   const abrirAcesso = (id: string) => { setAlvo(id); setSenha(''); setVerSenha(false) }
   const gravarSenha = async () => {
@@ -85,7 +136,111 @@ export default function Admin() {
     <>
       <PageHeader title="Usuários & acessos" subtitle="Papéis, permissões e dados da plataforma."
         actions={MODO_API ? <Button icon="UserPlus" onClick={() => { setNovo({ nome: '', email: '', papel: 'colaborador', setorId: s.setores[0]?.id ?? '', senha: '' }); setVerNovaSenha(false) }}>Criar acesso</Button> : undefined} />
-      <Tabs tabs={[{ key: 'usuarios', label: 'Usuários e papéis' }, { key: 'matriz', label: 'Matriz de permissões' }, { key: 'dados', label: 'Dados da demonstração' }]} active={tab} onChange={setTab} />
+      <Tabs tabs={[
+        { key: 'usuarios', label: 'Usuários e papéis' },
+        ...(MODO_API ? [{ key: 'solicitacoes', label: pendentes.length ? `Solicitações de acesso (${pendentes.length})` : 'Solicitações de acesso' }] : []),
+        { key: 'matriz', label: 'Matriz de permissões' }, { key: 'dados', label: 'Dados da demonstração' },
+      ]} active={tab} onChange={setTab} />
+
+      {tab === 'usuarios' && pendentes.length > 0 && (
+        <Callout tone="warning" icon="UserPlus" className="mb-5">
+          {pendentes.length === 1 ? '1 pessoa se cadastrou pelo link e aguarda' : `${pendentes.length} pessoas se cadastraram pelo link e aguardam`} aprovação.{' '}
+          <button type="button" className="font-semibold underline" onClick={() => setTab('solicitacoes')}>Ver solicitações</button>
+        </Callout>
+      )}
+
+      {tab === 'solicitacoes' && (
+        <div className="space-y-6">
+          <Card>
+            <CardHead title="Link de cadastro" />
+            <div className="p-5 space-y-4">
+              <p className="text-[13.5px] text-ink-2">Envie este link para quem precisa de acesso. A pessoa preenche nome, e-mail e senha e o pedido aparece aqui. O acesso só é liberado quando vocês aprovarem.</p>
+              {convite === undefined ? <div className="h-11 rounded-xl bg-winter animate-pulse" /> : convite ? (
+                <>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="relative flex-1 min-w-0">
+                      <Icon name="Link2" className="h-4 w-4 text-brand absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input readOnly aria-label="Link de cadastro" className="input pl-10 font-mono text-[12.5px]" value={link} onFocus={(e) => e.target.select()} />
+                    </div>
+                    <Button icon="Copy" onClick={copiarLink}>Copiar link</Button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <a className="inline-flex items-center gap-2 h-9 px-3.5 rounded-xl text-[13px] font-semibold bg-success-soft text-success-ink hover:opacity-90 transition"
+                      href={`https://wa.me/?text=${encodeURIComponent(`Olá! Crie seu acesso ao Portal 4JURIS por este link: ${link}`)}`} target="_blank" rel="noreferrer">
+                      <Icon name="Send" className="h-4 w-4" /> Enviar pelo WhatsApp
+                    </a>
+                    <a className="inline-flex items-center gap-2 h-9 px-3.5 rounded-xl text-[13px] font-semibold bg-brand-50 text-brand hover:opacity-90 transition"
+                      href={`mailto:?subject=${encodeURIComponent('Seu acesso ao Portal 4JURIS')}&body=${encodeURIComponent(`Olá!\n\nCrie seu acesso ao Portal 4JURIS por este link:\n${link}\n\nDepois do cadastro, a equipe aprova e você recebe a liberação.`)}`}>
+                      <Icon name="Mail" className="h-4 w-4" /> Enviar por e-mail
+                    </a>
+                    <span className="flex-1" />
+                    <Button size="sm" variant="ghost" icon="RefreshCw" onClick={() => setNovoLink(true)}>Gerar novo link</Button>
+                    <Button size="sm" variant="ghost" icon="Link2Off" onClick={() => void trocarLink('revogar')}>Desativar</Button>
+                  </div>
+                  <p className="text-[12px] text-muted">Criado em {fmtDateTime(convite.criadoEm)}. Gerar um novo link desativa este.</p>
+                </>
+              ) : (
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button icon="Link2" onClick={() => void trocarLink('gerar')}>Gerar link de cadastro</Button>
+                  <span className="text-[12.5px] text-muted">Nenhum link ativo no momento.</span>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <Card>
+            <CardHead title={`Aguardando aprovação${pendentes.length ? ` · ${pendentes.length}` : ''}`} />
+            {pendentes.length === 0 ? (
+              <EmptyState icon="UserCheck" title="Nenhuma solicitação pendente" desc="Quando alguém se cadastrar pelo link, o pedido aparece aqui." />
+            ) : (
+              <ul className="divide-y divide-line">
+                {pendentes.map((x) => {
+                  const ja = existenteDe(x.email)
+                  return (
+                    <li key={x.id} className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <Avatar nome={x.nome} size="sm" />
+                        <div className="min-w-0">
+                          <div className="font-semibold text-ink truncate">{x.nome}</div>
+                          <div className="text-[12px] text-muted truncate">{x.email} · {fmtDateTime(x.criadoEm)}</div>
+                          {ja && <div className="text-[11.5px] text-brand font-semibold mt-0.5">Já cadastrado(a) em Pessoas como {ja.nome}</div>}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <Button size="sm" variant="ghost" icon="X" onClick={() => setRecusando(x)}>Recusar</Button>
+                        <Button size="sm" icon="Check" onClick={() => setAprovando({ sol: x, nome: x.nome, papel: 'colaborador', setorId: s.setores[0]?.id ?? '' })}>Aprovar</Button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </Card>
+
+          {analisadas.length > 0 && (
+            <Card>
+              <CardHead title="Analisadas nos últimos 30 dias" />
+              <Tabela minWidth={560}>
+                <thead><tr><th className={TH}>Pessoa</th><th className={TH}>Pedido</th><th className={TH}>Decisão</th></tr></thead>
+                <tbody>
+                  {analisadas.map((x) => (
+                    <tr key={x.id}>
+                      <td className={TD}>
+                        {x.colaboradorId && s.colaboradores.some((c) => c.id === x.colaboradorId)
+                          ? <Link to={`/rh/pessoas/${x.colaboradorId}`} className="font-semibold text-ink hover:text-brand">{x.nome}</Link>
+                          : <span className="font-semibold text-ink">{x.nome}</span>}
+                        <div className="text-[11.5px] text-muted">{x.email}</div>
+                      </td>
+                      <td className={TD}>{fmtDateTime(x.criadoEm)}</td>
+                      <td className={TD}><Badge tone={x.status === 'aprovado' ? 'success' : 'neutral'} dot>{x.status === 'aprovado' ? 'Aprovado' : 'Recusado'}</Badge> <span className="text-[11.5px] text-muted ml-1">{fmtDateTime(x.decididoEm ?? undefined)}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Tabela>
+            </Card>
+          )}
+        </div>
+      )}
 
       {tab === 'usuarios' && (
         <>
@@ -216,6 +371,32 @@ export default function Admin() {
         </div>
         <p className="text-[12px] text-muted mt-3">O login é o e-mail do cadastro da pessoa. Repasse a senha por um canal seguro e peça para ela trocar depois em "Esqueceu a senha?".</p>
       </Modal>
+
+      <Modal open={!!aprovando} onClose={() => setAprovando(null)} title="Aprovar acesso" subtitle={aprovando ? `${aprovando.sol.nome} · ${aprovando.sol.email}` : undefined}
+        footer={<><Button variant="ghost" onClick={() => setAprovando(null)}>Cancelar</Button><Button icon="Check" disabled={salvando || (!existenteAprovando && !aprovando?.nome.trim())} onClick={() => void aprovar()}>{salvando ? 'Liberando…' : 'Aprovar e liberar acesso'}</Button></>}>
+        {aprovando && (existenteAprovando ? (
+          <Callout tone="brand" icon="UserCheck">
+            Já existe um cadastro com este e-mail: <b>{existenteAprovando.nome}</b> ({PAPEL_LABEL[existenteAprovando.papel]}, {s.setorNome(existenteAprovando.setorId)}). O login será vinculado a ele, com a senha que a pessoa escolheu.
+          </Callout>
+        ) : (
+          <div className="space-y-3">
+            <div><label className="label" htmlFor="apr-nome">Nome completo</label><input id="apr-nome" className="input" value={aprovando.nome} onChange={(e) => setAprovando({ ...aprovando, nome: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <Select label="Papel" value={aprovando.papel} onChange={(v) => setAprovando({ ...aprovando, papel: v as Papel })}>{PAPEIS.map((p) => <option key={p} value={p}>{PAPEL_LABEL[p]}</option>)}</Select>
+              <Select label="Área" value={aprovando.setorId} onChange={(v) => setAprovando({ ...aprovando, setorId: v })}>{s.setores.map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}</Select>
+            </div>
+            <p className="text-[12px] text-muted">A pessoa entra com o e-mail e a senha que cadastrou. Contrato, CNPJ e demais dados são completados depois em Pessoas & contratos.</p>
+          </div>
+        ))}
+      </Modal>
+
+      <ConfirmModal open={!!recusando} onClose={() => setRecusando(null)} titulo="Recusar solicitação?" confirmar="Recusar"
+        texto={recusando ? `${recusando.nome} (${recusando.email}) não terá acesso ao portal. Se tentar entrar, verá que o cadastro não foi aprovado.` : ''}
+        onConfirm={() => void recusar()} />
+
+      <ConfirmModal open={novoLink} onClose={() => setNovoLink(false)} titulo="Gerar um novo link?" confirmar="Gerar novo link" perigo={false}
+        texto="O link atual deixa de funcionar. Quem ainda não se cadastrou vai precisar do link novo. Solicitações já enviadas continuam aqui."
+        onConfirm={() => void trocarLink('gerar')} />
 
       <ConfirmModal open={resetar} onClose={() => setResetar(false)} titulo="Restaurar dados de demonstração?" confirmar="Restaurar"
         texto="Todas as alterações feitas neste navegador serão descartadas e os dados fictícios originais voltarão. Você continua conectado(a)."

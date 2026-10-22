@@ -32,6 +32,30 @@ create table if not exists redefinicoes_senha (
 );
 alter table redefinicoes_senha enable row level security;
 
+-- Cadastro por link: a pessoa preenche nome, e-mail e senha; o acesso só vale depois da aprovação (Usuários & acessos).
+create table if not exists convites_cadastro (
+  token text primary key,
+  criado_por text not null,
+  criado_em timestamptz not null default now(),
+  revogado_em timestamptz
+);
+alter table convites_cadastro enable row level security;
+
+create table if not exists solicitacoes_acesso (
+  id uuid primary key default gen_random_uuid(),
+  nome text not null,
+  email text not null,
+  senha_hash text not null,
+  status text not null default 'pendente' check (status in ('pendente', 'aprovado', 'recusado')),
+  convite_token text,
+  colaborador_id text,
+  criado_em timestamptz not null default now(),
+  decidido_em timestamptz,
+  decidido_por text
+);
+create unique index if not exists solicitacoes_pendente_email_uk on solicitacoes_acesso (lower(email)) where status = 'pendente';
+alter table solicitacoes_acesso enable row level security;
+
 do $$
 declare c text;
 begin

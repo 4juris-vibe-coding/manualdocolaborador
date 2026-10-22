@@ -10,7 +10,7 @@ import { ImagemVaga } from '@/components/v2/vagas/ImagemVaga'
 import { ErroApi, api, executar, lerBase64, useApi } from '@/data/v2/api'
 import { useTem } from '@/data/v2/acesso'
 import { toast } from '@/components/toast'
-import {
+import { REGIMES_CONTRATACAO, ROTULO_REGIME_CONTRATACAO,
   MODALIDADES_VAGA, MOEDAS, MOTIVOS_VAGA, PRIORIDADES_VAGA, ROTULO_ETAPA, ROTULO_MODALIDADE, ROTULO_MOTIVO, ROTULO_PRIORIDADE, ROTULO_REMUNERACAO, TIPOS_ETAPA, TIPOS_REMUNERACAO, camposFaltantes,
 } from '@/domain/v2/vagas'
 import { hojeISO } from '@/lib/fmt'
@@ -24,7 +24,7 @@ const CHAVE_LOCAL = 'vaga_rascunho_nao_salvo_v1'
 
 type Form = Record<string, any>
 const LISTAS = ['beneficios', 'requisitosObrigatorios', 'requisitosDesejaveis', 'competenciasTecnicas', 'competenciasComportamentais', 'idiomas', 'certificacoes', 'criteriosAvaliacao', 'documentosNecessarios', 'canais']
-const TEXTOS = ['titulo', 'resumo', 'objetivo', 'tipo', 'motivo', 'prioridade', 'setorId', 'unidadeId', 'cargoId', 'senioridade', 'equipe', 'gestorSolicitanteId', 'gestorResponsavelId', 'gestorImediatoId', 'recrutadorId',
+const TEXTOS = ['titulo', 'resumo', 'objetivo', 'tipo', 'regimeContratacao', 'motivo', 'prioridade', 'setorId', 'unidadeId', 'cargoId', 'senioridade', 'equipe', 'gestorSolicitanteId', 'gestorResponsavelId', 'gestorImediatoId', 'recrutadorId',
   'pais', 'estado', 'cidade', 'modalidade', 'viagens', 'moeda', 'tipoRemuneracao', 'variavel', 'responsabilidades', 'atividades', 'formacao', 'experiencia', 'textoPublico', 'mensagemConfirmacao', 'criteriosEncerramento',
   'dataAbertura', 'prazoPreenchimento', 'dataInicioPrevista', 'publicarEm', 'encerraCandidaturasEm', 'observacoesRh']
 const NUMEROS = ['salarioMin', 'salarioMax']
@@ -40,7 +40,7 @@ const formDaVaga = (v: Form): Form => {
   return f
 }
 const FORM_NOVO: Form = {
-  ...formDaVaga({}), tipo: 'efetivo', motivo: 'expansao', prioridade: 'normal', modalidade: 'presencial', moeda: 'BRL', tipoRemuneracao: 'mensal', pais: 'Brasil', dataAbertura: hojeISO(), canais: ['portal'],
+  ...formDaVaga({}), tipo: 'efetivo', regimeContratacao: 'pj', motivo: 'expansao', prioridade: 'normal', modalidade: 'presencial', moeda: 'BRL', tipoRemuneracao: 'mensal', pais: 'Brasil', dataAbertura: hojeISO(), canais: ['portal'],
 }
 function payload(f: Form, verRem: boolean): Form {
   const p: Form = {}
@@ -211,6 +211,7 @@ export default function VagaForm() {
       <div className="md:col-span-2">{txt('resumo', 'Descrição resumida', { area: true, rows: 3, max: 600, hint: 'Aparece na lista de vagas. Até 600 caracteres.' })}</div>
       <div className="md:col-span-2">{txt('objetivo', 'Objetivo da posição', { area: true, rows: 3, max: 2000 })}</div>
       {sel('tipo', 'Tipo de oportunidade', op?.tipos.map((t) => ({ v: t.chave, n: t.nome })) ?? [])}
+      {sel('regimeContratacao', 'Forma de contratação', REGIMES_CONTRATACAO.map((r) => ({ v: r, n: ROTULO_REGIME_CONTRATACAO[r] })))}
       {sel('motivo', 'Motivo da abertura', MOTIVOS_VAGA.map((m) => ({ v: m, n: ROTULO_MOTIVO[m] })))}
       <Field label="Quantidade de posições" required erro={E('qtdPosicoes')} htmlFor="f-qtd"><input id="f-qtd" type="number" min={1} max={500} className="input" value={form.qtdPosicoes} onChange={(e) => set('qtdPosicoes', e.target.value)} disabled={!editavel} /></Field>
       {sel('prioridade', 'Prioridade', PRIORIDADES_VAGA.map((p) => ({ v: p, n: ROTULO_PRIORIDADE[p] })), { hint: 'Vagas críticas passam por um fluxo de aprovação mais completo.' })}

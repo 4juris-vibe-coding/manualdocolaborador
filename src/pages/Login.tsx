@@ -11,7 +11,7 @@ import { entrarComSenha, pedirRedefinicaoSenha, useSync } from '@/data/sync'
 /* ------------------------------------------------------------------
    Fundo tecnológico: rede de partículas reativa ao mouse (canvas)
 ------------------------------------------------------------------ */
-function useParticleNetwork(canvasRef: React.RefObject<HTMLCanvasElement>) {
+export function useParticleNetwork(canvasRef: React.RefObject<HTMLCanvasElement>) {
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return

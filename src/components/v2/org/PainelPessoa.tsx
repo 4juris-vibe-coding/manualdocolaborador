@@ -95,7 +95,7 @@ export function PainelPessoa({ pessoa, pessoas, filhosDe, podeEditar, podeVerPer
           <div className="flex gap-1.5 flex-wrap mt-2">
             {pessoa.setor && <Badge tone="brand">{pessoa.setor}</Badge>}
             {pessoa.unidade && <Badge tone="neutral">{pessoa.unidade}</Badge>}
-            {pessoa.lidera && <Badge tone="gold">Liderança da área</Badge>}
+            {pessoa.lidera && <Badge tone="gold">Liderança do departamento</Badge>}
             {pessoa.status === 'integracao' && <Badge tone="warning">Em integração</Badge>}
             {pessoa.pendente && <Badge tone="warning">Pendência de cadastro</Badge>}
           </div>
@@ -106,7 +106,7 @@ export function PainelPessoa({ pessoa, pessoas, filhosDe, podeEditar, podeVerPer
         <h3 id="org-rel" className="text-[12px] font-bold uppercase tracking-wide text-muted mb-2">Relações hierárquicas</h3>
         <dl className="text-[13.5px] space-y-2">
           <div className="flex gap-2"><dt className="text-muted w-32 shrink-0">Gestor imediato</dt>
-            <dd className="min-w-0">{gestor ? <button type="button" className="font-semibold text-brand hover:underline" onClick={() => onSelecionar(gestor.id)}>{gestor.apelido || gestor.nome}</button> : pessoa.gestorForaDaVisao ? <span className="text-ink-2">Fora do recorte atual</span> : <span className="text-ink-2">Não definido</span>}</dd></div>
+            <dd className="min-w-0">{gestor ? <><button type="button" className="font-semibold text-brand hover:underline" onClick={() => onSelecionar(gestor.id)}>{gestor.apelido || gestor.nome}</button>{pessoa.gestorViaDepartamento && <span className="block text-[12px] text-muted">Líder do departamento (sem gestor imediato definido no cadastro)</span>}</> : pessoa.gestorForaDaVisao ? <span className="text-ink-2">Fora do recorte atual</span> : <span className="text-ink-2">Não definido</span>}</dd></div>
           {cadeia.length > 1 && <div className="flex gap-2"><dt className="text-muted w-32 shrink-0">Cadeia acima</dt><dd className="text-ink-2">{cadeia.slice(1).map((c) => c.apelido || c.nome).join(' → ')}</dd></div>}
           <div className="flex gap-2"><dt className="text-muted w-32 shrink-0">Equipe</dt><dd className="text-ink-2">{pessoa.diretos} direto{pessoa.diretos === 1 ? '' : 's'}{pessoa.totalAbaixo > pessoa.diretos ? ` · ${pessoa.totalAbaixo} no total` : ''}</dd></div>
           {pessoa.nivelHierarquico && <div className="flex gap-2"><dt className="text-muted w-32 shrink-0">Nível hierárquico</dt><dd className="text-ink-2">{pessoa.nivelHierarquico}º</dd></div>}

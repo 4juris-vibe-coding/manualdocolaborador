@@ -15,7 +15,7 @@ import type { Papel } from '../../../src/lib/types.js'
 import {
   acoesPossiveis, CANAIS_PADRAO, camposFaltantes, celulaCsv, escolherFluxo, ETAPAS_PADRAO, FLUXOS_PADRAO, MODALIDADES_VAGA, MOEDAS, MOTIVOS_VAGA,
   passoAtual, podeDecidirPasso, PRIORIDADES_VAGA, proximoStatus, quemEdita, ROTULO_ETAPA, ROTULO_MODALIDADE, ROTULO_PRIORIDADE, semMovimentacao,
-  situacaoPrazo, slugificar, somarDias, STATUS_ATIVOS, STATUS_FINAIS, STATUS_VAGA, TIPOS_ETAPA, TIPOS_REMUNERACAO, TIPOS_VAGA, validarEtapas,
+  situacaoPrazo, slugificar, somarDias, STATUS_ATIVOS, STATUS_FINAIS, STATUS_VAGA, TIPOS_ETAPA, TIPOS_REMUNERACAO, TIPOS_VAGA, REGIMES_CONTRATACAO, validarEtapas,
   type AcaoVaga, type EtapaModelo, type FluxoAprovacao, type PassoFluxo, type StatusVaga, type TipoEtapa,
 } from '../../../src/domain/v2/vagas.js'
 import {
@@ -74,7 +74,7 @@ interface Spec { campo: string; col: string; tipo: Tipo; max?: number; valores?:
 const S = (campo: string, col: string, tipo: Tipo, extra: Partial<Spec> = {}): Spec => ({ campo, col, tipo, ...extra })
 const ESPECIFICACOES: Spec[] = [
   S('titulo', 'titulo', 'texto', { max: 200 }), S('resumo', 'resumo', 'longo', { max: 600 }), S('objetivo', 'objetivo', 'longo', { max: 2000 }),
-  S('tipo', 'tipo', 'enum', { valores: TIPOS_VAGA }), S('motivo', 'motivo', 'enum', { valores: MOTIVOS_VAGA }),
+  S('tipo', 'tipo', 'enum', { valores: TIPOS_VAGA }), S('regimeContratacao', 'regime_contratacao', 'enum', { valores: REGIMES_CONTRATACAO }), S('motivo', 'motivo', 'enum', { valores: MOTIVOS_VAGA }),
   S('qtdPosicoes', 'qtd_posicoes', 'int'), S('prioridade', 'prioridade', 'enum', { valores: PRIORIDADES_VAGA }),
   S('setorId', 'setor_id', 'texto', { ref: 'setor', max: 80 }), S('unidadeId', 'unidade_id', 'texto', { ref: 'unidade', max: 80 }), S('cargoId', 'cargo_id', 'texto', { ref: 'cargo', max: 80 }),
   S('senioridade', 'senioridade', 'texto', { max: 60 }), S('equipe', 'equipe', 'texto', { max: 120 }),

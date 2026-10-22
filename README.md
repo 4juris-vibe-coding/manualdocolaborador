@@ -34,6 +34,12 @@ Sistema de RH anterior (Next.js + Supabase), mantido como referência. Suas func
 - `npm run db:setup` cria as tabelas (`db/schema.sql`), grava a estrutura padrão uma única vez e garante o usuário admin `social@4jurismarketing.com.br` (a senha é gerada e mostrada uma vez). Para trocar a senha: `ADMIN_SENHA='nova-senha-forte' npm run db:setup -- --senha`.
 - As funções do servidor ficam em `api/` (Vercel) e rodam no `npm run dev` pelo plugin do `vite.config.ts`.
 
+## Gestão de prestadores PJ (financeiro)
+
+Fornecedores, contratos (aditivos, renovação, encerramento comercial), documentos com arquivo, notas fiscais de serviço (conferência → aceite), contas a pagar (retenções revisáveis → autorização → registro manual do pagamento → conciliação), painel com fórmulas e alertas. Regras, permissões, migração e limites em [`docs/FINANCEIRO.md`](docs/FINANCEIRO.md). Não há integração bancária nem fiscal: pagamentos são registros manuais com comprovante.
+
+Variáveis novas: `CRON_SECRET` (alertas diários pelo agendador da Vercel) e `ANON_SECRET` (caixa de sugestões anônima). Funções adicionais novas: *Analista financeiro* e *Autorização de pagamentos*.
+
 ## Módulos v2 (recrutamento, pesquisas, cargos, organograma, analytics)
 
 Veja `docs/V2.md`. Para ativar no banco: `npm run db:setup` (aplica `db/v2/*.sql`, aditivo e idempotente). Depois, em **Administração > Funções adicionais**, conceda recrutador / analista de RH / responsável por pesquisas. E-mails reais exigem `RESEND_API_KEY`; sem ela as mensagens ficam como "não configurado".

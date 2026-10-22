@@ -12,6 +12,7 @@
    mas a autorização definitiva deve existir no servidor.
    ============================================================ */
 import { validarMudancaGestor } from '@/domain/v2/organograma'
+import { validarDepartamentoPai } from '@/domain/v2/departamentos'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type {
@@ -43,6 +44,8 @@ export type Resultado = { ok: true; id?: string; avisos?: string[]; info?: strin
 const OK = (extra: Partial<{ id: string; avisos: string[]; info: string }> = {}): Resultado => ({ ok: true, ...extra })
 const ERRO = (erro: string): Resultado => ({ ok: false, erro })
 const SEM_PERMISSAO = ERRO('Você não tem permissão para esta ação.')
+/** No modo com banco, contratos, documentos e notas fiscais vivem no módulo financeiro (servidor), com arquivos e fluxo de aprovação. */
+const NO_FINANCEIRO = ERRO('Com o banco conectado, isto é feito em Financeiro (contratos, documentos e notas fiscais).')
 
 export const DB_KEYS: (keyof DB)[] = [
   'colaboradores', 'setores', 'unidades', 'cargos', 'contratos', 'documentos', 'reembolsos', 'notas', 'periodos',
@@ -429,7 +432,8 @@ export const useStore = create<AppState>()(
           if (data < c.dataEntrada) return ERRO('O encerramento não pode ser anterior ao início da parceria.')
           if (!d.motivosEncerramento.some((m) => m.id === motivoId && m.ativo)) return ERRO('Selecione um motivo.')
           d.colaboradores = d.colaboradores.map((x) => (x.id === id ? { ...x, status: 'encerrado', encerramento: { data, motivoId, observacao } } : x))
-          d.contratos = d.contratos.map((k) => (k.colaboradorId === id && k.status !== 'encerrado' ? { ...k, status: 'encerrado', fim: k.fim && k.fim < data ? k.fim : data, atualizadoEm: hojeISO() } : k))
+          // Com banco, os contratos são encerrados no módulo financeiro (com conferência de pendências).
+          if (!MODO_API) d.contratos = d.contratos.map((k) => (k.colaboradorId === id && k.status !== 'encerrado' ? { ...k, status: 'encerrado', fim: k.fim && k.fim < data ? k.fim : data, atualizadoEm: hojeISO() } : k))
           d.periodos = d.periodos.map((p) => (p.colaboradorId === id && p.inicio > data && p.status !== 'cancelado' ? { ...p, status: 'cancelado' } : p))
           if (iniciarChecklist) {
             const modelo = d.checklists.find((m) => m.tipo === 'encerramento')
@@ -470,7 +474,8 @@ export const useStore = create<AppState>()(
             conta: undefined, pixChave: undefined, emergenciaNome: undefined, emergenciaTelefone: undefined, emergenciaParentesco: undefined,
             privacidade: { mostrarAniversario: false, mostrarMarcos: false, aparecerEmDestaques: false },
           } : x)
-          d.documentos = d.documentos.filter((x) => x.colaboradorId !== id)
+          // Com banco, documentos ficam no repositório do servidor (guarda conforme a política de retenção).
+          if (!MODO_API) d.documentos = d.documentos.filter((x) => x.colaboradorId !== id)
           d.reconhecimentos = d.reconhecimentos.map((r) => (r.deId === id || r.paraId === id ? { ...r, mensagem: '[removida]', publico: false } : r))
           d.periodos = d.periodos.map((p) => (p.colaboradorId === id ? { ...p, mensagemEquipe: undefined, observacaoPrivada: undefined, planoContinuidade: undefined } : p))
           d.notificacoes = d.notificacoes.filter((n) => n.colaboradorId !== id)
@@ -480,6 +485,7 @@ export const useStore = create<AppState>()(
 
         /* ---------- contratos e documentos ---------- */
         salvarContrato: (input, id) => tx((d) => {
+          if (MODO_API) return NO_FINANCEIRO
           if (!pode('pessoas:ver_contratos')) return SEM_PERMISSAO
           if (!input.objeto.trim()) return ERRO('Descreva o objeto do contrato.')
           if (!input.inicio) return ERRO('Informe o início da vigência.')
@@ -496,6 +502,7 @@ export const useStore = create<AppState>()(
         }),
 
         adicionarDocumento: (input) => tx((d) => {
+          if (MODO_API) return NO_FINANCEIRO
           const me = get().realUser()
           const proprio = input.colaboradorId === me.id
           if (!proprio && !pode('documentos:gerenciar')) return SEM_PERMISSAO
@@ -508,6 +515,7 @@ export const useStore = create<AppState>()(
         }),
 
         removerDocumento: (id) => tx((d) => {
+          if (MODO_API) return NO_FINANCEIRO
           if (!pode('documentos:gerenciar')) return SEM_PERMISSAO
           d.documentos = d.documentos.filter((x) => x.id !== id)
           audit(d, 'documento.remover', 'documento', id, 'Documento removido')
@@ -516,19 +524,26 @@ export const useStore = create<AppState>()(
         /* ---------- estrutura ---------- */
         salvarSetor: (s, id) => tx((d) => {
           if (!pode('estrutura:gerenciar')) return SEM_PERMISSAO
-          if (!s.nome.trim()) return ERRO('Informe o nome da área.')
-          if (d.setores.some((x) => x.nome.toLowerCase() === s.nome.trim().toLowerCase() && x.id !== id)) return ERRO('Já existe uma área com este nome.')
+          if (!s.nome.trim()) return ERRO('Informe o nome do departamento.')
+          if (d.setores.some((x) => x.nome.toLowerCase() === s.nome.trim().toLowerCase() && x.id !== id)) return ERRO('Já existe um departamento com este nome.')
+          const erroPai = validarDepartamentoPai(d.setores, id, s.paiId)
+          if (erroPai) return ERRO(erroPai)
+          if (s.gestorId && !d.colaboradores.some((c) => c.id === s.gestorId && c.status !== 'encerrado')) return ERRO('O líder escolhido não está ativo.')
+          // O líder também coordena: entra nas lideranças (painel da liderança, reembolsos, avaliações).
+          s = { ...s, paiId: s.paiId || undefined, liderancaIds: [...new Set([...(s.gestorId ? [s.gestorId] : []), ...s.liderancaIds])] }
           if (id) d.setores = d.setores.map((x) => (x.id === id ? { ...x, ...s } : x))
           else d.setores = [...d.setores, { ...s, id: uid('s') }]
-          audit(d, id ? 'area.atualizar' : 'area.criar', 'area', id ?? '-', `Área ${s.nome}`)
+          audit(d, id ? 'area.atualizar' : 'area.criar', 'area', id ?? '-', `Departamento ${s.nome}`)
         }),
         removerSetor: (id) => tx((d) => {
           if (!pode('estrutura:gerenciar')) return SEM_PERMISSAO
           const qtd = d.colaboradores.filter((c) => c.setorId === id && c.status !== 'encerrado').length
-          if (qtd) return ERRO(`Esta área possui ${qtd} pessoa(s) ativa(s). Mova-as antes de remover.`)
+          if (qtd) return ERRO(`Este departamento possui ${qtd} pessoa(s) ativa(s). Mova-as antes de remover.`)
+          const subs = d.setores.filter((x) => x.paiId === id).length
+          if (subs) return ERRO(`Este departamento possui ${subs} subdepartamento(s). Mova-os ou remova-os antes.`)
           d.setores = d.setores.filter((x) => x.id !== id)
           d.cargos = d.cargos.filter((c) => c.setorId !== id)
-          audit(d, 'area.remover', 'area', id, 'Área removida')
+          audit(d, 'area.remover', 'area', id, 'Departamento removido')
         }),
         salvarUnidade: (u, id) => tx((d) => {
           if (!pode('estrutura:gerenciar')) return SEM_PERMISSAO
@@ -664,6 +679,8 @@ export const useStore = create<AppState>()(
         setNotaStatus: (id, status, byId) => {
           tx((d) => {
             const n0 = d.notas.find((n) => n.id === id)
+            // Aprovar/pagar é do financeiro e nunca da própria pessoa (modo demonstração; com banco, o fluxo é do servidor).
+            if (!pode('financeiro:gerenciar') || (n0?.colaboradorId === get().realUser().id && status !== 'enviada')) return SEM_PERMISSAO
             d.notas = d.notas.map((n) => {
               if (n.id !== id) return n
               const patch: Partial<NotaFiscal> = { status }
@@ -677,8 +694,9 @@ export const useStore = create<AppState>()(
             audit(d, 'nf.status', 'nota_fiscal', id, `Status alterado para ${status}`)
           })
         },
-        addNota: (n) => set((s) => ({ notas: [{ ...n, id: uid('n') }, ...s.notas] })),
+        addNota: (n) => { if (pode('financeiro:gerenciar')) set((s) => ({ notas: [{ ...n, id: uid('n') }, ...s.notas] })) },
         gerarNotasCompetencia: (competencia) => {
+          if (!pode('financeiro:gerenciar')) return 0
           const { colaboradores, notas, contratos, config } = get()
           const jaTem = new Set(notas.filter((n) => n.competencia === competencia).map((n) => n.colaboradorId))
           const [ano, mes] = competencia.split('-')
@@ -1513,6 +1531,7 @@ export const useStore = create<AppState>()(
           audit(d, 'pessoa.excluir', 'pessoa', id, `Cadastro de ${c.nome} excluído definitivamente`)
         }),
         removerContrato: (id) => tx((d) => {
+          if (MODO_API) return NO_FINANCEIRO
           if (!pode('pessoas:ver_contratos')) return SEM_PERMISSAO
           const k = d.contratos.find((x) => x.id === id)
           if (!k) return ERRO('Contrato não encontrado.')
@@ -1570,6 +1589,7 @@ export const useStore = create<AppState>()(
           audit(d, 'reembolso.excluir', 'reembolso', id, `Reembolso "${r.descricao}" excluído`)
         }),
         excluirNota: (id) => tx((d) => {
+          if (MODO_API) return NO_FINANCEIRO
           if (!pode('financeiro:gerenciar')) return SEM_PERMISSAO
           const n = d.notas.find((x) => x.id === id)
           if (!n) return ERRO('Nota fiscal não encontrada.')

@@ -5,13 +5,15 @@ import { Button, Callout, Card, EmptyState, PageHeader, Select, Tabs } from '@/c
 import { Aguardar, SoComBanco } from '@/components/v2/estados'
 import { Drawer } from '@/components/v2/Drawer'
 import { useTem } from '@/data/v2/acesso'
-import { api, qs } from '@/data/v2/api'
 import { ArvoreLista } from '@/components/v2/org/ArvoreLista'
 import { MapaOrg, type MapaHandle } from '@/components/v2/org/MapaOrg'
 import { PainelPessoa } from '@/components/v2/org/PainelPessoa'
 import { AnaliseEstrutura } from '@/components/v2/org/AnaliseEstrutura'
 import { QualidadeCadastros } from '@/components/v2/org/QualidadeCadastros'
 import { EditorHierarquia } from '@/components/v2/org/EditorHierarquia'
+import { MapaDepartamentos } from '@/components/v2/org/MapaDepartamentos'
+import { api, qs, useApi } from '@/data/v2/api'
+import type { ArvoreDepartamentos } from '@/domain/v2/departamentos'
 import { SEM_FILTRO, useBusca, useOrganograma, type FiltrosOrg } from '@/components/v2/org/useOrganograma'
 import type { ResultadoBusca, VisaoOrg } from '@/components/v2/org/tipos'
 import { plural } from '@/lib/fmt'
@@ -173,20 +175,27 @@ function MapaTab() {
   )
 }
 
+function DepartamentosTab() {
+  const r = useApi<ArvoreDepartamentos>('organograma/departamentos')
+  return <Aguardar r={r}>{(d) => <MapaDepartamentos arvore={d} />}</Aguardar>
+}
+
 export default function Organograma() {
   const podeEditar = useTem('org:editar')
   const podeVerAnalytics = useTem('analytics:ver')
   const podeAnalisar = podeEditar || podeVerAnalytics
   const [params, setParams] = useSearchParams()
-  const aba = podeAnalisar || podeEditar ? params.get('aba') ?? 'mapa' : 'mapa'
-  const abas = [{ key: 'mapa', label: 'Mapa' }, ...(podeEditar ? [{ key: 'hierarquia', label: 'Montar hierarquia' }] : []), ...(podeAnalisar ? [{ key: 'analise', label: 'Análise' }, { key: 'qualidade', label: 'Qualidade dos cadastros' }] : [])]
+  const pedida = params.get('aba') ?? 'mapa'
+  const aba = podeAnalisar || podeEditar || pedida === 'departamentos' ? pedida : 'mapa'
+  const abas = [{ key: 'mapa', label: 'Pessoas' }, { key: 'departamentos', label: 'Departamentos' }, ...(podeEditar ? [{ key: 'hierarquia', label: 'Montar hierarquia' }] : []), ...(podeAnalisar ? [{ key: 'analise', label: 'Análise' }, { key: 'qualidade', label: 'Qualidade dos cadastros' }] : [])]
   const irPara = (k: string) => setParams((p) => { k === 'mapa' ? p.delete('aba') : p.set('aba', k); return p })
 
   return (
     <>
-      <PageHeader title="Organograma" subtitle="Gerado a partir dos cadastros reais: gestor imediato, área, função e unidade." />
+      <PageHeader title="Organograma" subtitle="Gerado a partir dos cadastros reais: gestor imediato, departamento e seu líder, cargo e unidade." />
       {abas.length > 1 && <Tabs tabs={abas} active={aba} onChange={irPara} />}
       {aba === 'mapa' && <MapaTab />}
+      {aba === 'departamentos' && <SoComBanco><DepartamentosTab /></SoComBanco>}
       {aba === 'hierarquia' && podeEditar && <SoComBanco><EditorHierarquia onSalvo={() => irPara('mapa')} /></SoComBanco>}
       {aba === 'analise' && <SoComBanco><AnaliseEstrutura /></SoComBanco>}
       {aba === 'qualidade' && <SoComBanco><QualidadeCadastros podeEditar={podeEditar} onCorrigir={(id) => setParams({ pessoa: id })} /></SoComBanco>}

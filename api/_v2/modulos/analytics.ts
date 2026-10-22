@@ -389,7 +389,7 @@ async function dadosEstrutura(c: Ctx, f: Filtros, podeVerVagas: boolean) {
 async function blocoEstrutura(c: Ctx, f: Filtros) {
   const { legado, sets, cgs, uns, pessoasH, vagasLinhas } = await dadosEstrutura(c, f, c.usuario.caps.has('vagas:ver'))
   const cargosE = cgs.map((x) => ({ id: x.id, nome: x.nome, nivel: x.nivel as string | undefined }))
-  const filtrada = filtrarPessoas(pessoasH, { setorId: f.setor, unidadeId: f.unidade, gestorId: f.gestor })
+  const filtrada = filtrarPessoas(pessoasH, { setorId: f.setor, unidadeId: f.unidade, gestorId: f.gestor }, sets)
   const idsF = new Set(filtrada.map((x) => x.id))
   const vagasF = vagasLinhas.filter((v) => (!f.setor || v.setor_id === f.setor) && (!f.unidade || v.unidade_id === f.unidade) && (!f.gestor || idsF.has(v.gestor_imediato_id)))
   const vagasOrg: VagaOrg[] = vagasF.map((v) => ({ id: v.id, titulo: v.titulo, status: v.status, setorId: v.setor_id, cargoId: v.cargo_id, gestorImediatoId: v.gestor_imediato_id, qtdPosicoes: v.qtd_posicoes, posicoesPreenchidas: v.posicoes_preenchidas }))
@@ -542,7 +542,7 @@ async function detalhe(c: Ctx, chave: string, f: Filtros): Promise<Detalhe> {
     const { legado, sets, cgs, uns, pessoasH } = await dadosEstrutura(c, f, c.usuario.caps.has('vagas:ver'))
     switch (chave) {
       case 'est_pessoas': {
-        const filtrada = filtrarPessoas(pessoasH, { setorId: f.setor, unidadeId: f.unidade, gestorId: f.gestor }).filter(ehAtiva)
+        const filtrada = filtrarPessoas(pessoasH, { setorId: f.setor, unidadeId: f.unidade, gestorId: f.gestor }, sets).filter(ehAtiva)
         const ns = new Map(sets.map((s) => [s.id, s.nome])), nc = new Map(cgs.map((x) => [x.id, x.nome])), nu = new Map(uns.map((x) => [x.id, x.nome])), np = new Map(legado.map((x) => [x.id, x.nomeSocial || x.nome]))
         return {
           titulo: 'Pessoas ativas', colunas: [['nome', 'Pessoa'], ['funcao', 'Função'], ['area', 'Área'], ['unidade', 'Unidade'], ['gestor', 'Gestor imediato']],

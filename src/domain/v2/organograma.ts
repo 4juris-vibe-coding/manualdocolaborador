@@ -1,9 +1,10 @@
 /* ============================================================
    Organograma · regras puras (cliente e servidor; só imports relativos)
    A árvore nasce de relacionamentos EXPLÍCITOS: responsavelId
-   (gestor imediato), setorId, cargoId e unidadeId. Nunca se deduz
-   subordinação pelo nome do cargo ou pela senioridade. O que faltar
-   vira pendência de cadastro — sem juízo sobre a estrutura.
+   (gestor imediato), setorId, cargoId e unidadeId. Quem não tem
+   gestor imediato fica abaixo do líder do seu departamento (ou do
+   departamento pai). Nunca se deduz subordinação pelo nome do cargo
+   ou pela senioridade. O que faltar vira pendência de cadastro.
    ============================================================ */
 
 export interface PessoaOrg {
@@ -15,7 +16,22 @@ export interface PessoaOrg {
   status: string
   responsavelId?: string | null
 }
-export interface SetorOrg { id: string; nome: string; gestorId?: string | null; liderancaIds?: string[]; unidadeId?: string }
+export interface SetorOrg { id: string; nome: string; gestorId?: string | null; liderancaIds?: string[]; unidadeId?: string; paiId?: string | null }
+
+/**
+ * Líder que responde pela pessoa via departamento: o líder (gestorId) do próprio departamento;
+ * se não houver líder ativo, ou se a pessoa for o próprio líder, sobe para o departamento pai.
+ */
+export function liderPeloDepartamento(setorId: string | undefined, pessoaId: string, setores: Map<string, SetorOrg>, ativo: (id: string) => boolean): string | null {
+  const visto = new Set<string>()
+  let s = setorId ? setores.get(setorId) : undefined
+  while (s && !visto.has(s.id)) {
+    visto.add(s.id)
+    if (s.gestorId && s.gestorId !== pessoaId && ativo(s.gestorId)) return s.gestorId
+    s = s.paiId ? setores.get(s.paiId) : undefined
+  }
+  return null
+}
 
 export const ehAtiva = (p: { status: string }) => p.status !== 'encerrado'
 
@@ -70,6 +86,8 @@ export interface Hierarquia {
   diretos: Map<string, number>
   totais: Map<string, number>
   niveis: number
+  /** Pessoas sem gestor imediato que ficaram abaixo do líder do departamento. */
+  viaDepartamento: Set<string>
 }
 
 /**
@@ -93,6 +111,22 @@ export function construirHierarquia(todas: PessoaOrg[], setores: SetorOrg[] = []
     if (!gp) { pendencias.push({ tipo: 'gestor_inexistente', pessoaId: p.id }); pai.set(p.id, null); continue }
     if (!ehAtiva(gp)) { pendencias.push({ tipo: 'gestor_inativo', pessoaId: p.id, detalhe: gp.nome }); pai.set(p.id, null); continue }
     pai.set(p.id, g)
+  }
+  // Sem gestor imediato: herda o líder do departamento, desde que isso não feche um ciclo.
+  const setoresPorId = new Map(setores.map((s) => [s.id, s]))
+  const viaDepartamento = new Set<string>()
+  const chegaEm = (de: string, alvo: string) => {
+    const visto = new Set<string>()
+    let cur: string | null | undefined = de
+    while (cur && !visto.has(cur)) { if (cur === alvo) return true; visto.add(cur); cur = pai.get(cur) }
+    return false
+  }
+  for (const p of ativas) {
+    if (p.responsavelId) continue
+    const g = liderPeloDepartamento(p.setorId, p.id, setoresPorId, (id) => pessoas.has(id))
+    if (!g || chegaEm(g, p.id)) continue
+    pai.set(p.id, g)
+    viaDepartamento.add(p.id)
   }
   const invalidos = new Set(pendencias.filter((x) => ['gestor_inexistente', 'gestor_inativo', 'auto_gestor'].includes(x.tipo)).map((x) => x.pessoaId!))
 
@@ -153,7 +187,6 @@ export function construirHierarquia(todas: PessoaOrg[], setores: SetorOrg[] = []
   const foraDaArvore = ativas.filter((p) => emCiclo.has(p.id)).map((p) => p.id)
 
   // Pendências de cadastro das pessoas.
-  const setoresPorId = new Map(setores.map((s) => [s.id, s]))
   for (const p of ativas) {
     if (!p.setorId) pendencias.push({ tipo: 'sem_setor', pessoaId: p.id })
     else if (setores.length && !setoresPorId.has(p.setorId)) pendencias.push({ tipo: 'setor_inexistente', pessoaId: p.id, setorId: p.setorId })
@@ -167,7 +200,7 @@ export function construirHierarquia(todas: PessoaOrg[], setores: SetorOrg[] = []
     }
   }
 
-  return { pessoas, nos, raizes, soltas, orfas, ciclos, foraDaArvore, pendencias, diretos, totais, niveis }
+  return { pessoas, nos, raizes, soltas, orfas, ciclos, foraDaArvore, pendencias, diretos, totais, niveis, viaDepartamento }
 }
 
 /** Cadeia de gestores acima da pessoa (do gestor imediato ao topo). */
@@ -254,11 +287,11 @@ export function posicoesVagas(vagas: VagaOrg[], pessoas: Map<string, PessoaOrg>,
 /* ---------- recortes (visão por departamento / equipe) ---------- */
 export interface Filtro { setorId?: string; unidadeId?: string; gestorId?: string }
 
-/** Subconjunto de pessoas do filtro. Por gestor: o gestor e toda a sua equipe. */
-export function filtrarPessoas(todas: PessoaOrg[], f: Filtro): PessoaOrg[] {
+/** Subconjunto de pessoas do filtro. Por gestor: o gestor e toda a sua equipe (inclusive a herdada do departamento). */
+export function filtrarPessoas(todas: PessoaOrg[], f: Filtro, setores: SetorOrg[] = []): PessoaOrg[] {
   let base = todas
   if (f.gestorId) {
-    const h = construirHierarquia(todas)
+    const h = construirHierarquia(todas, setores)
     const ids = new Set([f.gestorId, ...descendentes(h, f.gestorId)])
     base = base.filter((p) => ids.has(p.id))
   }

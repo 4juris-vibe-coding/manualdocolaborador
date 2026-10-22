@@ -22,7 +22,9 @@ describe('caixa de sugestões', () => {
     const r = st().enviarSugestao({ titulo: 'Ideia de teste anônima', descricao: 'Descrição longa o bastante para valer.', categoria: 'Cultura' })
     expect(r.ok).toBe(true)
     const x = st().sugestoes.find((y) => y.id === (r.ok ? r.id : ''))!
-    expect(JSON.stringify(x)).not.toContain('c2')
+    // Id e chave são hexadecimais aleatórios (podem conter "c2" por acaso); o que importa é nenhum campo ser o id da pessoa.
+    expect(Object.values(x).flat()).not.toContain('c2')
+    expect(x.autorChave).toMatch(/^[0-9a-f]{16}$/)
     expect(x.criadaEm).toMatch(/^\d{4}-\d{2}-\d{2}$/) // só data, sem hora
     expect(st().auditoria.length).toBe(auditoriaAntes)
     expect(st().notificacoes.length).toBe(notifAntes)

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '@/lib/store'
 import type { Contrato, Documento, TipoDocumento } from '@/lib/types'
@@ -25,6 +25,10 @@ import { BarrasDisc } from '@/components/charts'
 import { CATEGORIAS_DISC } from '@/domain/perfil'
 import { TIPO_BEN } from './Beneficios'
 import { Dropdown } from '@/components/Dropdown'
+import { MODO_API } from '@/data/config'
+import { api, ErroApi, useApi } from '@/data/v2/api'
+import { ListaDocumentos } from '@/components/v2/financeiro/Documentos'
+import { BadgeContrato, dinheiro } from '@/components/v2/financeiro/comum'
 
 const STATUS_CONTRATO: Record<Contrato['status'], { label: string; tone: string }> = {
   rascunho: { label: 'Rascunho', tone: 'neutral' }, vigente: { label: 'Vigente', tone: 'success' },
@@ -158,8 +162,8 @@ export default function PessoaDetalhe() {
         </Card>
       )}
 
-      {tab === 'contrato' && <ContratosTab pessoaId={id} contratos={contratos} />}
-      {tab === 'documentos' && <DocumentosTab pessoaId={id} docs={docs} />}
+      {tab === 'contrato' && (MODO_API ? <ContratosV2 pessoaId={id} /> : <ContratosTab pessoaId={id} contratos={contratos} />)}
+      {tab === 'documentos' && (MODO_API ? <ListaDocumentos filtro={`pessoa=${id}`} vinculo={{ pessoaId: id }} podeEnviar titulo="Documentos da pessoa" /> : <DocumentosTab pessoaId={id} docs={docs} />)}
       {tab === 'jornadas' && (
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
@@ -219,7 +223,9 @@ export default function PessoaDetalhe() {
       {editar && <PessoaForm pessoa={p} onClose={() => setEditar(false)} />}
       {encerrar && <EncerrarModal pessoaId={id} onClose={() => setEncerrar(false)} />}
       <ConfirmModal open={excluir} onClose={() => setExcluir(false)} titulo="Excluir cadastro definitivamente?" confirmar="Excluir"
-        texto={`${p.nome} e tudo o que está ligado a essa pessoa (contratos, documentos, reembolsos, notas, pontos, avaliações…) serão apagados. Esta ação não pode ser desfeita. Para manter o histórico, prefira encerrar a parceria.`}
+        texto={MODO_API
+          ? 'Exclusão definitiva só é possível para cadastros sem contratos, documentos, notas ou pagamentos (esse histórico tem prazo de guarda). Para quem tem histórico, encerre a parceria e use a anonimização (LGPD).'
+          : `${p.nome} e tudo o que está ligado a essa pessoa (contratos, documentos, reembolsos, notas, pontos, avaliações…) serão apagados. Esta ação não pode ser desfeita. Para manter o histórico, prefira encerrar a parceria.`}
         onConfirm={() => { if (feedback(s.excluirPessoa(id), 'Cadastro excluído.')) { setExcluir(false); navigate('/rh/pessoas') } }} />
       <ConfirmModal open={reativar} onClose={() => setReativar(false)} perigo={false} titulo="Reativar parceria?" confirmar="Reativar"
         texto="A pessoa volta a ter acesso à plataforma. Registre também um novo contrato, se for o caso."
@@ -228,23 +234,70 @@ export default function PessoaDetalhe() {
   )
 }
 
+interface PendenciasPessoa { contratosAtivos: string[]; notasEmAndamento: number; contasAbertas: number; valorAberto: number; documentosPendentes: number; reembolsosAbertos: number }
+
 function EncerrarModal({ pessoaId, onClose }: { pessoaId: string; onClose: () => void }) {
   const s = useStore()
   const [data, setData] = useState(hojeISO())
   const [motivo, setMotivo] = useState('')
   const [obs, setObs] = useState('')
   const [checklist, setChecklist] = useState(true)
+  const [encerrarContratos, setEncerrarContratos] = useState(true)
+  const [pend, setPend] = useState<PendenciasPessoa | null>(null)
+  const [enviando, setEnviando] = useState(false)
+  useEffect(() => { if (MODO_API) void api.get<PendenciasPessoa>(`financeiro/pessoas/${encodeURIComponent(pessoaId)}/pendencias`).then(setPend).catch(() => setPend(null)) }, [pessoaId])
+  const confirmar = async () => {
+    if (MODO_API && encerrarContratos && pend?.contratosAtivos.length) {
+      if (!motivo) { toast('Selecione um motivo.', 'danger'); return }
+      setEnviando(true)
+      const nomeMotivo = s.motivosEncerramento.find((m) => m.id === motivo)?.nome ?? 'Encerramento da parceria'
+      // Encerramento comercial de cada contrato; notas e pagamentos em aberto seguem no fluxo até a liquidação.
+      for (const k of pend.contratosAtivos) {
+        try { await api.post(`financeiro/contratos/${k}/encerrar`, { data, tipo: 'outro', motivo: `${nomeMotivo}${obs.trim() ? ` — ${obs.trim()}` : ''}`, confirmarPendencias: true }) }
+        catch (e) { setEnviando(false); toast(`Contrato não encerrado: ${(e as ErroApi).message}`, 'danger'); return }
+      }
+      setEnviando(false)
+    }
+    if (feedback(s.encerrarParceria(pessoaId, data, motivo, obs.trim() || undefined, checklist), 'Parceria encerrada.')) onClose()
+  }
+  const temPend = !!pend && pend.notasEmAndamento + pend.contasAbertas + pend.reembolsosAbertos + pend.documentosPendentes > 0
   return (
     <Modal open onClose={onClose} title="Encerrar parceria" subtitle={s.nomeDe(pessoaId)}
-      footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button variant="danger" icon="UserMinus" onClick={() => { if (feedback(s.encerrarParceria(pessoaId, data, motivo, obs.trim() || undefined, checklist), 'Parceria encerrada.')) onClose() }}>Confirmar encerramento</Button></>}>
-      <Callout tone="warning" icon="AlertTriangle" className="mb-4">O contrato vigente é encerrado na data informada, períodos futuros de indisponibilidade são cancelados e o acesso à plataforma é desativado.</Callout>
+      footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button variant="danger" icon="UserMinus" disabled={enviando} onClick={confirmar}>{enviando ? 'Encerrando…' : 'Confirmar encerramento'}</Button></>}>
+      <Callout tone="warning" icon="AlertTriangle" className="mb-4">Encerramento da relação comercial (não é rescisão trabalhista). Períodos futuros de indisponibilidade são cancelados e o acesso à plataforma é desativado. Contratos, notas, pagamentos e documentos são mantidos para auditoria.</Callout>
+      {MODO_API && pend && <Callout tone={temPend ? 'warning' : 'success'} icon={temPend ? 'ListChecks' : 'CheckCircle2'} className="mb-4">
+        <b>Pendências financeiras e documentais:</b> {pend.contratosAtivos.length} contrato(s) não encerrado(s) · {pend.notasEmAndamento} nota(s) em análise · {pend.contasAbertas} pagamento(s) em aberto ({dinheiro(pend.valorAberto)}) · {pend.reembolsosAbertos} reembolso(s) em aberto · {pend.documentosPendentes} documento(s) a conferir.
+        {temPend && <span className="block mt-1">Elas continuam no fluxo depois do encerramento; acompanhe em Gestão de prestadores.</span>}
+      </Callout>}
       <div className="grid sm:grid-cols-2 gap-x-4">
         <Field label="Data de encerramento" required htmlFor="enc-d"><input id="enc-d" type="date" className="input" value={data} onChange={(e) => setData(e.target.value)} /></Field>
         <Field label="Motivo" required htmlFor="enc-m"><Dropdown id="enc-m" className="input" value={motivo} onChange={(e) => setMotivo(e.target.value)}><option value="">Selecione…</option>{s.motivosEncerramento.filter((m) => m.ativo).map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</Dropdown></Field>
       </div>
       <Field label="Observação (opcional)" htmlFor="enc-o" hint="Evite registrar dados pessoais sensíveis."><textarea id="enc-o" className="input !h-auto py-2.5" rows={2} value={obs} onChange={(e) => setObs(e.target.value)} /></Field>
-      <Toggle checked={checklist} onChange={setChecklist} label="Iniciar o checklist de encerramento" />
+      <div className="space-y-2">
+        <Toggle checked={checklist} onChange={setChecklist} label="Iniciar o checklist de encerramento" />
+        {MODO_API && !!pend?.contratosAtivos.length && <Toggle checked={encerrarContratos} onChange={setEncerrarContratos} label={`Encerrar também ${pend.contratosAtivos.length} contrato(s) em vigor nesta data`} />}
+      </div>
     </Modal>
+  )
+}
+
+/** Contratos da pessoa no módulo financeiro (modo com banco). */
+function ContratosV2({ pessoaId }: { pessoaId: string }) {
+  const r = useApi<{ itens: { id: string; numero: string; objeto: string; valor: number; inicio: string; fim: string | null; status: string; fornecedorNome: string }[] }>(`financeiro/contratos?prestador=${encodeURIComponent(pessoaId)}&por=50`)
+  const lista = r.dados?.itens ?? []
+  return (
+    <Card>
+      <CardHead title="Contratos" sub="Gerenciados em Gestão de prestadores › Contratos (aditivos, renovação, documentos e encerramento)." action={<Link to="/financeiro/contratos/novo"><Button size="sm" icon="Plus">Novo contrato</Button></Link>} />
+      {r.carregando && !r.dados ? <p className="p-5 text-[13px] text-muted">Carregando…</p> : lista.length === 0 ? <EmptyState icon="FileSignature" title="Nenhum contrato" desc="Cadastre o fornecedor (empresa da pessoa) e depois o contrato." /> : (
+        <ul className="divide-y divide-line">{lista.map((k) => (
+          <li key={k.id} className="px-5 py-3 flex items-center gap-3 flex-wrap">
+            <div className="flex-1 min-w-[200px]"><Link to={`/financeiro/contratos/${k.id}`} className="font-semibold hover:text-brand">{k.numero}</Link><div className="text-[12px] text-muted">{k.fornecedorNome} · {k.objeto}</div></div>
+            <span className="tabular-nums text-[13px]">{dinheiro(k.valor)}</span><span className="text-[12px] text-muted">{fmtDate(k.inicio)} – {k.fim ? fmtDate(k.fim) : 'indeterminado'}</span><BadgeContrato valor={k.status} />
+          </li>
+        ))}</ul>
+      )}
+    </Card>
   )
 }
 

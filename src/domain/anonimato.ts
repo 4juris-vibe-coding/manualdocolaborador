@@ -2,9 +2,13 @@
    4JURIS Pessoas · Chaves anônimas (caixa de sugestões)
    Gera identificadores opacos que permitem à PRÓPRIA pessoa editar,
    excluir ou apoiar sem que a interface (ou o RH) saiba quem é.
-   ATENÇÃO: na demonstração o hash roda no navegador, onde todos os
-   dados convivem. Em produção, derive a chave no SERVIDOR com HMAC e
-   segredo que não fique no banco (ver docs/ARQUITETURA.md).
+   - Modo demonstração: o hash usa um sal público (todos os dados
+     convivem no navegador; o anonimato é só de interface).
+   - Modo com banco: o servidor entrega a cada pessoa um SEGREDO
+     PRÓPRIO, derivado por HMAC de uma chave que não fica no banco
+     (ANON_SECRET). Sem o segredo de outra pessoa, ninguém (nem o RH)
+     consegue recalcular a chave dela; o servidor confere autoria e
+     apoios com o mesmo cálculo (api/_v2/guarda.ts).
    ============================================================ */
 
 const SAL = '4juris-caixa-de-sugestoes-v1'
@@ -19,8 +23,14 @@ function hash(texto: string): string {
   return h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0')
 }
 
-/** Chave de autoria: identifica a pessoa como autora, sem revelar quem é. */
-export const chaveAutor = (pessoaId: string) => hash(`${SAL}|autor|${pessoaId}`)
+/** Segredo da sessão (modo com banco). Vazio = esquema da demonstração. */
+let segredoSessao = ''
+export function definirSegredoAnonimo(s: string) { segredoSessao = s }
+
+/** Chave de autoria: identifica a pessoa como autora, sem revelar quem é. `segredo` explícito é usado pelo servidor. */
+export const chaveAutor = (pessoaId: string, segredo = segredoSessao) =>
+  segredo ? hash(`${segredo}|autor`) : hash(`${SAL}|autor|${pessoaId}`)
 
 /** Chave de apoio: diferente por sugestão, para não ligar apoios entre si nem ao autor. */
-export const chaveApoio = (pessoaId: string, sugestaoId: string) => hash(`${SAL}|apoio|${sugestaoId}|${pessoaId}`)
+export const chaveApoio = (pessoaId: string, sugestaoId: string, segredo = segredoSessao) =>
+  segredo ? hash(`${segredo}|apoio|${sugestaoId}`) : hash(`${SAL}|apoio|${sugestaoId}|${pessoaId}`)

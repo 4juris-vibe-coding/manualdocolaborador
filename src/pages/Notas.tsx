@@ -7,11 +7,19 @@ import { brl, fmtDate, STATUS_SOLIC, cn } from '@/lib/utils'
 import NotasAdmin from './NotasAdmin'
 import { can } from '@/domain/permissions'
 import { hojeISO } from '@/domain/datas'
+import { MODO_API } from '@/data/config'
+import { MinhasNotas } from '@/pages/v2/financeiro/Outros'
 
 
 /** Página role-aware: admin/RH veem a visão de gestão. O botão "Ver como colaborador"
     ativa o modo de visualização global (papel efetivo vira 'colaborador'). */
 export default function Notas() {
+  // Com banco: envio com arquivo real, conferência e pagamento pelo servidor. A gestão fica em Gestão de prestadores.
+  if (MODO_API) return <MinhasNotas />
+  return <NotasDemo />
+}
+
+function NotasDemo() {
   const papel = useStore((s) => s.currentUser().papel)
   const setPreview = useStore((s) => s.setPreview)
   const isAdmin = can(papel, 'financeiro:gerenciar')

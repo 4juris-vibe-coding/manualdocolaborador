@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { DocumentosRepo } from '@/pages/v2/financeiro/Outros'
+import { MODO_API } from '@/data/config'
 import { Link } from 'react-router-dom'
 import { useStore } from '@/lib/store'
 import { PageHeader, Card, Badge, Button, EmptyState, Tabs, SearchBox, Select, Tabela, TH, TD, IndicadorCard } from '@/components/ui'
@@ -8,7 +10,13 @@ import { hojeISO, somarDias, diasEntre } from '@/domain/datas'
 import { gerarCSV, baixarArquivo } from '@/domain/csv'
 import { TIPOS_DOC } from '../Perfil'
 
+/** Com banco, a tela é o módulo de gestão de prestadores (servidor); esta versão atende o modo demonstração. */
 export default function Documentos() {
+  if (MODO_API) return <DocumentosRepo />
+  return <DocumentosDemo />
+}
+
+function DocumentosDemo() {
   const s = useStore()
   const hoje = hojeISO()
   const lim = somarDias(hoje, 60)

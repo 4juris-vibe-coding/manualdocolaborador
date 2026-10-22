@@ -167,8 +167,11 @@ export interface Setor {
   descricao: string
   cor: string
   icon: string
+  /** Líder do departamento (opcional). Quem não tem gestor imediato fica abaixo dele no organograma. */
   gestorId: string | null
-  /** IDs de pessoas responsáveis pela coordenação da área. */
+  /** Departamento ao qual este pertence (subdepartamento). */
+  paiId?: string
+  /** IDs de pessoas responsáveis pela coordenação da área (inclui o líder). */
   liderancaIds: string[]
   /** Se true, apenas lideranças da área podem ver/solicitar reembolsos. */
   reembolsoApenasLideranca: boolean

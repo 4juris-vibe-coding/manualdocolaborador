@@ -48,21 +48,50 @@ export function confereSenha(senha: string, guardado: string): boolean {
 export const hashToken = (t: string) => createHash('sha256').update(t).digest('hex')
 export const urlPortal = () => (process.env.PORTAL_URL || 'https://portaldocolaborador.somos4juris.com.br').replace(/\/$/, '')
 
-/** Envia pelo Resend (RESEND_API_KEY + RESEND_FROM). Sem a chave, só registra o link no log do servidor. */
-export async function enviarEmailRedefinicao(para: string, link: string): Promise<void> {
+/** Envia pelo Resend (RESEND_API_KEY + RESEND_FROM). Sem a chave, só registra no log do servidor. */
+export async function enviarEmail(para: string, assunto: string, html: string, log: string): Promise<void> {
   const chave = process.env.RESEND_API_KEY
-  if (!chave) { console.warn(`[redefinição de senha] RESEND_API_KEY ausente. Link para ${para}: ${link}`); return }
+  if (!chave) { console.warn(`[e-mail] RESEND_API_KEY ausente. ${log}`); return }
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${chave}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: process.env.RESEND_FROM || '4JURIS <nao-responda@somos4juris.com.br>',
-      to: [para],
-      subject: 'Redefinição de senha · Portal 4JURIS',
-      html: `<p>Recebemos um pedido para redefinir a sua senha no Portal 4JURIS.</p><p><a href="${link}">Criar nova senha</a></p><p>O link vale por 1 hora. Se não foi você, ignore este e-mail.</p>`,
-    }),
+    body: JSON.stringify({ from: process.env.RESEND_FROM || '4JURIS <nao-responda@somos4juris.com.br>', to: [para], subject: assunto, html }),
   })
-  if (!r.ok) console.error('[redefinição de senha] Resend respondeu', r.status, await r.text())
+  if (!r.ok) console.error('[e-mail] Resend respondeu', r.status, await r.text())
+}
+
+export const enviarEmailRedefinicao = (para: string, link: string) => enviarEmail(para, 'Redefinição de senha · Portal 4JURIS',
+  `<p>Recebemos um pedido para redefinir a sua senha no Portal 4JURIS.</p><p><a href="${link}">Criar nova senha</a></p><p>O link vale por 1 hora. Se não foi você, ignore este e-mail.</p>`,
+  `Link de redefinição para ${para}: ${link}`)
+
+/* ---------- cadastro por link (solicitações de acesso) ----------
+   Mesmo SQL de db/schema.sql; criado aqui também para funcionar mesmo antes de rodar o db:setup. */
+const SQL_CADASTRO = `
+create table if not exists convites_cadastro (
+  token text primary key,
+  criado_por text not null,
+  criado_em timestamptz not null default now(),
+  revogado_em timestamptz
+);
+alter table convites_cadastro enable row level security;
+create table if not exists solicitacoes_acesso (
+  id uuid primary key default gen_random_uuid(),
+  nome text not null,
+  email text not null,
+  senha_hash text not null,
+  status text not null default 'pendente' check (status in ('pendente', 'aprovado', 'recusado')),
+  convite_token text,
+  colaborador_id text,
+  criado_em timestamptz not null default now(),
+  decidido_em timestamptz,
+  decidido_por text
+);
+create unique index if not exists solicitacoes_pendente_email_uk on solicitacoes_acesso (lower(email)) where status = 'pendente';
+alter table solicitacoes_acesso enable row level security;`
+let tabelasCadastro: Promise<unknown> | undefined
+export function garantirTabelasCadastro(): Promise<unknown> {
+  tabelasCadastro ??= db().query(SQL_CADASTRO).catch((e) => { tabelasCadastro = undefined; throw e })
+  return tabelasCadastro
 }
 
 /* ---------- sessão (cookie assinado) ---------- */
@@ -100,18 +129,8 @@ export function lerSessao(cookieHeader: string | undefined): Sessao | null {
 /* ---------- estado ---------- */
 export type Estado = Record<string, unknown>
 
-export async function carregarEstado(): Promise<Estado> {
-  const out: Estado = Object.fromEntries(COLECOES.map((c) => [c, [] as unknown[]]))
-  const p = db()
-  // Uma única ida ao banco para todas as coleções.
-  const sql = COLECOES.map((c) => `select '${c}'::text as c, ord, dados from ${tabela(c)}`).join(' union all ') + ' order by c, ord'
-  for (const r of (await p.query(sql)).rows) (out[r.c] as unknown[]).push(r.dados)
-  const cfg = await p.query('select chave, dados from app_config')
-  out.config = Object.fromEntries(cfg.rows.map((r) => [r.chave, r.dados]))
-  return out
-}
-
-/** Substitui, numa transação, as coleções recebidas (cada uma por inteiro). */
+/** Substitui, numa transação, as coleções recebidas (cada uma por inteiro). Só para o db:setup (carga inicial);
+    a interface grava por registro, com regras de permissão (api/_v2/estadoLegado.ts). */
 export async function gravarColecoes(mudancas: Estado): Promise<string[]> {
   const gravadas: string[] = []
   const cli = await db().connect()

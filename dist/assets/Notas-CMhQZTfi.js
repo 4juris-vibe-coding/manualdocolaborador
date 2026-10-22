@@ -1,0 +1,1 @@
+import{j as t}from"./index-UQTCSG0i.js";import{MinhasNotas as o}from"./Outros-CuspPuf3.js";import"./estados-DJS5NfQJ.js";import"./comum-CT_CRBvz.js";import"./StatusBadge-CF1k2laJ.js";import"./fmt-CpDo0FKt.js";import"./Documentos-BwIT_cHu.js";function e(){return t.jsx(o,{})}export{e as default};

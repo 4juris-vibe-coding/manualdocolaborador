@@ -181,7 +181,7 @@ export interface PessoaOrg {
   status: string; responsavelId?: string; dataEntrada?: string; avatarCor?: string; cidade?: string; uf?: string; telefone?: string
   privacidade?: Record<string, unknown>
 }
-export interface SetorOrg { id: string; nome: string; gestorId: string | null; liderancaIds: string[]; unidadeId?: string; cor?: string }
+export interface SetorOrg { id: string; nome: string; gestorId: string | null; liderancaIds: string[]; unidadeId?: string; cor?: string; icon?: string; paiId?: string | null }
 export interface CargoOrg { id: string; nome: string; setorId: string; nivel?: string; funcaoSuperiorId?: string; descricao?: string; faixaValor?: { min?: number; max?: number; visivel: boolean }; [k: string]: unknown }
 export interface UnidadeOrg { id: string; nome: string }
 

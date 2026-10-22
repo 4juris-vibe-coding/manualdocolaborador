@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { Navigate } from 'react-router-dom'
+import { MODO_API } from '@/data/config'
 import { Link } from 'react-router-dom'
 import { useStore } from '@/lib/store'
 import { PageHeader, Card, CardHead, IndicadorCard, BarList, Tabela, TH, TD, Select, Badge, Button, EmptyState } from '@/components/ui'
@@ -11,7 +13,13 @@ import { gerarCSV, baixarArquivo } from '@/domain/csv'
 
 const competenciasAte = (fim: string, n: number) => Array.from({ length: n }, (_, i) => { const d = new Date(Number(fim.slice(0, 4)), Number(fim.slice(5, 7)) - 1 - i, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` })
 
+/** Com banco, a tela é o módulo de gestão de prestadores (servidor); esta versão atende o modo demonstração. */
 export default function Faturamento() {
+  if (MODO_API) return <Navigate to="/financeiro" replace />
+  return <FaturamentoDemo />
+}
+
+function FaturamentoDemo() {
   const s = useStore()
   const [periodo, setPeriodo] = useState('1')
   const [fim, setFim] = useState(hojeISO().slice(0, 7))

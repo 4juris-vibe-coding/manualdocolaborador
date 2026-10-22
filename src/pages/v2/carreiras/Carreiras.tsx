@@ -1,3 +1,4 @@
+import { ROTULO_REGIME_CONTRATACAO } from '@/domain/v2/vagas'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge, Button, Card, EmptyState, Icon, SearchBox, Select } from '@/components/ui'
@@ -68,7 +69,7 @@ export default function Carreiras() {
                             {v.resumo && <p className="text-[13.5px] text-muted mt-1 line-clamp-2">{v.resumo}</p>}
                             <div className="flex flex-wrap items-center gap-2 mt-3 text-[12.5px] text-ink-2">
                               {v.area && <Badge tone="brand">{v.area}</Badge>}
-                              <Badge tone="neutral">{v.tipoRotulo}</Badge>
+                              <Badge tone="neutral">{v.tipoRotulo}</Badge>{v.regimeContratacao && v.regimeContratacao !== 'nao_informado' && <Badge tone="neutral">{ROTULO_REGIME_CONTRATACAO[v.regimeContratacao]}</Badge>}
                               <Badge tone="neutral">{ROTULO_MODALIDADE[v.modalidade] ?? v.modalidade}</Badge>
                               {(v.cidade || v.estado) && <span className="inline-flex items-center gap-1"><Icon name="MapPin" className="h-3.5 w-3.5" />{[v.cidade, v.estado].filter(Boolean).join('/')}</span>}
                             </div>

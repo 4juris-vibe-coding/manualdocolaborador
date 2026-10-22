@@ -14,6 +14,8 @@ export interface CartaoPessoa {
   status: string
   gestorId: string | null
   gestorForaDaVisao: string | null
+  /** Sem gestor imediato definido: o gestor mostrado é o líder do departamento. */
+  gestorViaDepartamento: boolean
   lidera: boolean
   diretos: number
   totalAbaixo: number

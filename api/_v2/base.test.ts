@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { mundoPadrao, GET, POST, PUT, chamar } from './teste/harness'
-import { validarEscritaLegada } from './guarda'
 
 let m: Awaited<ReturnType<typeof mundoPadrao>>
 beforeAll(async () => { m = await mundoPadrao() }, 60_000)
@@ -50,45 +49,4 @@ describe('núcleo da API v2', () => {
   })
 })
 
-describe('guarda de escrita do /api/estado', () => {
-  const colabs = [
-    { id: 'a', papel: 'admin', setorId: 's1', cargoId: 'g1', status: 'ativo' },
-    { id: 'c', papel: 'colaborador', setorId: 's1', cargoId: 'g1', status: 'ativo' },
-    { id: 'd', papel: 'colaborador', setorId: 's1', cargoId: 'g1', status: 'integracao' },
-  ]
-  const atuais = { colaboradores: colabs, setores: [{ id: 's1' }], config: { geral: { x: 1 } }, auditoria: [{ id: 1 }] }
-  const eu = { colaboradorId: 'c', papel: 'colaborador' }
-
-  it('colaborador não vira administrador', () => {
-    const novo = colabs.map((c) => (c.id === 'c' ? { ...c, papel: 'admin' } : c))
-    expect(validarEscritaLegada({ colaboradores: novo }, atuais, eu)).toMatch(/papéis|estrutura/)
-  })
-  it('colaborador altera o próprio telefone, mas não o de outra pessoa', () => {
-    const proprio = colabs.map((c) => (c.id === 'c' ? { ...c, telefone: '1' } : c))
-    expect(validarEscritaLegada({ colaboradores: proprio }, atuais, eu)).toBeNull()
-    const outro = colabs.map((c) => (c.id === 'a' ? { ...c, telefone: '1' } : c))
-    expect(validarEscritaLegada({ colaboradores: outro }, atuais, eu)).toMatch(/próprio/)
-  })
-  it('permite concluir a integração de outra pessoa (integração → ativo)', () => {
-    const novo = colabs.map((c) => (c.id === 'd' ? { ...c, status: 'ativo' } : c))
-    expect(validarEscritaLegada({ colaboradores: novo }, atuais, eu)).toBeNull()
-  })
-  it('não troca a própria área nem o gestor', () => {
-    const novo = colabs.map((c) => (c.id === 'c' ? { ...c, responsavelId: 'a' } : c))
-    expect(validarEscritaLegada({ colaboradores: novo }, atuais, eu)).toMatch(/estrutura/)
-  })
-  it('estrutura, configurações e auditoria protegidas', () => {
-    expect(validarEscritaLegada({ setores: [{ id: 's1', liderancaIds: ['c'] }] }, atuais, eu)).toMatch(/RH/)
-    expect(validarEscritaLegada({ config: { geral: { x: 2 } } }, atuais, eu)).toMatch(/RH/)
-    expect(validarEscritaLegada({ auditoria: [] }, atuais, eu)).toMatch(/auditoria/)
-    expect(validarEscritaLegada({ auditoria: [{ id: 1 }, { id: 2 }] }, atuais, eu)).toBeNull()
-  })
-  it('RH cadastra colaborador mas só a administração concede papel elevado', () => {
-    const rh = { colaboradorId: 'r', papel: 'rh' }
-    expect(validarEscritaLegada({ colaboradores: [...colabs, { id: 'n', papel: 'colaborador' }] }, atuais, rh)).toBeNull()
-    expect(validarEscritaLegada({ colaboradores: [...colabs, { id: 'n', papel: 'admin' }] }, atuais, rh)).toMatch(/administração/)
-    const promovido = colabs.map((c) => (c.id === 'c' ? { ...c, papel: 'rh' } : c))
-    expect(validarEscritaLegada({ colaboradores: promovido }, atuais, rh)).toMatch(/administração/)
-    expect(validarEscritaLegada({ colaboradores: promovido }, atuais, { colaboradorId: 'a', papel: 'admin' })).toBeNull()
-  })
-})
+// As regras de escrita do /api/estado (antes testadas aqui) agora são por registro e cobertas de ponta a ponta em api/estado.test.ts.

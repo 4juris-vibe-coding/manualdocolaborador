@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '@/lib/store'
 import type { Senioridade, Setor, Unidade } from '@/lib/types'
@@ -7,6 +7,8 @@ import { Modal, ConfirmModal } from '@/components/Modal'
 import { feedback } from '@/components/toast'
 import { cn } from '@/lib/utils'
 import { Dropdown } from '@/components/Dropdown'
+import { MapaDepartamentos } from '@/components/v2/org/MapaDepartamentos'
+import { arvoreDepartamentos, caminhoDepartamento, subdepartamentos } from '@/domain/v2/departamentos'
 
 const ICONES = ['Sparkles', 'Cpu', 'Target', 'Scale', 'Wallet', 'HeartHandshake', 'Megaphone', 'Rocket', 'Briefcase', 'Building2']
 const CORES = ['#0032D2', '#0891b2', '#0f9d6b', '#7c3aed', '#c98a12', '#db2777', '#ea580c', '#122029']
@@ -14,44 +16,82 @@ const NIVEIS: Senioridade[] = ['Júnior', 'Pleno', 'Sênior', 'Especialista', 'L
 
 export default function Estrutura() {
   const [tab, setTab] = useState('areas')
+  const [editar, setEditar] = useState<string | null>(null)
   return (
     <>
-      <PageHeader title="Estrutura" subtitle="Áreas e suas lideranças, funções, unidades e listas usadas nos cadastros." />
-      <Tabs tabs={[{ key: 'areas', label: 'Áreas' }, { key: 'funcoes', label: 'Funções' }, { key: 'unidades', label: 'Unidades' }, { key: 'listas', label: 'Listas' }]} active={tab} onChange={setTab} />
-      {tab === 'areas' && <Areas />}
-      {tab === 'funcoes' && <><div className="flex justify-end mb-3"><Link to="/rh/funcoes"><Button variant="soft" icon="Briefcase">Abrir Engenharia de funções</Button></Link></div><Funcoes /></>}
+      <PageHeader title="Estrutura" subtitle="Departamentos e seus líderes, cargos, unidades e o organograma que conecta tudo." />
+      <Tabs tabs={[{ key: 'areas', label: 'Departamentos' }, { key: 'organograma', label: 'Organograma' }, { key: 'funcoes', label: 'Cargos' }, { key: 'unidades', label: 'Unidades' }, { key: 'listas', label: 'Listas' }]} active={tab} onChange={setTab} />
+      {tab === 'areas' && <Areas editarId={editar} onAberto={() => setEditar(null)} />}
+      {tab === 'organograma' && <OrganogramaDepartamentos onEditar={(id) => { setEditar(id); setTab('areas') }} />}
+      {tab === 'funcoes' && <><div className="flex justify-end mb-3"><Link to="/rh/funcoes"><Button variant="soft" icon="Briefcase">Abrir engenharia de cargos</Button></Link></div><Funcoes /></>}
       {tab === 'unidades' && <Unidades />}
       {tab === 'listas' && <Listas />}
     </>
   )
 }
 
-function Areas() {
+/** Organograma estrutural montado da store (funciona também no modo demonstração). */
+function OrganogramaDepartamentos({ onEditar }: { onEditar: (id: string) => void }) {
+  const s = useStore()
+  const arvore = useMemo(() => arvoreDepartamentos(s.setores, s.cargos, s.colaboradores), [s.setores, s.cargos, s.colaboradores])
+  return <MapaDepartamentos arvore={arvore} onEditar={onEditar} />
+}
+
+function Areas({ editarId, onAberto }: { editarId: string | null; onAberto: () => void }) {
   const s = useStore()
   const [form, setForm] = useState<Partial<Setor> | null>(null)
   const [remover, setRemover] = useState<Setor | null>(null)
   const pessoas = s.colaboradores.filter((c) => c.status !== 'encerrado').sort((a, b) => a.nome.localeCompare(b.nome))
+  // Pedido de edição vindo do organograma.
+  useEffect(() => {
+    if (!editarId) return
+    const a = s.setores.find((x) => x.id === editarId)
+    if (a) setForm({ ...a })
+    onAberto()
+  }, [editarId]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Ordem da árvore: cada departamento seguido dos seus subdepartamentos.
+  const ordem = useMemo(() => {
+    const arv = arvoreDepartamentos(s.setores, [], [])
+    const porId = new Map(arv.nos.map((n) => [n.id, n]))
+    const out: string[] = []
+    const visitar = (id: string) => { out.push(id); porId.get(id)?.filhos.forEach(visitar) }
+    arv.raizes.forEach(visitar)
+    return out.map((id) => s.setores.find((x) => x.id === id)!).filter(Boolean)
+  }, [s.setores])
+  // Pai possível: qualquer departamento que não seja o próprio nem esteja dentro dele.
+  const fora = new Set(form?.id ? [form.id, ...subdepartamentos(s.setores, form.id)] : [])
+  const paisPossiveis = ordem.filter((x) => !fora.has(x.id))
   const salvar = () => {
     if (!form) return
-    const r = s.salvarSetor({ nome: (form.nome ?? '').trim(), descricao: form.descricao ?? '', cor: form.cor ?? CORES[0], icon: form.icon ?? 'Building2', gestorId: form.liderancaIds?.[0] ?? null, liderancaIds: form.liderancaIds ?? [], reembolsoApenasLideranca: !!form.reembolsoApenasLideranca, unidadeId: form.unidadeId || undefined,
+    const r = s.salvarSetor({ nome: (form.nome ?? '').trim(), descricao: form.descricao ?? '', cor: form.cor ?? CORES[0], icon: form.icon ?? 'Building2', gestorId: form.gestorId || null, paiId: form.paiId || undefined, liderancaIds: form.liderancaIds ?? [], reembolsoApenasLideranca: !!form.reembolsoApenasLideranca, unidadeId: form.unidadeId || undefined,
       localizacao: form.localizacao?.trim() || undefined, telefone: form.telefone?.trim() || undefined, ramal: form.ramal?.trim() || undefined, email: form.email?.trim() || undefined, orcamentoMensal: form.orcamentoMensal || undefined }, form.id)
-    if (feedback(r, form.id ? 'Área atualizada.' : 'Área criada.')) setForm(null)
+    if (feedback(r, form.id ? 'Departamento atualizado.' : 'Departamento criado.')) setForm(null)
   }
   return (
     <>
-      <div className="flex justify-end mb-3"><Button icon="Plus" onClick={() => setForm({ cor: CORES[0], icon: 'Building2', liderancaIds: [] })}>Nova área</Button></div>
+      <div className="flex justify-end mb-3"><Button icon="Plus" onClick={() => setForm({ cor: CORES[0], icon: 'Building2', liderancaIds: [], gestorId: null })}>Novo departamento</Button></div>
+      {ordem.length === 0 && <Card><EmptyState icon="Building2" title="Nenhum departamento" desc="Crie o primeiro departamento para organizar cargos e pessoas." /></Card>}
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {s.setores.map((a) => {
+        {ordem.map((a) => {
           const qtd = s.colaboradores.filter((c) => c.setorId === a.id && c.status !== 'encerrado').length
+          const caminho = caminhoDepartamento(s.setores, a.id).slice(0, -1)
+          const subs = s.setores.filter((x) => x.paiId === a.id).length
+          const coordenacao = a.liderancaIds.filter((id) => id !== a.gestorId)
           return (
             <Card key={a.id} className="p-5">
               <div className="flex items-start gap-3">
                 <span className="h-11 w-11 rounded-xl flex items-center justify-center text-white shrink-0" style={{ background: a.cor }}><Icon name={a.icon} className="h-5 w-5" /></span>
-                <div className="flex-1 min-w-0"><h3 className="text-[15px] font-bold text-ink">{a.nome}</h3><p className="text-[12.5px] text-muted">{a.descricao}</p></div>
+                <div className="flex-1 min-w-0">
+                  {caminho.length > 0 && <p className="text-[11.5px] text-muted truncate">{caminho.join(' › ')} ›</p>}
+                  <h3 className="text-[15px] font-bold text-ink">{a.nome}</h3><p className="text-[12.5px] text-muted">{a.descricao}</p>
+                </div>
               </div>
               <dl className="mt-4 space-y-1.5 text-[12.5px]">
+                <div className="flex gap-2"><dt className="text-muted w-24 shrink-0">Líder</dt><dd className="font-semibold text-ink">{a.gestorId ? s.nomeDe(a.gestorId) : <span className="font-normal text-muted">Sem líder definido</span>}</dd></div>
                 <div className="flex gap-2"><dt className="text-muted w-24 shrink-0">Pessoas</dt><dd className="font-semibold text-ink">{qtd}</dd></div>
-                <div className="flex gap-2"><dt className="text-muted w-24 shrink-0">Lideranças</dt><dd className="font-semibold text-ink">{a.liderancaIds.map((id) => s.nomeDe(id)).join(', ') || '—'}</dd></div>
+                <div className="flex gap-2"><dt className="text-muted w-24 shrink-0">Cargos</dt><dd className="text-ink-2">{s.cargos.filter((g) => g.setorId === a.id).length}</dd></div>
+                {subs > 0 && <div className="flex gap-2"><dt className="text-muted w-24 shrink-0">Subdeptos.</dt><dd className="text-ink-2">{subs}</dd></div>}
+                {coordenacao.length > 0 && <div className="flex gap-2"><dt className="text-muted w-24 shrink-0">Coordenação</dt><dd className="text-ink-2">{coordenacao.map((id) => s.nomeDe(id)).join(', ')}</dd></div>}
                 <div className="flex gap-2"><dt className="text-muted w-24 shrink-0">Unidade</dt><dd className="text-ink-2">{s.unidades.find((u) => u.id === a.unidadeId)?.nome ?? '—'}{a.localizacao ? ` · ${a.localizacao}` : ''}</dd></div>
                 {(a.email || a.telefone) && <div className="flex gap-2"><dt className="text-muted w-24 shrink-0">Contato</dt><dd className="text-ink-2">{[a.email, a.telefone && `${a.telefone}${a.ramal ? ` r.${a.ramal}` : ''}`].filter(Boolean).join(' · ')}</dd></div>}
                 {a.orcamentoMensal != null && <div className="flex gap-2"><dt className="text-muted w-24 shrink-0">Orçamento</dt><dd className="text-ink-2">{a.orcamentoMensal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/mês</dd></div>}
@@ -62,15 +102,17 @@ function Areas() {
           )
         })}
       </div>
-      <Modal open={!!form} onClose={() => setForm(null)} wide title={form?.id ? 'Editar área' : 'Nova área'} footer={<><Button variant="ghost" onClick={() => setForm(null)}>Cancelar</Button><Button icon="Check" onClick={salvar}>Salvar</Button></>}>
+      <Modal open={!!form} onClose={() => setForm(null)} wide title={form?.id ? 'Editar departamento' : 'Novo departamento'} footer={<><Button variant="ghost" onClick={() => setForm(null)}>Cancelar</Button><Button icon="Check" onClick={salvar}>Salvar</Button></>}>
         {form && (
           <>
             <div className="grid sm:grid-cols-2 gap-x-4">
               <Field label="Nome" required htmlFor="ar-n"><input id="ar-n" className="input" value={form.nome ?? ''} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></Field>
+              <Field label="Departamento pai" htmlFor="ar-p"><Dropdown id="ar-p" className="input" value={form.paiId ?? ''} onChange={(e) => setForm({ ...form, paiId: e.target.value || undefined })}><option value="">Nenhum (departamento de topo)</option>{paisPossiveis.map((x) => <option key={x.id} value={x.id}>{caminhoDepartamento(s.setores, x.id).join(' › ')}</option>)}</Dropdown></Field>
+              <Field label="Líder do departamento (opcional)" htmlFor="ar-lid"><Dropdown id="ar-lid" className="input" value={form.gestorId ?? ''} onChange={(e) => setForm({ ...form, gestorId: e.target.value || null, liderancaIds: (form.liderancaIds ?? []).filter((x) => x !== e.target.value) })}><option value="">Sem líder</option>{pessoas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</Dropdown></Field>
               <Field label="Unidade" htmlFor="ar-u"><Dropdown id="ar-u" className="input" value={form.unidadeId ?? ''} onChange={(e) => setForm({ ...form, unidadeId: e.target.value })}><option value="">—</option>{s.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}</Dropdown></Field>
               <Field label="Descrição" htmlFor="ar-d" className="sm:col-span-2"><input id="ar-d" className="input" value={form.descricao ?? ''} onChange={(e) => setForm({ ...form, descricao: e.target.value })} /></Field>
               <Field label="Localização" htmlFor="ar-l"><input id="ar-l" className="input" value={form.localizacao ?? ''} onChange={(e) => setForm({ ...form, localizacao: e.target.value })} placeholder="Ex.: 3º andar" /></Field>
-              <Field label="E-mail da área" htmlFor="ar-e"><input id="ar-e" type="email" className="input" value={form.email ?? ''} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
+              <Field label="E-mail do departamento" htmlFor="ar-e"><input id="ar-e" type="email" className="input" value={form.email ?? ''} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
               <div className="grid grid-cols-2 gap-3"><Field label="Telefone" htmlFor="ar-t"><input id="ar-t" className="input" value={form.telefone ?? ''} onChange={(e) => setForm({ ...form, telefone: e.target.value })} /></Field><Field label="Ramal" htmlFor="ar-r"><input id="ar-r" className="input" value={form.ramal ?? ''} onChange={(e) => setForm({ ...form, ramal: e.target.value })} /></Field></div>
               <Field label="Orçamento mensal de referência (R$)" htmlFor="ar-o"><input id="ar-o" type="number" min={0} className="input" value={form.orcamentoMensal ?? ''} onChange={(e) => setForm({ ...form, orcamentoMensal: e.target.value === '' ? undefined : Number(e.target.value) })} /></Field>
             </div>
@@ -78,9 +120,10 @@ function Areas() {
               <div className="flex flex-wrap gap-2 mb-2">{CORES.map((c) => <button key={c} type="button" aria-label={`Cor ${c}`} aria-pressed={form.cor === c} onClick={() => setForm({ ...form, cor: c })} className={cn('h-8 w-8 rounded-lg ring-offset-2', form.cor === c && 'ring-2 ring-ink')} style={{ background: c }} />)}</div>
               <div className="flex flex-wrap gap-2">{ICONES.map((i) => <button key={i} type="button" aria-label={`Ícone ${i}`} aria-pressed={form.icon === i} onClick={() => setForm({ ...form, icon: i })} className={cn('h-9 w-9 rounded-lg border flex items-center justify-center', form.icon === i ? 'border-brand bg-brand-50 text-brand' : 'border-line text-ink-2')}><Icon name={i} className="h-4 w-4" /></button>)}</div>
             </fieldset>
-            <fieldset className="mb-4"><legend className="label">Lideranças (coordenam projetos e veem a disponibilidade da área)</legend>
+            <p className="text-[12px] text-muted -mt-2 mb-4">Quem está no departamento e não tem gestor imediato definido aparece abaixo do líder no organograma. Sem líder, vale o líder do departamento pai.</p>
+            <fieldset className="mb-4"><legend className="label">Outras lideranças (coordenam projetos e veem a disponibilidade do departamento)</legend>
               <div className="max-h-48 overflow-y-auto rounded-xl border border-line p-2 grid sm:grid-cols-2 gap-1">
-                {pessoas.map((c) => { const on = (form.liderancaIds ?? []).includes(c.id); return (
+                {pessoas.filter((c) => c.id !== form.gestorId).map((c) => { const on = (form.liderancaIds ?? []).includes(c.id); return (
                   <label key={c.id} className={cn('flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer', on ? 'bg-brand-50' : 'hover:bg-surface-2')}>
                     <input type="checkbox" className="h-4 w-4 accent-brand" checked={on} onChange={() => setForm({ ...form, liderancaIds: on ? form.liderancaIds!.filter((x) => x !== c.id) : [...(form.liderancaIds ?? []), c.id] })} />
                     <span className="text-[12.5px]">{c.nome}</span>
@@ -88,12 +131,12 @@ function Areas() {
               </div>
               <p className="text-[11.5px] text-muted mt-1.5">Para acessar o Painel da liderança, a pessoa precisa também do papel “Liderança” (em Usuários & acessos).</p>
             </fieldset>
-            <Toggle checked={!!form.reembolsoApenasLideranca} onChange={(v) => setForm({ ...form, reembolsoApenasLideranca: v })} label="Somente lideranças desta área solicitam reembolsos" />
+            <Toggle checked={!!form.reembolsoApenasLideranca} onChange={(v) => setForm({ ...form, reembolsoApenasLideranca: v })} label="Somente lideranças deste departamento solicitam reembolsos" />
           </>
         )}
       </Modal>
-      <ConfirmModal open={!!remover} onClose={() => setRemover(null)} titulo="Remover área?" confirmar="Remover" texto={remover ? `"${remover.nome}" e suas funções serão removidas. Só é possível se não houver pessoas ativas na área.` : ''}
-        onConfirm={() => { if (remover && feedback(s.removerSetor(remover.id), 'Área removida.')) setRemover(null) }} />
+      <ConfirmModal open={!!remover} onClose={() => setRemover(null)} titulo="Remover departamento?" confirmar="Remover" texto={remover ? `"${remover.nome}" e seus cargos serão removidos. Só é possível se não houver pessoas ativas nem subdepartamentos.` : ''}
+        onConfirm={() => { if (remover && feedback(s.removerSetor(remover.id), 'Departamento removido.')) setRemover(null) }} />
     </>
   )
 }
@@ -103,25 +146,26 @@ function Funcoes() {
   const [novo, setNovo] = useState<Record<string, { nome: string; nivel: Senioridade }>>({})
   return (
     <div className="grid md:grid-cols-2 gap-4">
+      {s.setores.length === 0 && <Card className="md:col-span-2"><EmptyState icon="Briefcase" title="Crie um departamento primeiro" desc="Cada cargo pertence a um departamento." /></Card>}
       {s.setores.map((a) => {
         const f = novo[a.id] ?? { nome: '', nivel: 'Pleno' as Senioridade }
         const funcoes = s.cargos.filter((g) => g.setorId === a.id)
         return (
           <Card key={a.id}>
-            <CardHead title={a.nome} sub={`${funcoes.length} função(ões)`} />
+            <CardHead title={caminhoDepartamento(s.setores, a.id).join(' › ')} sub={`${funcoes.length} cargo(s)`} />
             <ul className="divide-y divide-line">
               {funcoes.map((g) => (
                 <li key={g.id} className="flex items-center gap-3 px-5 py-2.5">
                   <span className="flex-1 text-[13.5px] text-ink">{g.nome}</span><Badge tone="neutral">{g.nivel}</Badge>
                   <span className="text-[11.5px] text-muted">{s.colaboradores.filter((c) => c.cargoId === g.id && c.status !== 'encerrado').length} pessoa(s)</span>
-                  <Button size="icon-sm" variant="subtle" icon="X" aria-label={`Remover ${g.nome}`} onClick={() => feedback(s.removeCargo(g.id), 'Função removida.')} />
+                  <Button size="icon-sm" variant="subtle" icon="X" aria-label={`Remover ${g.nome}`} onClick={() => feedback(s.removeCargo(g.id), 'Cargo removido.')} />
                 </li>
               ))}
             </ul>
-            <form className="flex gap-2 p-4 border-t border-line" onSubmit={(e) => { e.preventDefault(); if (feedback(s.addCargo({ nome: f.nome, setorId: a.id, nivel: f.nivel }), 'Função adicionada.')) setNovo({ ...novo, [a.id]: { nome: '', nivel: 'Pleno' } }) }}>
-              <input aria-label={`Nova função em ${a.nome}`} className="input flex-1" placeholder="Nova função" value={f.nome} onChange={(e) => setNovo({ ...novo, [a.id]: { ...f, nome: e.target.value } })} />
+            <form className="flex gap-2 p-4 border-t border-line" onSubmit={(e) => { e.preventDefault(); if (feedback(s.addCargo({ nome: f.nome, setorId: a.id, nivel: f.nivel }), 'Cargo adicionado.')) setNovo({ ...novo, [a.id]: { nome: '', nivel: 'Pleno' } }) }}>
+              <input aria-label={`Novo cargo em ${a.nome}`} className="input flex-1" placeholder="Novo cargo" value={f.nome} onChange={(e) => setNovo({ ...novo, [a.id]: { ...f, nome: e.target.value } })} />
               <Dropdown aria-label="Senioridade" className="input w-32" value={f.nivel} onChange={(e) => setNovo({ ...novo, [a.id]: { ...f, nivel: e.target.value as Senioridade } })}>{NIVEIS.map((n) => <option key={n}>{n}</option>)}</Dropdown>
-              <Button type="submit" icon="Plus" size="icon" aria-label="Adicionar função" />
+              <Button type="submit" icon="Plus" size="icon" aria-label="Adicionar cargo" />
             </form>
           </Card>
         )

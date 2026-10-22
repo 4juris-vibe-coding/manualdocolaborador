@@ -1,20 +1,24 @@
 /* ============================================================
    4JURIS Pessoas · Adaptador de API (modo VITE_DATA_SOURCE=api)
    Sessão por cookie HttpOnly (/api/login) e persistência das
-   coleções da store no banco (/api/estado). A store continua sendo
-   a fonte de verdade na tela; mudanças são enviadas em lote
-   (coleções inteiras que mudaram) logo após cada ação.
+   coleções da store no banco (/api/estado). O servidor entrega só
+   o que a pessoa pode ver; mudanças são enviadas logo após cada
+   ação como operações por registro (src/domain/sincronia.ts), com o
+   hash da versão vista. Se o servidor recusar (permissão) ou houver
+   edição concorrente, a tela é recarregada com a versão do banco.
    ============================================================ */
 import { create } from 'zustand'
 import { CONFIG, MODO_API } from './config'
 import { useStore, DB_KEYS } from '@/lib/store'
 import { toast } from '@/components/toast'
 import { carregarAcesso, limparAcesso } from './v2/acesso'
+import { diferenca, hashRegistro, type OpsColecao } from '@/domain/sincronia'
+import { definirSegredoAnonimo } from '@/domain/anonimato'
 
 const base = CONFIG.apiUrl.replace(/\/$/, '')
 
 async function chamar<T>(rota: string, init?: RequestInit): Promise<{ ok: boolean; status: number; dados: T & { erro?: string } }> {
-  const r = await fetch(`${base}/api/${rota}`, { credentials: 'same-origin', ...init, headers: { 'Content-Type': 'application/json', ...init?.headers } })
+  const r = await fetch(`${base}/api/${rota}`, { credentials: 'same-origin', ...init, headers: { 'Content-Type': 'application/json', 'X-Requested-With': '4juris', ...init?.headers } })
   const dados = await r.json().catch(() => ({}))
   return { ok: r.ok, status: r.status, dados }
 }
@@ -24,8 +28,9 @@ interface SyncState { sessao: SituacaoSessao; salvando: boolean; erro?: string }
 export const useSync = create<SyncState>(() => ({ sessao: MODO_API ? 'carregando' : 'ok', salvando: false }))
 
 /* ---------- sincronização store → banco ----------
-   As ações da store recriam todas as coleções a cada mudança; por isso
-   comparamos o CONTEÚDO (JSON) com o último estado confirmado pelo servidor. */
+   As ações da store recriam as coleções a cada mudança; por isso
+   comparamos o CONTEÚDO com a última versão confirmada pelo servidor
+   (`enviado`) e mandamos só os registros que mudaram. */
 let enviado: Record<string, string> = {}
 let timer: ReturnType<typeof setTimeout> | undefined
 let ativo = false
@@ -38,6 +43,18 @@ const fotografar = (): Record<string, string> => {
   return Object.fromEntries(DB_KEYS.map((k) => [k, json(s[k])]))
 }
 
+/** Monta o lote de operações (registros alterados por coleção + configuração inteira). */
+function montarLote(atual: Record<string, string>, chaves: string[]) {
+  const ops: Record<string, OpsColecao> = {}
+  let config: { base: string | null; dados: unknown } | undefined
+  for (const k of chaves) {
+    if (k === 'config') { config = { base: hashRegistro(JSON.parse(enviado[k] ?? 'null')), dados: JSON.parse(atual[k]) }; continue }
+    const d = diferenca(k, JSON.parse(enviado[k] ?? '[]'), JSON.parse(atual[k]))
+    if (d) ops[k] = d
+  }
+  return { ops, ...(config ? { config } : {}) }
+}
+
 async function enviar() {
   if (!ativo || emVoo) return
   sujo = false
@@ -46,10 +63,19 @@ async function enviar() {
   if (!chaves.length) { useSync.setState({ salvando: false }); return }
   emVoo = true
   useSync.setState({ salvando: true })
-  const mudancas = Object.fromEntries(chaves.map((k) => [k, JSON.parse(atual[k])]))
   try {
-    const r = await chamar('estado', { method: 'PUT', body: json({ mudancas }) })
+    const r = await chamar<{ recarregar?: boolean }>('estado', { method: 'PUT', body: json(montarLote(atual, chaves)) })
     if (r.status === 401) { toast('Sua sessão expirou. Entre novamente.', 'danger'); ativo = false; useSync.setState({ sessao: 'anonimo', salvando: false }); useStore.setState({ sessaoId: null }); return }
+    if (r.status === 409 && r.dados.recarregar) { window.location.reload(); return }
+    if (r.status === 400 || r.status === 403 || r.status === 409) {
+      // Recusa definitiva (permissão, dado inválido ou conflito): não adianta repetir. Volta ao que está no banco.
+      toast(`Não foi salvo: ${r.dados.erro ?? 'operação recusada pelo servidor'}`, 'danger')
+      useSync.setState({ erro: undefined })
+      emVoo = false
+      await hidratar()
+      useSync.setState({ salvando: false })
+      return
+    }
     if (!r.ok) throw new Error(r.dados.erro ?? 'Falha ao salvar')
     for (const k of chaves) enviado[k] = atual[k]
     if (useSync.getState().erro) toast('Conexão restabelecida. Alterações salvas.')
@@ -83,15 +109,23 @@ function ligarSync() {
 
 /* ---------- sessão ---------- */
 async function hidratar(): Promise<boolean> {
-  const r = await chamar<{ colaboradorId: string; estado: Record<string, unknown> }>('estado')
+  const r = await chamar<{ colaboradorId: string; estado: Record<string, unknown>; segredoAnonimo?: string }>('estado')
   if (!r.ok) return false
-  const { estado, colaboradorId } = r.dados
+  const { estado, colaboradorId, segredoAnonimo } = r.dados
+  definirSegredoAnonimo(segredoAnonimo ?? '')
   useStore.setState({ ...estado, sessaoId: colaboradorId, previewColaborador: false })
   enviado = fotografar()
   sujo = false
   ligarSync()
   void carregarAcesso()
   return true
+}
+
+/** Recarrega as coleções do servidor (depois de uma ação do servidor que altera dados das telas antigas). */
+export async function recarregarEstado(): Promise<void> {
+  if (!MODO_API || !ativo) return
+  await salvarAgora()
+  await hidratar()
 }
 
 /** Chamado na abertura do app: reaproveita o cookie de sessão, se válido. */
@@ -141,6 +175,50 @@ export async function salvarAcesso(colaboradorId: string, dados: { senha?: strin
   } catch { return 'Servidor indisponível. Tente novamente.' }
 }
 
+/* ---------- cadastro por link (público) e aprovação (RH/admin) ---------- */
+export interface Convite { token: string; criadoEm: string }
+export interface Solicitacao { id: string; nome: string; email: string; status: 'pendente' | 'aprovado' | 'recusado'; criadoEm: string; decididoEm: string | null; colaboradorId: string | null }
+
+export const linkCadastro = (token: string) => `${window.location.origin}/cadastro/${token}`
+
+export async function conviteValido(token: string): Promise<boolean | null> {
+  try {
+    const r = await chamar<{ valido: boolean }>(`convite?token=${encodeURIComponent(token)}`)
+    return r.ok ? r.dados.valido : null
+  } catch { return null }
+}
+
+export async function enviarCadastro(dados: { token: string; nome: string; email: string; senha: string }): Promise<string | null> {
+  try {
+    const r = await chamar('cadastro', { method: 'POST', body: JSON.stringify(dados) })
+    return r.ok ? null : r.dados.erro ?? 'Não foi possível enviar o cadastro.'
+  } catch { return 'Servidor indisponível. Tente novamente.' }
+}
+
+export async function lerConvite(): Promise<Convite | null> {
+  const r = await chamar<{ convite: Convite | null }>('convites')
+  return r.ok ? r.dados.convite : null
+}
+
+export async function alterarConvite(acao: 'gerar' | 'revogar'): Promise<{ convite: Convite | null; erro?: string }> {
+  try {
+    const r = await chamar<{ convite: Convite | null }>('convites', { method: 'POST', body: JSON.stringify({ acao }) })
+    return r.ok ? { convite: r.dados.convite } : { convite: null, erro: r.dados.erro ?? 'Não foi possível alterar o link.' }
+  } catch { return { convite: null, erro: 'Servidor indisponível. Tente novamente.' } }
+}
+
+export async function listarSolicitacoes(): Promise<Solicitacao[]> {
+  const r = await chamar<{ solicitacoes: Solicitacao[] }>('solicitacoes')
+  return r.ok ? r.dados.solicitacoes : []
+}
+
+export async function decidirSolicitacao(id: string, acao: 'aprovar' | 'recusar', colaboradorId?: string): Promise<string | null> {
+  try {
+    const r = await chamar('solicitacoes', { method: 'POST', body: JSON.stringify({ id, acao, colaboradorId }) })
+    return r.ok ? null : r.dados.erro ?? 'Não foi possível concluir.'
+  } catch { return 'Servidor indisponível. Tente novamente.' }
+}
+
 export async function pedirRedefinicaoSenha(email: string): Promise<string | null> {
   try {
     const r = await chamar('esqueci-senha', { method: 'POST', body: JSON.stringify({ email }) })
@@ -160,6 +238,7 @@ export async function sairDoServidor(): Promise<void> {
   clearTimeout(timer)
   if (ativo && !emVoo) await enviar()
   ativo = false
+  definirSegredoAnonimo('')
   limparAcesso()
   useSync.setState({ sessao: 'anonimo' })
   await chamar('logout', { method: 'POST' }).catch(() => undefined)

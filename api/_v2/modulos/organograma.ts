@@ -12,6 +12,7 @@ import {
   construirHierarquia, filtrarPessoas, posicoesVagas, validarMudancaGestor, ROTULO_PENDENCIA, cadeiaAcima,
   type Hierarquia, type PessoaOrg, type VagaOrg,
 } from '../../../src/domain/v2/organograma.js'
+import { arvoreDepartamentos } from '../../../src/domain/v2/departamentos.js'
 import { evolucaoDisponivel, indicadoresEstrutura, resumoParaSnapshot, type SnapshotEstrutura } from '../../../src/domain/v2/estrutura.js'
 
 const LIMITE_VISAO_COMPLETA = 300
@@ -61,6 +62,7 @@ function cartao(b: Base, id: string, u: Usuario, noMapa: Set<string>) {
     status: p.status,
     gestorId: pai && noMapa.has(pai) ? pai : null,
     gestorForaDaVisao: pai && !noMapa.has(pai) ? pai : null,
+    gestorViaDepartamento: !!pai && b.h.viaDepartamento.has(id),
     lidera: !!(setor && (setor.gestorId === p.id || setor.liderancaIds?.includes(p.id))),
     diretos: b.h.diretos.get(id) ?? 0,
     totalAbaixo: b.h.totais.get(id) ?? 0,
@@ -83,7 +85,7 @@ export const rotas: Rota[] = [
     h: async ({ db, usuario, req }) => {
       const b = await carregarBase(db, usuario)
       const f = filtros(req.query)
-      const noFiltro = filtrarPessoas(b.pessoas, f).filter((p) => p.status !== 'encerrado')
+      const noFiltro = filtrarPessoas(b.pessoas, f, b.setores).filter((p) => p.status !== 'encerrado')
       const ids = new Set(noFiltro.map((p) => p.id))
       const q = nomeBusca(req.query.q ?? '').trim()
       // Hierarquia na visão: quem tem gestor fora do recorte vira raiz do recorte.
@@ -123,6 +125,19 @@ export const rotas: Rota[] = [
         podeEditar: usuario.caps.has('org:editar'),
         podeVerPerfilCompleto: usuario.caps.has('pessoas:gerenciar'),
       })
+    },
+  },
+
+  // Organograma estrutural: departamentos e subdepartamentos, com líder, cargos e quantidade de pessoas.
+  {
+    metodo: 'GET', padrao: 'organograma/departamentos', cap: 'org:ver',
+    h: async ({ db }) => {
+      const [legado, setores, cargos] = await Promise.all([lerPessoas(db), lerSetores(db), lerCargos(db)])
+      return ok(arvoreDepartamentos(
+        setores,
+        cargos.map((c) => ({ id: c.id, nome: c.nome, setorId: c.setorId, nivel: c.nivel as string | undefined })),
+        legado.map((p) => ({ id: p.id, nome: p.nome, setorId: p.setorId, cargoId: p.cargoId, status: p.status, avatarCor: p.avatarCor })),
+      ))
     },
   },
 

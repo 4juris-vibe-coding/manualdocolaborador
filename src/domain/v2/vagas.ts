@@ -20,6 +20,11 @@ export const MAPA_STATUS_VAGA: Record<StatusVaga, { rotulo: string; tom: TomVaga
 }
 
 export const TIPOS_VAGA = ['efetivo', 'temporario', 'estagio', 'aprendiz', 'contrato', 'outro'] as const
+/** Forma de contratação (vínculo). PJ/MEI/autônomo são contratos comerciais; CLT e estágio têm regras próprias, fora deste portal. */
+export const REGIMES_CONTRATACAO = ['pj', 'mei', 'autonomo', 'clt', 'estagio', 'temporario', 'nao_informado'] as const
+export const ROTULO_REGIME_CONTRATACAO: Record<string, string> = {
+  pj: 'Prestação de serviços (PJ)', mei: 'Prestação de serviços (MEI)', autonomo: 'Autônomo', clt: 'CLT', estagio: 'Estágio', temporario: 'Temporário', nao_informado: 'Não informado',
+}
 export const ROTULO_TIPO: Record<string, string> = { efetivo: 'Efetivo', temporario: 'Temporário', estagio: 'Estágio', aprendiz: 'Aprendiz', contrato: 'Contrato (PJ)', outro: 'Outro' }
 export const MOTIVOS_VAGA = ['substituicao', 'expansao', 'nova_posicao', 'outro'] as const
 export const ROTULO_MOTIVO: Record<string, string> = { substituicao: 'Substituição', expansao: 'Expansão', nova_posicao: 'Nova posição', outro: 'Outro' }

@@ -6,10 +6,17 @@ import { ConfirmModal } from '@/components/Modal'
 import { brl, fmtDate, STATUS_SOLIC, REEMBOLSO_ETAPAS, cn } from '@/lib/utils'
 import type { StatusSolicitacao } from '@/lib/types'
 import { Dropdown } from '@/components/Dropdown'
+import { MODO_API } from '@/data/config'
+import { BotaoReembolsoParaContas } from '@/pages/v2/financeiro/Outros'
 
-const STATUS_OPCOES: StatusSolicitacao[] = ['pendente', 'aprovado', 'pagamento', 'pago', 'recusado']
+// Com banco, "em pagamento" e "pago" são definidos pelo servidor (Contas a pagar: autorização + registro com comprovante).
+const STATUS_OPCOES: StatusSolicitacao[] = MODO_API ? ['pendente', 'aprovado', 'recusado'] : ['pendente', 'aprovado', 'pagamento', 'pago', 'recusado']
+const STATUS_FILTRO: StatusSolicitacao[] = ['pendente', 'aprovado', 'pagamento', 'pago', 'recusado']
 
 function StatusSelect({ value, onChange, className }: { value: StatusSolicitacao; onChange: (v: StatusSolicitacao) => void; className?: string }) {
+  if (MODO_API && (value === 'pagamento' || value === 'pago')) {
+    return <div className={cn('h-9 px-3 rounded-lg border border-line bg-winter text-[12.5px] font-semibold flex items-center', className)} title="Acompanhado em Gestão de prestadores › Contas a pagar">{STATUS_SOLIC[value].label}</div>
+  }
   const tone = STATUS_SOLIC[value]?.tone ?? 'neutral'
   const toneCls: Record<string, string> = {
     neutral: 'bg-winter text-ink-2 border-line', brand: 'bg-brand-50 text-brand-700 border-brand-200',
@@ -122,6 +129,7 @@ export default function ReembolsosAdmin({ onVerColaborador }: { onVerColaborador
                             <div className="text-[11.5px] text-muted truncate">{r.descricao}</div>
                             {r.comprovante && <div className="flex items-center gap-1 text-[11px] text-brand mt-1"><Icon name="Paperclip" className="h-3 w-3" />{r.comprovante}</div>}
                             <StatusSelect className="mt-2.5" value={r.status} onChange={(st) => mudar(r.id, st)} />
+                            {MODO_API && r.status === 'aprovado' && <div className="mt-2"><BotaoReembolsoParaContas reembolsoId={r.id} /></div>}
                           </div>
                         )
                       })}
@@ -149,7 +157,7 @@ export default function ReembolsosAdmin({ onVerColaborador }: { onVerColaborador
             </Dropdown>
             <Dropdown className="input w-auto min-w-[150px]" value={statusF} onChange={(e) => setStatusF(e.target.value)}>
               <option value="todos">Todos os status</option>
-              {STATUS_OPCOES.map((st) => <option key={st} value={st}>{STATUS_SOLIC[st].label}</option>)}
+              {STATUS_FILTRO.map((st) => <option key={st} value={st}>{STATUS_SOLIC[st].label}</option>)}
             </Dropdown>
             <span className="ml-auto text-[12.5px] text-muted">{lista.length} solicitação(ões)</span>
           </div>
@@ -185,8 +193,8 @@ export default function ReembolsosAdmin({ onVerColaborador }: { onVerColaborador
                               ? <span className="inline-flex items-center gap-1 text-[12px] text-brand"><Icon name="Paperclip" className="h-3.5 w-3.5" />{r.comprovante}</span>
                               : <span className="text-[12px] text-muted-2">—</span>}
                           </td>
-                          <td className="px-5 py-3"><StatusSelect value={r.status} onChange={(st) => mudar(r.id, st)} /></td>
-                          <td className="px-5 py-3"><Button size="icon-sm" variant="subtle" icon="Trash2" aria-label={`Excluir reembolso ${r.descricao}`} onClick={() => setExcluir(r.id)} /></td>
+                          <td className="px-5 py-3"><StatusSelect value={r.status} onChange={(st) => mudar(r.id, st)} />{MODO_API && r.status === 'aprovado' && <div className="mt-2"><BotaoReembolsoParaContas reembolsoId={r.id} /></div>}</td>
+                          <td className="px-5 py-3">{(!MODO_API || r.status === 'pendente' || r.status === 'recusado') && <Button size="icon-sm" variant="subtle" icon="Trash2" aria-label={`Excluir reembolso ${r.descricao}`} onClick={() => setExcluir(r.id)} />}</td>
                         </tr>
                       )
                     })}

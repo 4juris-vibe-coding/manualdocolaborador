@@ -200,13 +200,13 @@ describe('estrutura', () => {
     const e = (await resumo(m.c.rh1)).json.blocos.estrutura
     expect(ind(e, 'pessoas').valor).toBe(8)
     expect(e.porSetor.reduce((s: number, x: any) => s + x.qtd, 0)).toBe(8)
-    expect(ind(e, 'qualidade_cadastro').valor).toBeGreaterThan(0) // várias pessoas sem gestor no cadastro de teste
+    expect(ind(e, 'qualidade_cadastro').valor).toBe(0) // quem não tem gestor imediato herda o líder do departamento
     expect(ind(e, 'posicoes_vagas').valor).toBeGreaterThan(0) // vagas publicadas/aprovadas semeadas
     expect(e.mensagemEvolucao).toMatch(/histórico/i)
   })
   it('filtro por gestor considera a pessoa e sua equipe; níveis seguem a organização inteira', async () => {
     const e = (await resumo(m.c.rh1, { gestor: 'ger1' })).json.blocos.estrutura
-    expect(ind(e, 'pessoas').valor).toBe(2)
+    expect(ind(e, 'pessoas').valor).toBe(6) // ger1, col1 e quem está no Jurídico sem gestor imediato
     expect(e.filtrosAplicados.join(' ')).toMatch(/gestor/)
     expect(e.filtrosIgnorados.join(' ')).toMatch(/organização inteira/)
   })

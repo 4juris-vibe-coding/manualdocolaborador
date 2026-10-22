@@ -1,5 +1,8 @@
+import { Link } from 'react-router-dom'
+import { MODO_API } from '@/data/config'
 import { useState } from 'react'
 import { useStore } from '@/lib/store'
+import { ListaDocumentos } from '@/components/v2/financeiro/Documentos'
 import type { Colaborador, TipoDocumento, Diversidade, PerfilDisc, Escolaridade } from '@/lib/types'
 import { SliderBipolar } from '@/components/inputs'
 import { BarrasDisc } from '@/components/charts'
@@ -148,7 +151,7 @@ export default function Perfil() {
             <Row label="Início da parceria" value={fmtDate(user.dataEntrada)} />
           </dl></Card>
           <Card>
-            <CardHead title="Contrato de prestação de serviços" sub={contrato ? contrato.numero : undefined} />
+            <CardHead title="Contrato de prestação de serviços" sub={contrato ? contrato.numero : undefined} action={MODO_API ? <Link to="/meus-contratos" className="text-[13px] font-semibold text-brand hover:underline">Ver detalhes e aditivos</Link> : undefined} />
             {!contrato ? <EmptyState icon="FileSignature" title="Nenhum contrato registrado" desc="O RH registra aqui o contrato vigente." /> : (
               <dl className="px-5 sm:px-6 py-2">
                 <Row label="Objeto" value={contrato.objeto} />
@@ -176,7 +179,8 @@ export default function Perfil() {
         </Card>
       )}
 
-      {tab === 'documentos' && (
+      {tab === 'documentos' && MODO_API && <ListaDocumentos filtro={`pessoa=${user.id}`} vinculo={{ pessoaId: user.id }} podeEnviar titulo="Meus documentos" />}
+      {tab === 'documentos' && !MODO_API && (
         <Card>
           <CardHead title="Meus documentos" sub="Visíveis apenas para você e para o RH" action={<Button size="sm" icon="Upload" onClick={() => setDocOpen(true)}>Enviar documento</Button>} />
           {documentos.length === 0 ? <EmptyState icon="FolderOpen" title="Nenhum documento" desc="Envie o cartão CNPJ, certidões ou outros documentos solicitados pelo RH." /> : (

@@ -65,6 +65,14 @@ export type Capacidade =
   | 'org:ver_contato'
   | 'org:editar'
   | 'analytics:ver'
+  // Gestão de prestadores PJ (v2) — verificadas no servidor (api/_v2/modulos/financeiro.ts)
+  | 'fin:ver'                  // painel, contratos, notas, contas e documentos de todos os fornecedores
+  | 'fin:cadastrar'            // fornecedores, contratos, aditivos, centros de custo, encerramentos
+  | 'fin:conferir'             // conferência documental de notas fiscais e documentos
+  | 'fin:aprovar'              // aceite do serviço em qualquer contrato (o gestor do contrato aceita os seus)
+  | 'fin:pagar'                // retenções, registro manual de pagamento e conciliação
+  | 'fin:autorizar'            // autorização de pagamento
+  | 'fin:config'               // configurações financeiras e segregação de funções
   // Administração da plataforma
   | 'admin:usuarios'
   | 'admin:auditoria'
@@ -86,9 +94,13 @@ const RH_V2: Capacidade[] = [
   'org:ver', 'org:ver_contato', 'org:editar', 'analytics:ver',
 ]
 
+/** Financeiro PJ do RH: cadastra, confere, aceita e registra pagamentos. Autorizar pagamento é de outra função (segregação). */
+const RH_FIN: Capacidade[] = ['fin:ver', 'fin:cadastrar', 'fin:conferir', 'fin:aprovar', 'fin:pagar']
+
 const RH: Capacidade[] = [
   ...LIDERANCA,
   ...RH_V2,
+  ...RH_FIN,
   'rh:painel', 'pessoas:gerenciar', 'pessoas:ver_contratos', 'documentos:gerenciar',
   'estrutura:gerenciar', 'onboarding:gerenciar', 'eventos:gerenciar', 'gamificacao:configurar',
   'pesquisas:gerenciar', 'disponibilidade:configurar', 'financeiro:gerenciar', 'relatorios:exportar',
@@ -102,8 +114,8 @@ export const MATRIZ: Record<Papel, Capacidade[]> = {
   rh: ['portal:usar', ...RH],
   // Diretoria: visão executiva (indicadores agregados), sem editar cadastros.
   diretoria: ['portal:usar', 'lideranca:painel', 'lideranca:ver_disponibilidade_equipe', 'rh:painel', 'relatorios:exportar', 'comunicados:publicar', 'eventos:gerenciar',
-    'vagas:ver', 'ats:ver', 'pesq:resultados', 'cargos:ver', 'org:ver', 'analytics:ver'],
-  admin: ['portal:usar', ...RH, 'admin:usuarios', 'admin:auditoria', 'admin:privacidade', 'admin:dados_demo', 'config:geral'],
+    'vagas:ver', 'ats:ver', 'pesq:resultados', 'cargos:ver', 'org:ver', 'analytics:ver', 'fin:ver'],
+  admin: ['portal:usar', ...RH, 'admin:usuarios', 'admin:auditoria', 'admin:privacidade', 'admin:dados_demo', 'config:geral', 'fin:autorizar', 'fin:config'],
 }
 
 export const PAPEL_LABEL: Record<Papel, string> = {
@@ -117,19 +129,21 @@ export const PAPEL_LABEL: Record<Papel, string> = {
 export const PAPEL_DESC: Record<Papel, string> = {
   colaborador: 'Acessa a área pessoal: perfil, agenda, comunidade e as próprias solicitações.',
   gestor: 'Coordena áreas sob sua responsabilidade: disponibilidade da equipe, iniciativas e eventos da área.',
-  rh: 'Administra pessoas, contratos, documentos, integração, eventos, pesquisas e gamificação.',
+  rh: 'Administra pessoas, contratos, documentos, notas fiscais, integração, eventos, pesquisas e gamificação.',
   diretoria: 'Consulta indicadores agregados e publica comunicados; não edita cadastros.',
   admin: 'Tudo do RH, mais usuários e papéis, auditoria, privacidade e dados de demonstração.',
 }
 
 /** Funções adicionais (além do papel), concedidas pelo RH. Tabela acl_funcoes. */
-export type FuncaoAdicional = 'recrutador' | 'analista_rh' | 'resp_pesquisas' | 'aprovador_financeiro'
+export type FuncaoAdicional = 'recrutador' | 'analista_rh' | 'resp_pesquisas' | 'aprovador_financeiro' | 'analista_financeiro' | 'autorizador_pagamentos'
 
 export const FUNCAO_LABEL: Record<FuncaoAdicional, string> = {
   recrutador: 'Recrutador(a)',
   analista_rh: 'Analista de RH',
   resp_pesquisas: 'Responsável por pesquisas',
   aprovador_financeiro: 'Aprovação financeira de vagas',
+  analista_financeiro: 'Analista financeiro (notas e pagamentos)',
+  autorizador_pagamentos: 'Autorização de pagamentos',
 }
 
 const FUNCOES_CAPS: Record<FuncaoAdicional, Capacidade[]> = {
@@ -138,6 +152,8 @@ const FUNCOES_CAPS: Record<FuncaoAdicional, Capacidade[]> = {
   analista_rh: ['vagas:solicitar', 'vagas:ver', 'ats:ver', 'cargos:ver', 'cargos:ver_faixas', 'org:ver', 'org:ver_contato', 'analytics:ver', 'pesq:resultados'],
   resp_pesquisas: ['pesq:gerenciar', 'pesq:resultados', 'pesq:exportar'],
   aprovador_financeiro: ['vagas:ver', 'vagas:ver_remuneracao'],
+  analista_financeiro: ['fin:ver', 'fin:conferir', 'fin:pagar'],
+  autorizador_pagamentos: ['fin:ver', 'fin:autorizar'],
 }
 
 /** Capacidades efetivas: as do papel mais as das funções adicionais. Usada no servidor e no cliente. */

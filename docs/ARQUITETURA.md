@@ -45,6 +45,8 @@ Essas ações correspondem 1:1 aos métodos de `src/data/contrato.ts`. Isso é o
 
 ## Autorização
 
+> **Com banco (`VITE_DATA_SOURCE=api`)**, o servidor filtra o que cada pessoa recebe e valida cada gravação por registro (`api/_v2/guarda.ts`). O módulo financeiro é todo no servidor. Ver [`docs/FINANCEIRO.md`](FINANCEIRO.md), seções 3 e 9.
+
 `src/domain/permissions.ts` define a matriz. Ela é usada:
 
 - na navegação (itens com `cap`);
