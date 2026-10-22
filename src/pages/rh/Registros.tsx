@@ -88,7 +88,7 @@ export default function Registros() {
               <IndicadorCard key={k} titulo={CLASS_REG[k].label} valor={lista.filter((r) => (r.classificacao ?? 'neutro') === k).length} icon={k === 'positivo' ? 'ThumbsUp' : k === 'negativo' ? 'ThumbsDown' : 'Minus'} tone={k === 'positivo' ? 'success' : k === 'negativo' ? 'danger' : 'ink'} definicao={`Registros classificados como ${CLASS_REG[k].label.toLowerCase()}.`} fonte="Registros administrativos" />
             ))}
           </div>
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card><CardHead title="Por tipo" /><div className="p-5"><BarList itens={s.tiposRegistro.map((t) => ({ rotulo: t.nome, valor: lista.filter((r) => r.tipoId === t.id).length }))} /></div></Card>
             <Card><CardHead title="Por área" /><div className="p-5"><BarList itens={s.setores.map((a) => ({ rotulo: a.nome, valor: lista.filter((r) => s.pessoa(r.colaboradorId)?.setorId === a.id).length, cor: a.cor }))} /></div></Card>
           </div>
@@ -114,7 +114,7 @@ export function RegistroForm({ r, onClose, pessoaFixa }: { r?: RegistroAdministr
     <Modal open onClose={onClose} title={r ? 'Editar registro' : 'Novo registro administrativo'} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Check" type="submit" form="regAdmForm">Salvar</Button></>}>
       <form id="regAdmForm" onSubmit={salvar}>
         {!pessoaFixa && <Field label="Pessoa" required htmlFor="ra-p"><Dropdown id="ra-p" name="colaboradorId" className="input" defaultValue={r?.colaboradorId ?? ''} required><option value="" disabled>Selecione…</option>{s.colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</Dropdown></Field>}
-        <div className="grid sm:grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <Field label="Tipo" htmlFor="ra-t"><Dropdown id="ra-t" name="tipoId" className="input" defaultValue={r?.tipoId}>{s.tiposRegistro.filter((t) => t.ativo || t.id === r?.tipoId).map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}</Dropdown></Field>
           <Field label="Data" htmlFor="ra-d"><input id="ra-d" name="data" type="date" className="input" defaultValue={r?.data ?? hojeISO()} /></Field>
           <Field label="Classificação" htmlFor="ra-c"><Dropdown id="ra-c" name="classificacao" className="input" defaultValue={r?.classificacao ?? 'neutro'}>{Object.entries(CLASS_REG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</Dropdown></Field>

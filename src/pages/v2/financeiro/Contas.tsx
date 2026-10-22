@@ -52,15 +52,15 @@ export default function Contas() {
           {(d) => (
             <Card className="overflow-hidden">
               <div className="px-5 py-3 text-[12.5px] text-muted border-b border-line">{d.total} conta(s) · bruto {dinheiro(d.somas.bruto)} · líquido {dinheiro(d.somas.liquido)}</div>
-              <Tabela minWidth={940}>
+              <Tabela minWidth={940} cartoes>
                 <thead><tr><th className={TH}>Descrição</th><th className={TH}>Beneficiário</th><th className={TH}>Vencimento</th><th className={TH}>Bruto</th><th className={TH}>Retenções</th><th className={TH}>Líquido</th><th className={TH}>Situação</th></tr></thead>
                 <tbody>{d.itens.map((c) => (
                   <tr key={c.id} className="hover:bg-surface-2 cursor-pointer" onClick={() => f.definir('conta', c.id)}>
                     <td className={TD}><button className="font-semibold text-left hover:text-brand" onClick={(e) => { e.stopPropagation(); f.definir('conta', c.id) }}>{c.descricao}</button><div className="text-[11.5px] text-muted">{c.origem === 'nota_fiscal' ? 'Nota fiscal' : c.origem === 'reembolso' ? 'Reembolso' : 'Avulsa'}{c.centroCusto ? ` · ${c.centroCusto}` : ''}</div></td>
-                    <td className={TD}>{c.fornecedorNome ?? c.pessoaNome}</td>
-                    <td className={TD}>{dataBR(c.vencimento)}{c.atrasada && <div><Badge tone="danger" dot>Vencida</Badge></div>}</td>
-                    <td className={`${TD} tabular-nums`}>{dinheiro(c.valorBruto)}</td><td className={`${TD} tabular-nums`}>{dinheiro(c.valorRetencoes)}</td><td className={`${TD} tabular-nums font-semibold`}>{dinheiro(c.valorLiquido)}</td>
-                    <td className={TD}><div className="flex flex-col items-start gap-1"><BadgeConta valor={c.status} />{c.status === 'paga' && !c.conciliadaEm && <Badge>A conciliar</Badge>}</div></td>
+                    <td className={TD} data-rotulo="Beneficiário">{c.fornecedorNome ?? c.pessoaNome}</td>
+                    <td className={TD} data-rotulo="Vencimento">{dataBR(c.vencimento)}{c.atrasada && <div><Badge tone="danger" dot>Vencida</Badge></div>}</td>
+                    <td className={`${TD} tabular-nums`} data-rotulo="Bruto">{dinheiro(c.valorBruto)}</td><td className={`${TD} tabular-nums`} data-rotulo="Retenções">{dinheiro(c.valorRetencoes)}</td><td className={`${TD} tabular-nums font-semibold`} data-rotulo="Líquido">{dinheiro(c.valorLiquido)}</td>
+                    <td className={TD} data-rotulo="Situação"><div className="flex flex-col items-start gap-1"><BadgeConta valor={c.status} />{c.status === 'paga' && !c.conciliadaEm && <Badge>A conciliar</Badge>}</div></td>
                   </tr>
                 ))}</tbody>
               </Tabela>

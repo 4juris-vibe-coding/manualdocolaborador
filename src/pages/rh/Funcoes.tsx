@@ -50,7 +50,7 @@ export default function Funcoes() {
       <Tabs tabs={[{ key: 'lista', label: `Funções (${s.cargos.length})` }, { key: 'organograma', label: 'Organograma de funções' }]} active={tab} onChange={setTab} />
 
       {tab === 'lista' && (
-        <div className="grid lg:grid-cols-[1fr_240px] gap-6 [&>*]:min-w-0">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-6 [&>*]:min-w-0">
           <div>
             <div className="flex flex-wrap gap-3 mb-4">
               <SearchBox value={q} onChange={setQ} placeholder="Nome ou CBO" label="Buscar funções" />
@@ -122,7 +122,7 @@ function Organograma({ onAbrir }: { onAbrir: (c: Cargo) => void }) {
     </li>
   )
   return (
-    <div className="grid md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {s.setores.map((a) => {
         const daArea = raiz.filter((c) => c.setorId === a.id)
         if (!daArea.length) return null
@@ -145,7 +145,7 @@ function FuncaoDetalhe({ c, onClose, onEditar }: { c: Cargo; onClose: () => void
     <Modal open onClose={onClose} wide title={c.nome} subtitle={`${s.setorNome(c.setorId)} · ${c.nivel}${c.codigoCBO ? ` · CBO ${c.codigoCBO}` : ''}`}
       footer={<><Button variant="subtle" icon="Trash2" onClick={() => setRemover(true)}>Remover</Button><Link to={`/cargos/${c.id}`}><Button variant="ghost" icon="FileBadge">Ficha oficial do cargo</Button></Link><Button variant="ghost" icon="Pencil" onClick={onEditar}>Editar</Button><Button onClick={onClose}>Fechar</Button></>}>
       {c.descricao && <p className="text-[13.5px] text-ink-2 mb-4">{c.descricao}</p>}
-      <div className="grid md:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
           <h4 className="text-[11px] font-bold uppercase text-muted mb-2">Atividades</h4>
           {c.atividades ? <ul className="text-[13px] text-ink-2 space-y-1 list-disc pl-5">{c.atividades.split('\n').map((l) => l.replace(/^\s*-\s*/, '')).filter(Boolean).map((l, i) => <li key={i}>{l}</li>)}</ul> : <p className="text-[13px] text-muted">Não informadas.</p>}
@@ -202,7 +202,7 @@ function FuncaoForm({ c, onClose }: { c?: Cargo; onClose: () => void }) {
     <Modal open onClose={onClose} wide title={c ? `Editar ${c.nome}` : 'Nova função'} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Check" onClick={salvar}>Salvar</Button></>}>
       <Tabs tabs={[{ key: 'geral', label: 'Geral' }, { key: 'atividades', label: 'Atividades & habilidades' }, { key: 'valor', label: 'Valor padrão' }, { key: 'perfil', label: 'Perfil ideal' }]} active={aba} onChange={setAba} />
       {aba === 'geral' && (
-        <div className="grid sm:grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <Field label="Nome" required htmlFor="fn-n"><input id="fn-n" className="input" value={f.nome} onChange={(e) => set({ nome: e.target.value })} /></Field>
           <Field label="Área" htmlFor="fn-a"><Dropdown id="fn-a" className="input" value={f.setorId} onChange={(e) => set({ setorId: e.target.value })}>{s.setores.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</Dropdown></Field>
           <Field label="Senioridade" htmlFor="fn-s"><Dropdown id="fn-s" className="input" value={f.nivel} onChange={(e) => set({ nivel: e.target.value as Senioridade })}>{NIVEIS.map((n) => <option key={n}>{n}</option>)}</Dropdown></Field>
@@ -230,7 +230,7 @@ function FuncaoForm({ c, onClose }: { c?: Cargo; onClose: () => void }) {
           </Field>
           <Callout tone="neutral" icon="Info" className="mb-4">Quem entra na função (ou está com salário “a definir”) recebe este valor automaticamente. Depois, ajuste o valor de cada pessoa na ficha dela (Pessoas › pessoa › Salário). Mudar o padrão aqui <b>não</b> altera quem já tem salário definido.</Callout>
           <h4 className="text-[11px] font-bold uppercase text-muted mb-2">Faixa de negociação (opcional)</h4>
-          <div className="grid sm:grid-cols-2 gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Field label="Valor mínimo (R$)" htmlFor="fn-min"><input id="fn-min" type="number" min={0} className="input" value={f.faixaValor?.min ?? ''} onChange={(e) => set({ faixaValor: { ...f.faixaValor!, min: e.target.value === '' ? undefined : Number(e.target.value) } })} /></Field>
             <Field label="Valor máximo (R$)" htmlFor="fn-max"><input id="fn-max" type="number" min={0} className="input" value={f.faixaValor?.max ?? ''} onChange={(e) => set({ faixaValor: { ...f.faixaValor!, max: e.target.value === '' ? undefined : Number(e.target.value) } })} /></Field>
           </div>
@@ -242,11 +242,11 @@ function FuncaoForm({ c, onClose }: { c?: Cargo; onClose: () => void }) {
         <div className="space-y-5">
           <div>
             <h4 className="text-[12px] font-bold uppercase text-muted mb-2">Perfil DISC ideal</h4>
-            <div className="grid sm:grid-cols-2 gap-x-6">{CATEGORIAS_DISC.map((d) => <SliderBipolar key={d.chave} esquerda={`${d.label}: ${f.perfilIdeal!.disc[d.chave]}`} valor={f.perfilIdeal!.disc[d.chave]} cor={d.cor} onChange={(v) => setDisc(d.chave, v)} />)}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">{CATEGORIAS_DISC.map((d) => <SliderBipolar key={d.chave} esquerda={`${d.label}: ${f.perfilIdeal!.disc[d.chave]}`} valor={f.perfilIdeal!.disc[d.chave]} cor={d.cor} onChange={(v) => setDisc(d.chave, v)} />)}</div>
           </div>
           <div>
             <h4 className="text-[12px] font-bold uppercase text-muted mb-2">Traços comportamentais (24)</h4>
-            <div className="grid sm:grid-cols-2 gap-x-6">{TRACOS.map((t) => <SliderBipolar key={t.chave} esquerda={t.esquerda} direita={t.direita} valor={f.perfilIdeal!.tracos[t.chave] ?? 50} onChange={(v) => set({ perfilIdeal: { ...f.perfilIdeal!, tracos: { ...f.perfilIdeal!.tracos, [t.chave]: v } } })} />)}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">{TRACOS.map((t) => <SliderBipolar key={t.chave} esquerda={t.esquerda} direita={t.direita} valor={f.perfilIdeal!.tracos[t.chave] ?? 50} onChange={(v) => set({ perfilIdeal: { ...f.perfilIdeal!, tracos: { ...f.perfilIdeal!.tracos, [t.chave]: v } } })} />)}</div>
           </div>
         </div>
       )}

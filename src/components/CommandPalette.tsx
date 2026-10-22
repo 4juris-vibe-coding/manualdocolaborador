@@ -1,5 +1,6 @@
 /* Paleta de comandos (Ctrl/⌘+K): páginas, pessoas, eventos e comunicados — respeitando permissões. */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '@/lib/store'
 import { flatNav, permitido } from '@/lib/nav'
@@ -9,6 +10,7 @@ import { can } from '@/domain/permissions'
 import { comunicadoVisivel, eventoVisivel } from '@/domain/visibilidade'
 import { useTema } from '@/lib/tema'
 import { useAcesso } from '@/data/v2/acesso'
+import { travarRolagem, useFecharPeloFundo } from '@/lib/rolagem'
 
 interface Item { id: string; grupo: string; titulo: string; sub?: string; icon?: string; pessoa?: { nome: string; cor: string }; acao: () => void }
 
@@ -26,6 +28,8 @@ export function CommandPalette({ aberto, onFechar }: { aberto: boolean; onFechar
   const lista = useRef<HTMLUListElement>(null)
 
   useEffect(() => { if (aberto) { setQ(''); setSel(0); setTimeout(() => input.current?.focus(), 20) } }, [aberto])
+  useEffect(() => (aberto ? travarRolagem() : undefined), [aberto])
+  const fundo = useFecharPeloFundo(onFechar)
 
   const itens = useMemo<Item[]>(() => {
     const ir = (to: string) => () => { navigate(to); onFechar() }
@@ -61,22 +65,25 @@ export function CommandPalette({ aberto, onFechar }: { aberto: boolean; onFechar
 
   if (!aberto) return null
   let grupoAnterior = ''
-  return (
-    <div className="fixed inset-0 z-[250] bg-midnight/50 backdrop-blur-sm flex items-start justify-center p-4 pt-[12vh] animate-fade-in" onMouseDown={(e) => e.target === e.currentTarget && onFechar()}>
-      <div role="dialog" aria-modal="true" aria-label="Busca rápida" className="w-full max-w-xl bg-surface rounded-2xl shadow-lg border border-line overflow-hidden animate-scale-in">
-        <div className="flex items-center gap-3 px-4 border-b border-line">
+  // Portal no <body>: o cabeçalho tem backdrop-filter, que confinaria um `fixed` à altura dele (o fundo não cobria a
+  // página e o toque fora atravessava para o que estava atrás). No celular, ocupa a tela toda.
+  return createPortal(
+    <div className="fixed inset-0 z-[250] bg-midnight/50 backdrop-blur-sm flex items-stretch sm:items-start justify-center sm:p-4 sm:pt-[12vh] animate-fade-in" {...fundo}>
+      <div role="dialog" aria-modal="true" aria-label="Busca rápida" className="w-full sm:max-w-xl bg-surface sm:rounded-2xl shadow-lg sm:border border-line overflow-hidden animate-scale-in flex flex-col sm:block pt-[env(safe-area-inset-top)] sm:pt-0">
+        <div className="flex items-center gap-3 pl-4 pr-2 sm:px-4 border-b border-line shrink-0">
           <Icon name="Search" className="h-5 w-5 text-muted" />
-          <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar páginas, pessoas, eventos…" aria-label="Buscar"
-            className="flex-1 h-14 bg-transparent outline-none text-[15px] text-ink placeholder:text-muted-2"
+          <input ref={input} type="search" enterKeyHint="go" autoComplete="off" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar páginas, pessoas, eventos…" aria-label="Buscar"
+            className="flex-1 min-w-0 h-14 bg-transparent outline-none text-[15px] text-ink placeholder:text-muted-2 [&::-webkit-search-cancel-button]:hidden"
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') { e.preventDefault(); setSel((x) => Math.min(filtrados.length - 1, x + 1)) }
               if (e.key === 'ArrowUp') { e.preventDefault(); setSel((x) => Math.max(0, x - 1)) }
               if (e.key === 'Enter') filtrados[sel]?.acao()
               if (e.key === 'Escape') onFechar()
             }} />
-          <kbd className="text-[11px] text-muted border border-line rounded-md px-1.5 py-0.5">Esc</kbd>
+          <button type="button" onClick={onFechar} className="sm:hidden h-11 px-3 rounded-xl text-[14px] font-semibold text-brand">Fechar</button>
+          <kbd className="hidden sm:inline text-[11px] text-muted border border-line rounded-md px-1.5 py-0.5">Esc</kbd>
         </div>
-        <ul ref={lista} role="listbox" className="max-h-[56vh] overflow-y-auto py-2">
+        <ul ref={lista} role="listbox" className="flex-1 min-h-0 sm:flex-none sm:max-h-[56vh] overflow-y-auto overscroll-contain py-2 pb-[max(.5rem,env(safe-area-inset-bottom))] sm:pb-2">
           {filtrados.length === 0 && <li className="px-5 py-8 text-center text-[13px] text-muted">Nada encontrado para “{q}”.</li>}
           {filtrados.map((it, i) => {
             const cabecalho = it.grupo !== grupoAnterior
@@ -85,7 +92,7 @@ export function CommandPalette({ aberto, onFechar }: { aberto: boolean; onFechar
               <li key={it.id} role="option" aria-selected={i === sel}>
                 {cabecalho && <div className="px-4 pt-2 pb-1 text-[10.5px] font-bold uppercase tracking-wider text-muted">{it.grupo}</div>}
                 <button type="button" data-i={i} onMouseEnter={() => setSel(i)} onClick={it.acao}
-                  className={cn('w-full flex items-center gap-3 px-4 py-2.5 text-left', i === sel ? 'bg-brand-50' : '')}>
+                  className={cn('w-full flex items-center gap-3 px-4 py-2.5 min-h-[48px] sm:min-h-0 text-left', i === sel ? 'bg-brand-50' : '')}>
                   {it.pessoa ? <Avatar nome={it.pessoa.nome} cor={it.pessoa.cor} size="sm" className="!h-7 !w-7 !text-[10px]" />
                     : <span className="h-7 w-7 rounded-lg bg-winter text-ink-2 flex items-center justify-center shrink-0"><Icon name={it.icon ?? 'Circle'} className="h-4 w-4" /></span>}
                   <span className="min-w-0 flex-1">
@@ -98,10 +105,11 @@ export function CommandPalette({ aberto, onFechar }: { aberto: boolean; onFechar
             )
           })}
         </ul>
-        <div className="flex items-center gap-4 px-4 py-2.5 border-t border-line text-[11px] text-muted">
+        <div className="hidden mouse:flex items-center gap-4 px-4 py-2.5 border-t border-line text-[11px] text-muted">
           <span><kbd className="font-sans">↑↓</kbd> navegar</span><span><kbd className="font-sans">Enter</kbd> abrir</span><span className="ml-auto">Ctrl + K</span>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

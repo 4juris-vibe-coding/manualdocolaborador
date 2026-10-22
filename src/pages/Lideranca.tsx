@@ -158,7 +158,7 @@ export default function Lideranca() {
                       <span className="text-[13px] font-bold text-ink">{pr.percentual}%</span>
                     </div>
                     <Progress value={pr.percentual} className="mb-3" />
-                    <ul className="grid sm:grid-cols-2 gap-1">
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                       {p.itens.filter((i) => i.responsavel === 'lideranca').map((i) => (
                         <li key={i.id}>
                           <label className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-surface-2 cursor-pointer">
@@ -244,7 +244,7 @@ function Objetivos({ areas }: { areas: { id: string; nome: string }[] }) {
       </div>
       <Callout tone="neutral" icon="Target" className="mb-4">Objetivos acompanham resultados dos projetos e da área — não são metas individuais de jornada ou de produtividade de pessoas.</Callout>
       {lista.length === 0 ? <Card><EmptyState icon="Target" title="Nenhum objetivo neste mês" desc="Cadastre objetivos da área para acompanhar o andamento dos projetos." /></Card> : (
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {lista.map((o) => {
             const pct = Math.round((o.atual / o.meta) * 100)
             return (

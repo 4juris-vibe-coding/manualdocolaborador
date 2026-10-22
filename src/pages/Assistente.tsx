@@ -120,7 +120,7 @@ export default function Assistente() {
             <Logo size={56} rounded="rounded-2xl" />
             <h2 className="text-[22px] font-bold text-ink mt-5">Olá, {nome}! Como posso ajudar?</h2>
             <p className="text-[13.5px] text-muted mt-1.5 max-w-md">Pergunte sobre processos, parcerias e políticas da 4JURIS.</p>
-            <div className="grid sm:grid-cols-2 gap-2.5 mt-8 w-full max-w-xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-8 w-full max-w-xl">
               {SUGESTOES.map((sg) => (
                 <button key={sg.t} onClick={() => enviar(sg.t)}
                   className="flex items-center gap-3 text-left rounded-xl border border-line bg-surface px-4 py-3 hover:border-brand hover:bg-brand-50/40 transition">

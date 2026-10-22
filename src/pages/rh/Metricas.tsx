@@ -58,7 +58,7 @@ export default function Metricas() {
             <IndicadorCard titulo="Com dependentes" valor={m.comDependentes[0].valor} icon="Baby" tone="success" definicao="Pessoas com ao menos um dependente cadastrado." fonte="Dependentes" />
             <IndicadorCard titulo="Ensino superior ou mais" valor={m.porEscolaridade.filter((f) => /Superior completo|Pós|Mestrado|Doutorado/.test(f.rotulo)).reduce((a, f) => a + f.valor, 0)} icon="GraduationCap" tone="warning" definicao="Superior completo, pós-graduação, mestrado ou doutorado (entre quem informou)." fonte="Cadastro de pessoas" />
           </div>
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card><CardHead title="Faixa etária" /><div className="p-5"><BarList itens={barras(m.porIdade)} /></div></Card>
             <Card><CardHead title="Tempo de parceria" /><div className="p-5"><BarList itens={barras(m.porTempo)} /></div></Card>
             <Card><CardHead title="Escolaridade" sub="Entre quem informou" /><div className="p-5"><BarList itens={barras(m.porEscolaridade)} /></div></Card>
@@ -76,7 +76,7 @@ export default function Metricas() {
             pelo menos {MIN_GRUPO} pessoas no recorte consentiram. Hoje: <b>{m.diversidade.consentidos}</b> pessoa(s).
           </Callout>
           {m.diversidade.suprimido ? <Card className="p-8 text-center text-[13.5px] text-muted">Recorte com menos de {MIN_GRUPO} pessoas com consentimento — resultados ocultos para proteger a privacidade.</Card> : (
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card><CardHead title="Gênero" /><div className="p-5"><DonutChart titulo="Gênero" dados={m.diversidade.genero} /></div></Card>
               <Card><CardHead title="Raça/etnia" /><div className="p-5"><DonutChart titulo="Raça/etnia" dados={m.diversidade.raca} /></div></Card>
               <Card><CardHead title="Pessoas com deficiência" /><div className="p-5"><DonutChart titulo="Pessoas com deficiência" dados={m.diversidade.pcd} /></div></Card>
@@ -87,7 +87,7 @@ export default function Metricas() {
       )}
 
       {aba === 'organizacao' && (
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card><CardHead title="Por área" /><div className="p-5"><BarList itens={barras(m.porArea)} /></div></Card>
           <Card><CardHead title="Por unidade" /><div className="p-5"><DonutChart titulo="Por unidade" dados={m.porUnidade} /></div></Card>
           <Card><CardHead title="Por responsável" sub="Top 8" /><div className="p-5"><BarList itens={barras(m.porResponsavel)} /></div></Card>

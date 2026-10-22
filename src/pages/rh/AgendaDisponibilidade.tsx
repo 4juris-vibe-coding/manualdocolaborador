@@ -61,7 +61,7 @@ export default function AgendaDisponibilidade() {
         {formato === 'linha' ? <AgendaTimeline pessoas={pessoas} periodos={periodos} inicio={inicio} /> : <CalendarioPeriodos pessoas={pessoas} periodos={periodos} />}
       </Card>
 
-      <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 [&>*]:min-w-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 [&>*]:min-w-0">
         <Card>
           <CardHead title="Próximos períodos" sub="120 dias a partir da data escolhida" />
           {lista.length === 0 ? <p className="text-[13px] text-muted p-5">Nenhum período no intervalo.</p> : (

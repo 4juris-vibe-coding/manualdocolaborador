@@ -98,7 +98,7 @@ export default function Catalogo() {
               <Paginacao pagina={pagina} por={por} total={d.total} onPagina={setPagina} />
             </>
           ) : (
-            <div className="p-4 sm:p-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="p-4 sm:p-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {agrupar(d.itens).map(([fam, itens]) => (
                 <Card key={fam} className="p-4">
                   <h3 className="text-[14px] font-bold text-ink mb-3 flex items-center justify-between">{fam}<Badge>{itens.length}</Badge></h3>

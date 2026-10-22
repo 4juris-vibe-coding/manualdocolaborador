@@ -139,7 +139,7 @@ function AbaFicha({ d, cargoId, recarregar }: { d: Resp; cargoId: string; recarr
       {(d.ficha || d.permissoes.editar) && (
         <Card>
           <CardHead title="Ficha oficial" sub={d.ficha ? `Atualizada em ${dataHoraBR(d.ficha.atualizadoEm)}` : 'Preencha e salve para criar o rascunho.'} />
-          <form className="p-5 grid sm:grid-cols-2 gap-x-5" onSubmit={(e) => { e.preventDefault(); void salvar() }}>
+          <form className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-x-5" onSubmit={(e) => { e.preventDefault(); void salvar() }}>
             <Field label="Código" htmlFor="f-cod" erro={erros.codigo} hint="Único. Em branco, gera automaticamente."><input id="f-cod" className="input" disabled={!editavel} value={f.codigo ?? ''} onChange={(e) => set({ codigo: e.target.value })} /></Field>
             <Field label="Área" htmlFor="f-area"><input id="f-area" className="input" disabled={!editavel} value={f.area ?? ''} onChange={(e) => set({ area: e.target.value })} /></Field>
             <Field label="Família" htmlFor="f-fam" erro={erros.familiaId}>
@@ -233,7 +233,7 @@ function AbaCompetencias({ cargoId, podeEditar }: { cargoId: string; podeEditar:
           <div className="p-5 space-y-3">
             {itens.length === 0 && <p className="text-[13px] text-muted">Nenhuma competência definida ainda.</p>}
             {itens.map((i) => (
-              <div key={i.competenciaId} className="grid gap-3 sm:grid-cols-[1.4fr_120px_130px_1.6fr_auto] items-end border border-line rounded-xl p-3">
+              <div key={i.competenciaId} className="grid grid-cols-1 gap-3 sm:grid-cols-[1.4fr_120px_130px_1.6fr_auto] items-end border border-line rounded-xl p-3">
                 <div><div className="label">Competência</div><div className="text-[13.5px] font-semibold text-ink py-2">{i.nome ?? todas.dados?.competencias.find((c) => c.id === i.competenciaId)?.nome ?? i.competenciaId}</div></div>
                 <Field label="Nível" className="!mb-0"><Dropdown aria-label="Nível esperado" className="input" disabled={!podeEditar} value={i.nivelEsperado} onChange={(e) => mudar(i.competenciaId, { nivelEsperado: Number(e.target.value) })}>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</Dropdown></Field>
                 <Field label="Tipo" className="!mb-0"><Dropdown aria-label="Obrigatória ou desejável" className="input" disabled={!podeEditar} value={i.obrigatoria ? 's' : 'n'} onChange={(e) => mudar(i.competenciaId, { obrigatoria: e.target.value === 's' })}><option value="s">Obrigatória</option><option value="n">Desejável</option></Dropdown></Field>
@@ -287,7 +287,7 @@ function AbaVersoes({ cargoId }: { cargoId: string }) {
   const det = useApi<{ versao: number; dados: Record<string, unknown>; contra: number | null; mudancas: { campo: string; de: unknown; para: unknown }[] }>(ver ? `cargos/${encodeURIComponent(cargoId)}/versoes/${ver}` : null)
   const fmt = (v: unknown) => (Array.isArray(v) ? v.join(', ') : v == null || v === '' ? '—' : String(v))
   return (
-    <div className="grid lg:grid-cols-2 gap-5">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <Card>
         <CardHead title="Versões aprovadas" sub="Cada aprovação gera um retrato imutável da ficha." />
         <Aguardar r={r} vazio={(d) => d.versoes.length === 0 ? <EmptyState icon="History" title="Nenhuma versão aprovada" desc="A primeira aprovação cria a versão 1." /> : null}>
@@ -333,7 +333,7 @@ function AbaVinculos({ cargoId }: { cargoId: string }) {
   return (
     <Aguardar r={r}>
       {(d) => (
-        <div className="grid md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <Card>
             <CardHead title="Vagas" sub={`${d.vagas.total} no total · ${d.vagas.abertas} em andamento`} />
             {d.vagas.itens.length === 0 ? <EmptyState icon="BriefcaseBusiness" title={d.vagas.total ? 'Lista restrita ao recrutamento' : 'Nenhuma vaga com este cargo'} /> : (

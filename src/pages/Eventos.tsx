@@ -80,7 +80,7 @@ export default function Eventos() {
           {lista.length === 0 ? (
             <Card><EmptyState icon="CalendarX2" title="Nenhum evento encontrado" desc={cats.length || soMeus ? 'Ajuste os filtros para ver mais eventos.' : quando === 'proximos' ? 'Ainda não há eventos agendados.' : 'Nenhum evento passado.'} /></Card>
           ) : (
-            <div className="grid lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {lista.map((e) => <EventoCard key={e.id} e={e} onAbrir={() => setAberto(e.id)} />)}
             </div>
           )}
@@ -205,7 +205,7 @@ function EventoDetalhe({ e, onClose, onEditar }: { e: Evento; onClose: () => voi
       </div>
       {e.status === 'cancelado' && <Callout tone="danger" icon="Ban" className="mb-4"><b>Motivo do cancelamento:</b> {e.motivoCancelamento}</Callout>}
       {e.descricao && <p className="text-[14px] text-ink-2 leading-relaxed whitespace-pre-line mb-4">{e.descricao}</p>}
-      <dl className="grid sm:grid-cols-2 gap-3 text-[13px] mb-2">
+      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[13px] mb-2">
         <div><dt className="text-[11px] font-bold uppercase text-muted">Organização</dt><dd className="font-semibold text-ink mt-0.5">{s.nomeDe(e.organizadorId)}</dd></div>
         <div><dt className="text-[11px] font-bold uppercase text-muted">Local</dt><dd className="font-semibold text-ink mt-0.5">{e.local}{e.link && <> · <a href={e.link} target="_blank" rel="noreferrer noopener" className="text-brand underline">abrir link</a></>}</dd></div>
         <div><dt className="text-[11px] font-bold uppercase text-muted">Confirmações</dt><dd className="font-semibold text-ink mt-0.5">{e.confirmados.length}{e.capacidade ? ` de ${e.capacidade} vagas` : ''} · {e.interessados.length} com interesse</dd></div>
@@ -282,7 +282,7 @@ function EventoForm({ evento, inicial, onClose }: { evento?: Evento; inicial?: {
       <form id="evtForm" onSubmit={salvar} noValidate>
         <Field label="Título" required htmlFor="ev-t"><input id="ev-t" className="input" value={f.titulo} onChange={(e) => set({ titulo: e.target.value })} placeholder="Ex.: Town Hall trimestral" maxLength={120} /></Field>
         <Field label="Descrição" htmlFor="ev-d"><textarea id="ev-d" className="input !h-auto py-2.5" rows={3} value={f.descricao} onChange={(e) => set({ descricao: e.target.value })} /></Field>
-        <div className="grid sm:grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <Field label="Categoria" htmlFor="ev-c">
             <Dropdown id="ev-c" className="input" value={f.categoria} onChange={(e) => set({ categoria: e.target.value as CategoriaEvento })}>{CATEGORIAS.map((c) => <option key={c}>{c}</option>)}</Dropdown>
           </Field>
@@ -299,7 +299,7 @@ function EventoForm({ evento, inicial, onClose }: { evento?: Evento; inicial?: {
           </Field>
         </div>
         {f.visibilidade === 'setores' && (
-          <fieldset className="mb-4 grid sm:grid-cols-2 gap-2">
+          <fieldset className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
             <legend className="label">Áreas</legend>
             {areasDisponiveis.map((a) => (
               <label key={a.id} className={cn('flex items-center gap-2.5 rounded-xl border px-3 py-2.5 cursor-pointer', f.setoresAlvo.includes(a.id) ? 'border-brand bg-brand-50' : 'border-line')}>

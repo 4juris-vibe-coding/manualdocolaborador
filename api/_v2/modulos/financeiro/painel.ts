@@ -102,6 +102,45 @@ async function indicadores(ex: Executor, de: string, ate: string, hojeStr: strin
   }
 }
 
+/**
+ * Folha da competência: todo contrato mensal fixo em vigor no mês entra com o valor do contrato.
+ * Quitado = bruto das contas pagas do contrato nessa competência (limitado ao valor do contrato);
+ * o restante cai à medida que os pagamentos são registrados.
+ */
+async function folha(ex: Executor, comp: string, filtro: { fornecedor?: string; centro?: string }) {
+  const ps: unknown[] = [comp]
+  const fc: string[] = []
+  if (filtro.fornecedor) { ps.push(filtro.fornecedor); fc.push(`k.fornecedor_id = $${ps.length}`) }
+  if (filtro.centro) { ps.push(filtro.centro); fc.push(`k.centro_custo_id = $${ps.length}`) }
+  const rows = (await ex.query(`select k.id, k.numero, k.valor, coalesce(k.prestador_id, f.representante_id) as pessoa, f.razao_social,
+      coalesce(sum(c.valor_bruto) filter (where c.status = 'paga'), 0)::text as pago_bruto,
+      coalesce(sum(p.valor_pago), 0)::text as pago_liquido, max(p.data_pagamento)::text as pago_em,
+      bool_or(c.status in ('prevista','autorizada')) as em_conta,
+      (select n.status from fin_notas n where n.contrato_id = k.id and n.competencia = $1 and n.status <> 'cancelada' order by n.enviada_em desc limit 1) as nota
+    from fin_contratos k join fin_fornecedores f on f.id = k.fornecedor_id
+      left join fin_contas c on c.contrato_id = k.id and c.competencia = $1 and c.status <> 'cancelada'
+      left join fin_pagamentos p on p.conta_id = c.id
+    where k.modelo_remuneracao = 'mensal_fixo' and k.status in ('vigente','encerrado')
+      and k.inicio <= (($1 || '-01')::date + interval '1 month' - interval '1 day')::date
+      and coalesce(k.encerrado_em, k.fim, 'infinity'::date) >= ($1 || '-01')::date
+      ${fc.length ? ' and ' + fc.join(' and ') : ''}
+    group by k.id, f.razao_social, f.representante_id`, ps)).rows
+  const gente = await mapaPessoas(ex)
+  const itens = rows.map((r) => {
+    const valor = n2(r.valor)
+    const pago = Math.min(valor, n2(r.pago_bruto))
+    const situacao = valor > 0 && pago >= valor ? 'pago' : pago > 0 ? 'parcial' : r.em_conta ? 'a_pagar' : r.nota ? 'nota_em_analise' : 'aguardando_nota'
+    return { contratoId: r.id, contratoNumero: r.numero, pessoa: nomeDe(gente, r.pessoa) ?? r.razao_social, valor, pago, restante: reais(centavos(valor) - centavos(pago)),
+      pagoLiquido: n2(r.pago_liquido), pagoEm: r.pago_em, situacao }
+  }).sort((a, b) => (a.restante === 0 ? 1 : 0) - (b.restante === 0 ? 1 : 0) || a.pessoa.localeCompare(b.pessoa, 'pt-BR'))
+  const soma = (k: 'valor' | 'pago' | 'restante' | 'pagoLiquido') => reais(itens.reduce((a, i) => a + centavos(i[k]), 0))
+  return {
+    competencia: comp, total: soma('valor'), pago: soma('pago'), restante: soma('restante'), pagoLiquido: soma('pagoLiquido'),
+    pessoas: itens.length, quitadas: itens.filter((i) => i.situacao === 'pago').length, semValor: itens.filter((i) => i.valor === 0).length, itens,
+    definicao: 'Contratos mensais fixos em vigor na competência, pelo valor do contrato. Abate o valor bruto das contas pagas do contrato nessa competência (o líquido pago fica à parte, por causa das retenções).',
+  }
+}
+
 /** Itens com data nos próximos `dias`: término de contratos, aviso de renovação, validade de documentos, vencimento de contas e prazo de envio de notas. */
 async function agenda(ex: Executor, hojeStr: string, dias: number, diaNf: number) {
   const ate = somarDias(hojeStr, dias)
@@ -221,7 +260,7 @@ export const rotas: Rota[] = [
       const ate = /^\d{4}-\d{2}-\d{2}$/.test(req.query.ate ?? '') ? req.query.ate : somarDias(somarMeses(`${h.slice(0, 7)}-01`, 1), -1)
       const filtro = { fornecedor: req.query.fornecedor || undefined, centro: /^[0-9a-f-]{36}$/i.test(req.query.centro ?? '') ? req.query.centro : undefined }
       const ult = (await db.query('select iniciado_em, concluido_em, origem, notificacoes, renovacoes, erro from fin_execucoes_alertas order by id desc limit 1')).rows[0] ?? null
-      return ok({ ...(await indicadores(db, de, ate < de ? de : ate, h, filtro)), ultimaExecucaoAlertas: ult })
+      return ok({ ...(await indicadores(db, de, ate < de ? de : ate, h, filtro)), folha: await folha(db, de.slice(0, 7), filtro), ultimaExecucaoAlertas: ult })
     },
   },
   {

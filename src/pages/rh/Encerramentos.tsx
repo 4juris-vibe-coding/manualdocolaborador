@@ -27,7 +27,7 @@ export default function Encerramentos() {
         <IndicadorCard titulo="Encerradas antes de 6 meses" valor={m.antesDe6Meses} icon="AlarmClock" tone="warning" definicao="Parcerias encerradas com menos de 183 dias. Pode indicar desalinhamento de escopo na integração." fonte="Cadastro de pessoas" />
         <IndicadorCard titulo="Por iniciativa da prestadora" valor={m.porIniciativa.find((x) => x.rotulo === 'Prestadora')?.valor ?? 0} icon="LogOut" tone="brand" definicao="Encerramentos cujo motivo indica iniciativa da empresa prestadora." fonte="Motivos de encerramento" />
       </div>
-      <div className="grid lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <Card><CardHead title="Iniciativa" /><div className="p-5"><DonutChart titulo="Iniciativa do encerramento" dados={m.porIniciativa} vazio="Sem encerramentos." /></div></Card>
         <Card><CardHead title="Por motivo" /><div className="p-5"><BarList itens={m.porMotivo} vazio="Sem encerramentos." /></div></Card>
         <Card><CardHead title="Por área" /><div className="p-5"><BarList itens={m.porArea} vazio="Sem encerramentos." /></div></Card>

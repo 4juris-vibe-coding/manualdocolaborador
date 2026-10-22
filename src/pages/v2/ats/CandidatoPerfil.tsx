@@ -76,7 +76,7 @@ function Resumo({ x, recarregar }: { x: any; recarregar: () => void }) {
   const k = x.candidato, c = x.candidatura
   const [editar, setEditar] = useState(false)
   return (
-    <div className="grid lg:grid-cols-3 gap-5">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       <Card className="p-5 lg:col-span-2">
         <Secao titulo="Contato e dados" acao={x.permissoes.gerenciar && !k.anonimizado ? <Button size="sm" variant="ghost" icon="Pencil" onClick={() => setEditar(true)}>Revisar</Button> : undefined}>
           <dl>
@@ -130,7 +130,7 @@ function RevisarDados({ k, onClose, onFeito }: { k: any; onClose: () => void; on
   return (
     <Modal open onClose={onClose} title="Revisar dados do candidato" subtitle="Informações extraídas de currículos devem ser conferidas por uma pessoa."
       footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={salvar}>Salvar</Button></>}>
-      <div className="grid sm:grid-cols-2 gap-x-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
         <Field label="Telefone" htmlFor="rv-t"><input id="rv-t" className="input" value={f.telefone} onChange={(e) => setF({ ...f, telefone: e.target.value })} /></Field>
         <Field label="LinkedIn" htmlFor="rv-l"><input id="rv-l" className="input" value={f.linkedin} onChange={(e) => setF({ ...f, linkedin: e.target.value })} /></Field>
         <Field label="Cidade" htmlFor="rv-c"><input id="rv-c" className="input" value={f.cidade} onChange={(e) => setF({ ...f, cidade: e.target.value })} /></Field>
@@ -209,7 +209,7 @@ function AgendarModal({ candidaturaId, onClose, onFeito }: { candidaturaId: stri
   }
   return (
     <Modal open onClose={onClose} wide title="Agendar entrevista" footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={salvar}>Agendar</Button></>}>
-      <div className="grid sm:grid-cols-2 gap-x-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
         <Field label="Tipo" htmlFor="ag-t"><Dropdown id="ag-t" className="input" value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })}>{[['rh', 'RH'], ['tecnica', 'Técnica'], ['gestor', 'Gestor'], ['final', 'Final'], ['outra', 'Outra']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Dropdown></Field>
         <Field label="Modalidade" htmlFor="ag-m"><Dropdown id="ag-m" className="input" value={f.modalidade} onChange={(e) => setF({ ...f, modalidade: e.target.value })}><option value="online">Online</option><option value="presencial">Presencial</option><option value="telefone">Telefone</option></Dropdown></Field>
         <Field label="Início" required erro={erros.inicio} htmlFor="ag-i"><input id="ag-i" type="datetime-local" className="input" value={f.inicio} onChange={(e) => setF({ ...f, inicio: e.target.value })} /></Field>
@@ -246,7 +246,7 @@ function Avaliacoes({ x, recarregar }: { x: any; recarregar: () => void }) {
   }
   const nomeCrit = (id: string) => modelo?.criterios.find((c: any) => c.id === id)?.nome ?? id
   return (
-    <div className="grid lg:grid-cols-2 gap-5">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       {x.permissoes.avaliar && (
         <Card className="p-5">
           <h3 className="font-bold text-ink mb-1">Sua avaliação</h3>
@@ -297,7 +297,7 @@ function Notas({ x, recarregar }: { x: any; recarregar: () => void }) {
   const [vis, setVis] = useState(x.permissoes.notasRh ? 'rh' : 'banca')
   const salvar = async () => { if (await executar(() => api.post(`ats/candidaturas/${x.candidatura.id}/notas`, { texto, visibilidade: vis }), 'Nota registrada.')) { setTexto(''); recarregar() } }
   return (
-    <div className="grid lg:grid-cols-2 gap-5">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <Card className="p-5">
         <Field label="Nova nota interna" htmlFor="nt-t"><textarea id="nt-t" className={TEXTAREA} value={texto} onChange={(e) => setTexto(e.target.value)} /></Field>
         {x.permissoes.notasRh && <Field label="Quem pode ler" htmlFor="nt-v"><Dropdown id="nt-v" className="input" value={vis} onChange={(e) => setVis(e.target.value)}><option value="rh">Somente RH e recrutadores</option><option value="banca">RH, recrutadores e gestor/entrevistadores da vaga</option></Dropdown></Field>}
@@ -378,7 +378,7 @@ function Comunicacao({ x, recarregar }: { x: any; recarregar: () => void }) {
     recarregar()
   }
   return (
-    <div className="grid lg:grid-cols-3 gap-5">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       <Card className="p-5">
         <Field label="Enviar mensagem a partir de um modelo" htmlFor="cm-t">
           <Dropdown id="cm-t" className="input" value={chave} onChange={(e) => setChave(e.target.value)}><option value="">Escolha um modelo…</option>{(t.dados?.itens ?? []).map((i) => <option key={i.chave} value={i.chave}>{i.nome}</option>)}</Dropdown>
@@ -408,7 +408,7 @@ function Privacidade({ x, recarregar }: { x: any; recarregar: () => void }) {
   const [f, setF] = useState({ comoAutorizou: '', tags: '', areas: '', retencaoMeses: '12' })
   const emTalentos = !!x.talento
   return (
-    <div className="grid lg:grid-cols-2 gap-5">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <Card className="p-5">
         <h3 className="font-bold text-ink mb-3">Consentimentos e base legal</h3>
         {x.consentimentos.length === 0 ? <p className="text-[13px] text-muted">Nenhum registro de consentimento/base legal. Candidaturas cadastradas manualmente exigem confirmação conforme a política da empresa.</p> : (

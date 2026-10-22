@@ -54,7 +54,7 @@ export default function AnaliseGrupos() {
         <Select label="Área" value={area} onChange={setArea}><option value="">Todas as áreas</option>{s.setores.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</Select>
         <Select label="Função" value={funcao} onChange={setFuncao}><option value="">Todas as funções</option>{s.cargos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}</Select>
       </div>
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {(Object.keys(GRUPOS) as ('alto' | 'desenvolvimento')[]).map((g) => {
           const lista = doGrupo(g)
           return (
@@ -83,7 +83,7 @@ export default function AnaliseGrupos() {
 
       <Modal open={analisar} onClose={() => setAnalisar(false)} wide title="Comparação entre os grupos" subtitle="Médias agregadas; perfis só de quem consentiu."
         footer={<Button onClick={() => setAnalisar(false)}>Fechar</Button>}>
-        <div className="grid md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {(Object.keys(GRUPOS) as ('alto' | 'desenvolvimento')[]).map((g) => {
             const r = resumo(doGrupo(g))
             return (

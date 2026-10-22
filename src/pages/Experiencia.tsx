@@ -61,7 +61,7 @@ export default function Experiencia() {
         <StatCard icon="GraduationCap" tone="warning" value={conteudos} label="Conteúdos concluídos" />
       </div>
 
-      <div className="grid lg:grid-cols-[1.25fr_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr] gap-6">
         <div className="space-y-6 min-w-0">
           <Card>
             <CardHead title="Histórico de pontos" sub="Cada ponto tem origem registrada"

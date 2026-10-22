@@ -72,7 +72,7 @@ export default function Comunicados() {
       {lista.length === 0 ? (
         <Card><EmptyState icon="Megaphone" title="Nenhum comunicado por aqui" desc="Não há comunicados nesta categoria destinados a você." /></Card>
       ) : (
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {lista.map((m) => (
             <Card key={m.id} className={cn('p-5 hover:shadow-sm hover:-translate-y-0.5 transition', !lido(m) && 'ring-1 ring-brand-100')} >
               <button type="button" onClick={() => open(m)} className="text-left w-full outline-none focus-visible:ring-2 focus-visible:ring-brand rounded-xl">
@@ -162,7 +162,7 @@ export default function Comunicados() {
           </Field>
 
           {alvo === 'setores' && (
-            <div className="mb-4 grid sm:grid-cols-2 gap-2">
+            <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
               {s.setores.map((se) => (
                 <label key={se.id} className={cn('flex items-center gap-2.5 rounded-xl border px-3 py-2.5 cursor-pointer transition',
                   setoresAlvo.includes(se.id) ? 'border-brand bg-brand-50' : 'border-line hover:border-line-strong')}>

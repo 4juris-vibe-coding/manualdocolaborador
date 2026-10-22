@@ -311,6 +311,30 @@ select.sel[aria-expanded=true],#ftb select[aria-expanded=true]{border-color:rgb(
   .slide{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 @media (max-width:1180px){#app{grid-template-columns:200px 1fr 270px}.th .tw{width:150px;height:84px}.th .tw .slide{transform:scale(.078125)}}
+/* Telas de toque: campos com 16px para o Safari do iPhone não ampliar a página ao focar (a pinça continua livre). */
+@media (hover:none) and (pointer:coarse){input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]),select,textarea{font-size:16px!important}}
+/* Celular: uma coluna — barra (rola de lado), slide na largura da tela, faixa de miniaturas e, abaixo, as propriedades.
+   A página rola inteira; o palco tem altura fixa na proporção 16:9 (renderStage desconta os 52px de respiro). */
+@media (max-width:760px){
+  #app,body.ro #app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto;height:auto;min-height:100vh}
+  #top{overflow-x:auto;padding:8px 10px;min-height:56px}
+  #titulo{flex:1 0 150px;width:auto}
+  #top .sp,#status{display:none}
+  #main{grid-row:2}
+  #stage{flex:none;height:calc((100vw - 52px) * 9 / 16 + 52px);padding:12px}
+  #foot{justify-content:center;padding:0 12px 12px}
+  #foot>span:first-child{display:none}
+  #foot .btn{min-width:44px;min-height:40px}
+  #side{grid-row:3;flex-direction:row;align-items:center;border-right:0;border-top:1px solid var(--ui-line);border-bottom:1px solid var(--ui-line)}
+  #side .hd{display:none}
+  #thumbs{flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:10px 12px}
+  .th{flex:none}
+  #addbtn{margin:0 12px 0 0;flex:none}
+  #insp{grid-row:4;border-left:0}
+  #ibody{overflow:visible}
+  .btn{min-height:40px}
+  #ftb{max-width:calc(100vw - 16px);overflow-x:auto}
+}
 </style>
 </head>
 <body>

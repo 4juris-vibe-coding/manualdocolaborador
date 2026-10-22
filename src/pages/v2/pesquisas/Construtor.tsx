@@ -61,7 +61,7 @@ function NovaPesquisa() {
             <input className="input" value={titulo} maxLength={160} onChange={(e) => setTitulo(e.target.value)} placeholder={m?.titulo ?? 'Ex.: Clima organizacional 2026'} />
           </Field>
           <Field label="Tipo de pesquisa">
-            <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(['anonima', 'identificada'] as const).map((k) => (
                 <label key={k} className={`rounded-xl border p-3.5 cursor-pointer ${modo === k ? 'border-brand bg-brand-50' : 'border-line'}`}>
                   <input type="radio" name="modo" className="mr-2 accent-[rgb(var(--c-brand))]" checked={modo === k} onChange={() => setModo(k)} />
@@ -231,7 +231,7 @@ function Editor({ id }: { id: string }) {
         <Tabs tabs={ABAS} active={aba} onChange={setAba} />
 
         {aba === 'geral' && (
-          <fieldset disabled={encerrada} className="border-0 p-0 m-0 grid gap-x-6 lg:grid-cols-2">
+          <fieldset disabled={encerrada} className="border-0 p-0 m-0 grid grid-cols-1 gap-x-6 lg:grid-cols-2">
             <div>
               <Field label="Título" required><input className="input" maxLength={160} value={f.titulo} onChange={(e) => alterar({ titulo: e.target.value })} /></Field>
               <Field label="Descrição interna"><textarea className="input min-h-[80px] py-2" value={f.descricao ?? ''} onChange={(e) => alterar({ descricao: e.target.value })} /></Field>

@@ -78,7 +78,7 @@ function Mural({ onReconhecer }: { onReconhecer: () => void }) {
   }, [s, mes])
 
   return (
-    <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6">
       <div className="min-w-0">
         <div className="flex items-center gap-2 mb-4">
           {(['todos', 'meus'] as const).map((f) => (
@@ -191,7 +191,7 @@ function Desafios({ hoje }: { hoje: string }) {
   return (
     <>
       <Callout tone="neutral" icon="Info" className="mb-5">Desafios são opcionais. Ações feitas dentro do período contam para o progresso — inclusive as anteriores à sua inscrição.</Callout>
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {lista.map((d) => {
           const p = progressoDesafio(d, s.lancamentos, me, hoje)
           return (
@@ -263,11 +263,12 @@ function Iniciativas() {
   return (
     <>
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <p className="text-[12.5px] text-muted w-full flex items-center gap-1.5"><Icon name="MousePointerClick" className="h-4 w-4 text-brand" />Arraste uma iniciativa de <b className="text-ink-2">Abertas</b> para <b className="text-ink-2">Em andamento</b> para assumi-la para você. Para concluir, arraste para <b className="text-ink-2">Aguardando confirmação</b> e conte como foi.</p>
+        <p className="text-[12.5px] text-muted w-full hidden toque:flex items-center gap-1.5"><Icon name="Hand" className="h-4 w-4 text-brand" />Use os botões de cada cartão: <b className="text-ink-2">Quero contribuir</b> para assumir e <b className="text-ink-2">Concluí</b> para contar como foi.</p>
+        <p className="text-[12.5px] text-muted w-full flex toque:hidden items-center gap-1.5"><Icon name="MousePointerClick" className="h-4 w-4 text-brand" />Arraste uma iniciativa de <b className="text-ink-2">Abertas</b> para <b className="text-ink-2">Em andamento</b> para assumi-la para você. Para concluir, arraste para <b className="text-ink-2">Aguardando confirmação</b> e conte como foi.</p>
         <p className="text-[13px] text-muted flex-1 min-w-[240px]">Iniciativas são contribuições <b className="text-ink-2">voluntárias</b> para a comunidade (não são tarefas dos projetos). Ao concluir, a organização confirma e os pontos são lançados.</p>
         {podeGerenciar && <Button icon="Plus" onClick={() => setNova(true)}>Nova iniciativa</Button>}
       </div>
-      <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {COLUNAS.map((col) => {
           const cards = s.iniciativas.filter((t) => t.status === col.key)
           return (
@@ -355,7 +356,7 @@ function Regras() {
   const s = useStore()
   const cfg = s.config.gamificacao
   return (
-    <div className="grid lg:grid-cols-[1.3fr_1fr] gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-6">
       <Card>
         <CardHead title="Regras de pontuação" sub="Definidas pelo RH. Cada ação pontua uma única vez por referência." />
         <ul className="divide-y divide-line">

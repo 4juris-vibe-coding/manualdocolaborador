@@ -38,7 +38,11 @@ export function useOrganograma(filtros: FiltrosOrg) {
   const filhosDe = useMemo(() => {
     const m = new Map<string, string[]>()
     for (const p of pessoas.values()) if (p.gestorId && pessoas.has(p.gestorId)) (m.get(p.gestorId) ?? m.set(p.gestorId, []).get(p.gestorId)!).push(p.id)
-    m.forEach((v) => v.sort((a, b) => pessoas.get(a)!.nome.localeCompare(pessoas.get(b)!.nome, 'pt-BR')))
+    // Quem lidera vem primeiro (maior equipe antes); depois, por nome.
+    m.forEach((v) => v.sort((a, b) => {
+      const pa = pessoas.get(a)!, pb = pessoas.get(b)!
+      return pb.diretos - pa.diretos || pa.nome.localeCompare(pb.nome, 'pt-BR')
+    }))
     return m
   }, [pessoas])
 

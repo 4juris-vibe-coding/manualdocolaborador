@@ -32,7 +32,8 @@ export function AppLayout() {
   const sessaoInvalida = !!sessaoId && (real.id !== sessaoId || real.status === 'encerrado')
 
   useEffect(() => { setMenuAberto(false) }, [pathname])
-  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+  // Nova página começa do topo, sem a rolagem suave do <html> (no celular ela "arrastava" a página de baixo para cima).
+  useEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }) }, [pathname])
   useEffect(() => { if (sessaoInvalida) void sairCompleto() }, [sessaoInvalida])
 
   if (MODO_API && sessaoApi === 'carregando') return <TelaCarregamento mensagem="Conferindo sua sessão…" />
@@ -57,7 +58,7 @@ export function AppLayout() {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen min-h-dvh">
       <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[400] focus:bg-surface focus:px-4 focus:py-2 focus:rounded-xl focus:shadow-md">
         Pular para o conteúdo
       </a>

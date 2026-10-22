@@ -134,7 +134,7 @@ function Config() {
   const s = useStore()
   const [c, setC] = useState<ConfigGamificacao>(s.config.gamificacao)
   return (
-    <div className="grid lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card className="p-5">
         <h3 className="text-[15px] font-bold text-ink mb-4">Níveis</h3>
         <ul className="space-y-2">

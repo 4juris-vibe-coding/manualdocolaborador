@@ -23,7 +23,7 @@ export default function GestaoPesquisas() {
   return (
     <>
       <PageHeader title="Gestão de pesquisas" subtitle="Pesquisas voluntárias e anônimas, com resultados apenas agregados." actions={<Button icon="Plus" onClick={() => setForm({ aberto: true })}>Nova pesquisa</Button>} />
-      <div className="grid lg:grid-cols-[320px_1fr] gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-6">
         <Card className="self-start">
           <CardHead title="Pesquisas" />
           {s.pesquisas.length === 0 ? <EmptyState icon="ClipboardList" title="Nenhuma pesquisa" /> : (
@@ -78,7 +78,7 @@ function Resultados({ p, onEditar }: { p: Pesquisa; onEditar: () => void }) {
             <Button size="sm" variant="subtle" icon="Trash2" onClick={() => setExcluir(true)}>Excluir</Button>
           </div>
         </div>
-        <div className="grid sm:grid-cols-3 gap-4 mt-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5">
           <div><div className="text-[11.5px] text-muted">Taxa de resposta</div><div className="text-[22px] font-extrabold text-ink">{convidados ? Math.round((participacoes / convidados) * 100) : 0}%</div><div className="text-[11.5px] text-muted">{participacoes} de {convidados} convidados</div></div>
           <div><div className="text-[11.5px] text-muted">Período</div><div className="text-[14px] font-semibold text-ink mt-1">{fmtDate(p.inicio)} → {fmtDate(p.fim)}</div></div>
           <div><label className="text-[11.5px] text-muted block" htmlFor="rs-a">Recorte por área</label><Select id="rs-a" label="Recorte por área" value={setor} onChange={setSetor} className="mt-1"><option value="">Todas as áreas</option>{s.setores.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</Select></div>
@@ -135,7 +135,7 @@ function PesquisaForm({ p, onClose, onSalvo }: { p?: Pesquisa; onClose: () => vo
       footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Check" onClick={salvar}>Salvar</Button></>}>
       <Field label="Título" required htmlFor="pq-t"><input id="pq-t" className="input" value={f.titulo} onChange={(e) => setF({ ...f, titulo: e.target.value })} /></Field>
       <Field label="Descrição" htmlFor="pq-d"><input id="pq-d" className="input" value={f.descricao} onChange={(e) => setF({ ...f, descricao: e.target.value })} /></Field>
-      <div className="grid sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
         <Field label="Início" htmlFor="pq-i"><input id="pq-i" type="date" className="input" value={f.inicio} onChange={(e) => setF({ ...f, inicio: e.target.value })} /></Field>
         <Field label="Fim" htmlFor="pq-f"><input id="pq-f" type="date" className="input" value={f.fim} onChange={(e) => setF({ ...f, fim: e.target.value })} /></Field>
         <Field label="Situação" htmlFor="pq-s"><Dropdown id="pq-s" className="input" value={f.status} onChange={(e) => setF({ ...f, status: e.target.value as Pesquisa['status'] })}><option value="rascunho">Rascunho</option><option value="aberta">Aberta</option><option value="encerrada">Encerrada</option></Dropdown></Field>
@@ -151,13 +151,13 @@ function PesquisaForm({ p, onClose, onSalvo }: { p?: Pesquisa; onClose: () => vo
         <ol className="space-y-3">
           {f.perguntas.map((q, i) => (
             <li key={q.id} className="rounded-xl border border-line p-3">
-              <div className="grid sm:grid-cols-[1fr_190px_auto] gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_190px_auto] gap-2">
                 <input aria-label={`Pergunta ${i + 1}`} className="input" value={q.texto} onChange={(e) => updQ(q.id, { texto: e.target.value })} placeholder={`Pergunta ${i + 1}`} />
                 <Dropdown aria-label="Tipo de resposta" className="input" value={q.tipo} onChange={(e) => updQ(q.id, { tipo: e.target.value as TipoPergunta, opcoes: e.target.value === 'opcoes' ? ['', ''] : undefined })}>{(Object.keys(TIPO_LABEL) as TipoPergunta[]).map((t) => <option key={t} value={t}>{TIPO_LABEL[t]}</option>)}</Dropdown>
                 <Button size="icon-sm" variant="subtle" icon="X" aria-label="Remover pergunta" disabled={f.perguntas.length <= 1} onClick={() => setF({ ...f, perguntas: f.perguntas.filter((x) => x.id !== q.id) })} />
               </div>
               {q.tipo === 'opcoes' && (
-                <div className="mt-2 grid sm:grid-cols-2 gap-2">
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {(q.opcoes ?? []).map((o, k) => <input key={k} aria-label={`Opção ${k + 1}`} className="input" value={o} placeholder={`Opção ${k + 1}`} onChange={(e) => updQ(q.id, { opcoes: (q.opcoes ?? []).map((x, j) => (j === k ? e.target.value : x)) })} />)}
                   <Button size="sm" variant="subtle" icon="Plus" onClick={() => updQ(q.id, { opcoes: [...(q.opcoes ?? []), ''] })}>Opção</Button>
                 </div>

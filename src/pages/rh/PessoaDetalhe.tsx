@@ -99,7 +99,7 @@ export default function PessoaDetalhe() {
       ]} active={tab} onChange={setTab} />
 
       {tab === 'dados' && (
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {s.pode('pessoas:gerenciar') && (
             <AcessoPortal pessoa={p} ehVoce={p.id === s.realUser().id}
               pode={s.pode('admin:usuarios') || p.papel === 'colaborador' || p.papel === 'gestor'} />
@@ -140,7 +140,7 @@ export default function PessoaDetalhe() {
       {tab === 'perfil' && (
         <Card className="p-5">
           {p.perfil?.consentimento ? (
-            <div className="grid md:grid-cols-[280px_1fr] gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6">
               <div><h3 className="text-[12px] font-bold uppercase text-muted mb-2">DISC ({p.perfil.fonte})</h3><BarrasDisc valores={CATEGORIAS_DISC.map((d) => ({ rotulo: d.label, valor: p.perfil!.disc[d.chave], cor: d.cor }))} /><p className="text-[11.5px] text-muted mt-3">Atualizado em {fmtDate(p.perfil.atualizadoEm)} · consentimento registrado</p></div>
               <PerfilComportamentalEditor pessoaId={id} />
             </div>
@@ -180,7 +180,7 @@ export default function PessoaDetalhe() {
               <Card key={x.id}>
                 <CardHead title={`${x.tipo === 'integracao' ? 'Integração' : 'Encerramento'} · ${s.checklists.find((c) => c.id === x.modeloId)?.nome ?? ''}`} sub={`Iniciado em ${fmtDate(x.iniciadoEm)}${x.concluidoEm ? ` · concluído em ${fmtDate(x.concluidoEm)}` : ''}`} action={<span className="text-[13px] font-bold">{pr.percentual}%</span>} />
                 <div className="px-5 pt-3"><Progress value={pr.percentual} /></div>
-                <ul className="p-3 grid sm:grid-cols-2 gap-1">
+                <ul className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-1">
                   {x.itens.map((i) => (
                     <li key={i.id}><label className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-surface-2 cursor-pointer">
                       <input type="checkbox" className="h-4 w-4 mt-0.5 accent-brand" checked={i.feito} onChange={(e) => feedback(s.marcarItemJornada(x.id, i.id, e.target.checked), 'Checklist atualizado.')} />
@@ -274,7 +274,7 @@ function EncerrarModal({ pessoaId, onClose }: { pessoaId: string; onClose: () =>
         <b>Pendências financeiras e documentais:</b> {pend.contratosAtivos.length} contrato(s) não encerrado(s) · {pend.notasEmAndamento} nota(s) em análise · {pend.contasAbertas} pagamento(s) em aberto ({dinheiro(pend.valorAberto)}) · {pend.reembolsosAbertos} reembolso(s) em aberto · {pend.documentosPendentes} documento(s) a conferir.
         {temPend && <span className="block mt-1">Elas continuam no fluxo depois do encerramento; acompanhe em Gestão de prestadores.</span>}
       </Callout>}
-      <div className="grid sm:grid-cols-2 gap-x-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
         <Field label="Data de encerramento" required htmlFor="enc-d"><input id="enc-d" type="date" className="input" value={data} onChange={(e) => setData(e.target.value)} /></Field>
         <Field label="Motivo" required htmlFor="enc-m"><Dropdown id="enc-m" className="input" value={motivo} onChange={(e) => setMotivo(e.target.value)}><option value="">Selecione…</option>{s.motivosEncerramento.filter((m) => m.ativo).map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</Dropdown></Field>
       </div>
@@ -318,7 +318,7 @@ function SalarioV2({ pessoaId }: { pessoaId: string }) {
     <Card>
       <CardHead title="Salário" sub="Valor mensal desta pessoa. Começa no padrão da função e pode ser ajustado individualmente; cada ajuste fica no histórico."
         action={podeAjustar && d.contrato && <Button size="sm" icon="Pencil" onClick={() => setAberto({ valor: String(valor || padrao || '') })}>Ajustar</Button>} />
-      <div className="px-5 pb-4 grid sm:grid-cols-3 gap-4">
+      <div className="px-5 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div><div className="text-[11px] font-bold uppercase text-muted">Salário atual</div><div className="text-[18px] font-bold text-ink tabular-nums">{!d.contrato ? '—' : aDefinir ? 'A definir' : dinheiro(valor)}</div>{d.contrato && <div className="text-[11.5px] text-muted">Contrato {d.contrato.numero}</div>}</div>
         <div><div className="text-[11px] font-bold uppercase text-muted">Padrão da função</div><div className="text-[15px] font-semibold text-ink tabular-nums">{padrao != null ? dinheiro(padrao) : '—'}</div><div className="text-[11.5px] text-muted">{d.cargo?.nome ?? 'Sem função'}</div></div>
         <div className="text-[12.5px] text-ink-2 self-center">
@@ -338,7 +338,7 @@ function SalarioV2({ pessoaId }: { pessoaId: string }) {
       <Modal open={!!aberto} onClose={() => setAberto(null)} title="Ajustar salário" subtitle={aDefinir ? 'Primeira definição do valor.' : 'O valor anterior fica registrado no histórico (aditivo de valor do contrato).'}
         footer={<><Button variant="ghost" onClick={() => setAberto(null)}>Cancelar</Button><Button icon="Check" disabled={ocupado} onClick={salvar}>Salvar</Button></>}>
         {aberto && (
-          <div className="grid sm:grid-cols-2 gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Field label="Salário mensal (R$)" required htmlFor="sal-v" hint={padrao != null ? `Padrão da função: ${dinheiro(padrao)}` : undefined}><input id="sal-v" className="input" inputMode="decimal" value={aberto.valor} onChange={(e) => setAberto({ valor: e.target.value })} /></Field>
             {!aDefinir && <Field label="A partir de" required htmlFor="sal-d"><input id="sal-d" type="date" className="input" value={vig} onChange={(e) => setVig(e.target.value)} /></Field>}
             {!aDefinir && <Field label="Motivo" required htmlFor="sal-m" className="sm:col-span-2"><input id="sal-m" className="input" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: promoção, reajuste anual, negociação" /></Field>}
@@ -386,7 +386,7 @@ function ContratosTab({ pessoaId, contratos }: { pessoaId: string; contratos: Co
     <>
       <div className="flex justify-end mb-3"><Button size="sm" icon="FilePlus2" onClick={() => setForm({ aberto: true })}>Registrar contrato</Button></div>
       {contratos.length === 0 ? <Card><EmptyState icon="FileSignature" title="Nenhum contrato registrado" /></Card> : (
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {contratos.map((k) => (
             <Card key={k.id} className="p-5">
               <div className="flex items-start justify-between gap-2"><div><div className="text-[12px] text-muted">{k.numero}</div><h3 className="text-[14.5px] font-bold text-ink mt-0.5">{k.objeto}</h3></div><Badge tone={STATUS_CONTRATO[k.status].tone} dot>{STATUS_CONTRATO[k.status].label}</Badge></div>
@@ -409,7 +409,7 @@ function ContratosTab({ pessoaId, contratos }: { pessoaId: string; contratos: Co
         footer={<><Button variant="ghost" onClick={() => setForm({ aberto: false })}>Cancelar</Button><Button icon="Check" type="submit" form="ctrForm">Salvar</Button></>}>
         {form.aberto && (
           <form id="ctrForm" onSubmit={salvar}>
-            <div className="grid sm:grid-cols-2 gap-x-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
               <Field label="Número" htmlFor="k-n"><input id="k-n" name="numero" className="input" defaultValue={form.k?.numero ?? `CPS-${new Date().getFullYear()}-`} /></Field>
               <Field label="Situação" htmlFor="k-s"><Dropdown id="k-s" name="status" className="input" defaultValue={form.k?.status ?? 'vigente'}>{Object.entries(STATUS_CONTRATO).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</Dropdown></Field>
               <Field label="Objeto" required htmlFor="k-o" className="sm:col-span-2"><input id="k-o" name="objeto" className="input" defaultValue={form.k?.objeto} /></Field>
@@ -458,7 +458,7 @@ function DocumentosTab({ pessoaId, docs }: { pessoaId: string; docs: Documento[]
       <Modal open={novo} onClose={() => setNovo(false)} title="Adicionar documento" footer={<><Button variant="ghost" onClick={() => setNovo(false)}>Cancelar</Button><Button icon="Upload" type="submit" form="docRh">Salvar</Button></>}>
         <form id="docRh" onSubmit={enviar}>
           <Field label="Arquivo" required htmlFor="dr-a"><input id="dr-a" name="arquivo" type="file" className="input py-2" accept=".pdf,image/*" /></Field>
-          <div className="grid sm:grid-cols-2 gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Field label="Tipo" htmlFor="dr-t"><Dropdown id="dr-t" name="tipo" className="input">{TIPOS_DOC.map((t) => <option key={t}>{t}</option>)}</Dropdown></Field>
             <Field label="Validade" htmlFor="dr-v"><input id="dr-v" name="validade" type="date" className="input" /></Field>
           </div>
@@ -517,7 +517,7 @@ function AvaliacoesTab({ pessoaId }: { pessoaId: string }) {
   const inicio = s.avaliacoesInicio.filter((a) => a.avaliadoId === pessoaId).sort((a, b) => a.marcoDias - b.marcoDias)
   const ciclos = s.ciclos.filter((c) => s.participantesCiclo.some((p) => p.cicloId === c.id && p.avaliadoId === pessoaId))
   return (
-    <div className="grid lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
         <CardHead title="Início de parceria" />
         {inicio.length === 0 ? <p className="p-5 text-[13px] text-muted">Nenhuma avaliação de início gerada.</p> : (
@@ -558,7 +558,7 @@ function BeneficiosTab({ pessoaId }: { pessoaId: string }) {
   const s = useStore()
   const vinc = s.beneficiarios.filter((v) => v.colaboradorId === pessoaId)
   return (
-    <div className="grid lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
         <CardHead title="Benefícios vinculados" action={<Link to="/rh/beneficios" className="text-[12.5px] font-semibold text-brand">Gerenciar</Link>} />
         {vinc.length === 0 ? <p className="p-5 text-[13px] text-muted">Nenhum benefício vinculado.</p> : (

@@ -15,6 +15,7 @@ import {
 import { createPortal } from 'react-dom'
 import { Icon } from '@/components/ui'
 import { cn } from '@/lib/utils'
+import { ehToque, travarRolagem, useFecharPeloFundo } from '@/lib/rolagem'
 
 interface Opcao { valor: string; rotulo: ReactNode; texto: string; desabilitada: boolean; grupo?: string }
 
@@ -45,6 +46,8 @@ function lerOpcoes(children: ReactNode, grupo?: string, out: Opcao[] = []): Opca
 
 const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 const BUSCA_A_PARTIR_DE = 9
+/** Abaixo desta largura a lista abre como folha na base da tela (alvos grandes, longe das bordas e do teclado). */
+const LARGURA_FOLHA = 640
 
 export interface DropdownProps {
   value?: string | number | readonly string[] | null
@@ -85,6 +88,11 @@ export function Dropdown({
   const [ativo, setAtivo] = useState(-1)
   const [busca, setBusca] = useState('')
   const [pos, setPos] = useState<CSSProperties>({})
+  const [folha, setFolha] = useState(false)
+  const folhaRef = useRef(false)
+  folhaRef.current = folha
+  // Tipo do último ponteiro no botão: mouse abre no mousedown (como o <select>); toque abre no click.
+  const ponteiro = useRef<string>('mouse')
   const botao = useRef<HTMLButtonElement>(null)
   const lista = useRef<HTMLDivElement>(null)
   const oculto = useRef<HTMLInputElement>(null)
@@ -106,6 +114,7 @@ export function Dropdown({
   const vazio = multiple ? sel.length === 0 : !atual || atual.valor === ''
 
   const posicionar = useCallback(() => {
+    if (folhaRef.current) { setPos({ left: 0, right: 0, bottom: 0, maxHeight: 'min(75vh, 75dvh)' }); return }
     const b = botao.current?.getBoundingClientRect()
     if (!b) return
     const alturaMax = 320
@@ -118,6 +127,14 @@ export function Dropdown({
       : { left, width: largura, top: b.bottom + 6, maxHeight: Math.min(alturaMax, abaixo - 12) })
   }, [])
 
+  const abrir = (v: boolean | ((a: boolean) => boolean)) => {
+    const novo = typeof v === 'function' ? v(aberto) : v
+    if (novo && !aberto) { const f = window.innerWidth < LARGURA_FOLHA; folhaRef.current = f; setFolha(f) }
+    setAberto(novo)
+  }
+  useEffect(() => (aberto && folha ? travarRolagem() : undefined), [aberto, folha])
+  const fundoFolha = useFecharPeloFundo(() => { setAberto(false) })
+
   useLayoutEffect(() => {
     if (!aberto) return
     posicionar()
@@ -127,10 +144,11 @@ export function Dropdown({
   useEffect(() => {
     if (!aberto) return
     const fora = (e: MouseEvent) => {
+      if (folhaRef.current) return // na folha, quem fecha é o fundo (no click, sem clique fantasma)
       const t = e.target as Node
       if (!botao.current?.contains(t) && !lista.current?.contains(t)) setAberto(false)
     }
-    const mover = (e: Event) => { if (!lista.current?.contains(e.target as Node)) posicionar() }
+    const mover = (e: Event) => { if (!folhaRef.current && !lista.current?.contains(e.target as Node)) posicionar() }
     document.addEventListener('mousedown', fora)
     window.addEventListener('scroll', mover, true)
     window.addEventListener('resize', posicionar)
@@ -141,7 +159,8 @@ export function Dropdown({
   useEffect(() => {
     if (!aberto) { setBusca(''); return }
     setAtivo(Math.max(0, visiveis.findIndex((o) => o.valor === sel[0])))
-    if (comBusca) setTimeout(() => campoBusca.current?.focus(), 0)
+    // Em tela de toque, focar a busca abriria o teclado por cima da lista: a pessoa toca na busca se quiser.
+    if (comBusca && !ehToque()) setTimeout(() => campoBusca.current?.focus(), 0)
   }, [aberto]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (aberto && busca) setAtivo(visiveis.findIndex((o) => !o.desabilitada)) }, [busca]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -164,7 +183,7 @@ export function Dropdown({
     if (multiple) { emitir(sel.includes(o.valor) ? sel.filter((v) => v !== o.valor) : [...sel, o.valor]); return }
     if (o.valor !== sel[0]) emitir([o.valor])
     setAberto(false)
-    botao.current?.focus()
+    botao.current?.focus({ preventScroll: true })
   }
 
   const passo = (de: number, dir: 1 | -1) => {
@@ -176,7 +195,7 @@ export function Dropdown({
     if (disabled) return
     const k = e.key
     if (!aberto) {
-      if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(k)) { e.preventDefault(); setAberto(true) }
+      if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(k)) { e.preventDefault(); abrir(true) }
       else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !multiple) {
         // Digitação com a lista fechada troca a opção, como no <select>.
         const d = digitado.current
@@ -210,7 +229,8 @@ export function Dropdown({
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => escolher(o)}
           className={cn(
-            'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] cursor-pointer select-none',
+            'flex items-center gap-2.5 rounded-lg px-3 cursor-pointer select-none',
+            folha ? 'min-h-[48px] py-2.5 text-[15px]' : 'py-2 text-[13px]',
             o.desabilitada ? 'text-muted-2 cursor-not-allowed' : 'text-ink',
             i === ativo && !o.desabilitada && 'bg-brand-50 text-brand-700',
             marcado && 'font-semibold',
@@ -237,8 +257,11 @@ export function Dropdown({
         aria-activedescendant={aberto && ativo >= 0 ? `${uid}-o${ativo}` : undefined}
         // Abre no mousedown, como o <select> nativo: se o blur de outro campo mostrar um erro e deslocar o layout,
         // o mouseup cai fora do botão e o click nunca aconteceria. O click só trata o vindo do <label> (detail 0).
-        onMouseDown={(e) => { if (e.button !== 0 || disabled) return; e.preventDefault(); botao.current?.focus(); setAberto((a) => !a) }}
-        onClick={(e) => { if (e.detail === 0 && !disabled) setAberto((a) => !a) }} onKeyDown={teclado}
+        // No toque, os eventos de mouse chegam todos juntos no fim do toque: abrir no click evita que a lista abra e
+        // a camada de fundo receba o mesmo toque (abre e fecha de uma vez).
+        onPointerDown={(e) => { ponteiro.current = e.pointerType }}
+        onMouseDown={(e) => { if (e.button !== 0 || disabled || ponteiro.current !== 'mouse') return; e.preventDefault(); botao.current?.focus(); abrir((a) => !a) }}
+        onClick={(e) => { if ((e.detail === 0 || ponteiro.current !== 'mouse') && !disabled) abrir((a) => !a); ponteiro.current = 'mouse' }} onKeyDown={teclado}
         className={cn(
           'input flex items-center justify-between gap-2 text-left cursor-pointer',
           'hover:border-brand-300 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-line-strong',
@@ -254,10 +277,21 @@ export function Dropdown({
         tabIndex={-1} aria-hidden className="sr-only" onInvalid={() => botao.current?.focus()}
       />
       {aberto && createPortal(
+        <>
+          {folha && <div className="fixed inset-0 z-[499] bg-midnight/40 animate-fade-in" {...fundoFolha} />}
         <div
           ref={lista} style={{ position: 'fixed', ...pos }} onKeyDown={teclado}
-          className="z-[500] flex flex-col rounded-xl border border-line bg-surface shadow-lg overflow-hidden animate-scale-in origin-top"
+          className={cn('z-[500] flex flex-col border border-line bg-surface shadow-lg overflow-hidden',
+            folha ? 'rounded-t-2xl animate-slide-up pb-[env(safe-area-inset-bottom)]' : 'rounded-xl animate-scale-in origin-top')}
         >
+          {folha && (
+            <div className="flex items-center justify-between gap-3 pl-4 pr-2 py-1.5 border-b border-line shrink-0">
+              <span className="text-[14px] font-bold text-ink truncate">{ariaLabel ?? placeholder ?? 'Selecione'}</span>
+              <button type="button" onClick={() => { setAberto(false); botao.current?.focus({ preventScroll: true }) }} className="h-11 px-3 rounded-xl text-[14px] font-semibold text-brand shrink-0">
+                {multiple ? 'Concluir' : 'Fechar'}
+              </button>
+            </div>
+          )}
           {comBusca && (
             <div className="p-2 border-b border-line">
               <div className="relative">
@@ -265,7 +299,8 @@ export function Dropdown({
                 <input
                   ref={campoBusca} value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar…" aria-label="Buscar opção"
                   aria-controls={listaId} aria-activedescendant={ativo >= 0 ? `${uid}-o${ativo}` : undefined}
-                  className="w-full h-9 pl-8 pr-3 rounded-lg bg-surface-2 text-[13px] text-ink placeholder:text-muted-2 outline-none focus:ring-1 focus:ring-brand"
+                  type="search" enterKeyHint="search" autoComplete="off"
+                  className={cn('w-full pl-8 pr-3 rounded-lg bg-surface-2 text-[13px] text-ink placeholder:text-muted-2 outline-none focus:ring-1 focus:ring-brand', folha ? 'h-11' : 'h-9')}
                 />
               </div>
             </div>
@@ -273,7 +308,8 @@ export function Dropdown({
           <div id={listaId} role="listbox" aria-multiselectable={multiple || undefined} aria-label={ariaLabel} className="overflow-y-auto p-1.5 overscroll-contain">
             {itens.length ? itens : <div className="px-3 py-2.5 text-[13px] text-muted">Nenhuma opção encontrada.</div>}
           </div>
-        </div>,
+        </div>
+        </>,
         document.body,
       )}
     </>

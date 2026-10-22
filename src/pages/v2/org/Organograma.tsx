@@ -92,7 +92,7 @@ function MapaTab() {
                     </ul>
                   )}
                 </div>
-                <div>
+                <div className="min-w-0 max-w-full">
                   <span className="label" id="org-visao-rotulo">Visão</span>
                   <Segmentado rotuloId="org-visao-rotulo" valor={visao} onChange={mudarVisao}
                     opcoes={[['toda', 'Toda a organização'], ['departamento', 'Departamento'], ['equipe', 'Equipe']] as const} />

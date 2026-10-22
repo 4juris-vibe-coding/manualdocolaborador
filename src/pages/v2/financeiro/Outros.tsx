@@ -48,7 +48,7 @@ export function ConfigFinanceiro() {
       <SoComBanco>
         <Aguardar r={op}>
           {(o) => (
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="p-5">
                 <h2 className="text-[15px] font-bold mb-3">Regras e alertas</h2>
                 {!o.capacidades.config && <Callout tone="neutral" icon="Lock" className="mb-3">Somente a administração altera estas regras.</Callout>}
@@ -72,7 +72,7 @@ export function ConfigFinanceiro() {
                   <tr key={x.id}><td className={TD}><b>{x.codigo}</b> · {x.nome}</td><td className={TD}>{x.ativo ? <Badge tone="success">Ativo</Badge> : <Badge>Inativo</Badge>}</td>
                     <td className={TD}>{o.capacidades.cadastrar && <Button size="sm" variant="ghost" onClick={async () => { if (await executar(() => api.put(`financeiro/centros-custo/${x.id}`, { nome: x.nome, setorId: x.setorId, ativo: !x.ativo }), x.ativo ? 'Centro desativado.' : 'Centro reativado.')) op.recarregar() }}>{x.ativo ? 'Desativar' : 'Reativar'}</Button>}</td></tr>
                 ))}</tbody></Tabela>
-                {o.capacidades.cadastrar && <div className="p-5 border-t border-line grid sm:grid-cols-[110px_1fr_auto] gap-2 items-end">
+                {o.capacidades.cadastrar && <div className="p-5 border-t border-line grid grid-cols-1 sm:grid-cols-[110px_1fr_auto] gap-2 items-end">
                   <Field label="Código" className="mb-0" htmlFor="cc-cod"><input id="cc-cod" className="input" value={cc.codigo} onChange={(e) => setCc({ ...cc, codigo: e.target.value })} /></Field>
                   <Field label="Nome" className="mb-0" htmlFor="cc-nome"><input id="cc-nome" className="input" value={cc.nome} onChange={(e) => setCc({ ...cc, nome: e.target.value })} /></Field>
                   <Button onClick={async () => { if (await executar(() => api.post('financeiro/centros-custo', cc), 'Centro de custo criado.')) { setCc({ codigo: '', nome: '', setorId: '' }); op.recarregar() } }}>Adicionar</Button>
@@ -200,7 +200,7 @@ export function MeusContratos() {
       <PageHeader title="Meus contratos" subtitle="Contratos de prestação de serviços em que você é a parte contratada." />
       <SoComBanco>
         <Aguardar r={r} vazio={(d) => d.contratos.length ? null : <Card><EmptyState icon="FileSignature" title="Nenhum contrato vinculado" desc="Se você presta serviços, fale com o RH para vincular o contrato." /></Card>}>
-          {(d) => <div className="grid md:grid-cols-2 gap-4">{d.contratos.map((k) => (
+          {(d) => <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{d.contratos.map((k) => (
             <Card key={k.id} className="p-5">
               <div className="flex items-start justify-between gap-2"><Link to={`/financeiro/contratos/${k.id}`} className="text-[15px] font-bold hover:text-brand">{k.numero}</Link><BadgeContrato valor={k.status} /></div>
               <p className="text-[13px] text-ink-2 mt-1">{k.objeto}</p>

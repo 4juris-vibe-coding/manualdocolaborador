@@ -62,7 +62,7 @@ export default function ContratoDetalhe() {
 
               {aba === 'dados' && (
                 <Card className="p-5 sm:p-6">
-                  <dl className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <Info rotulo="Objeto">{k.objeto}</Info>
                     <Info rotulo="Modelo de remuneração">{ROTULO_MODELO[k.modeloRemuneracao]} · {dinheiro(k.valor)}</Info>
                     <Info rotulo="Faturamento">{ROTULO_PERIODICIDADE[k.periodicidadeFaturamento]}{k.prazoPagamentoDias != null ? ` · pagamento em ${k.prazoPagamentoDias} dias após o aceite` : ''}</Info>
@@ -76,7 +76,7 @@ export default function ContratoDetalhe() {
                     {k.status === 'encerrado' && <Info rotulo="Encerramento">{dataBR(k.encerradoEm)} · {ROTULO_ENCERRAMENTO[k.encerramentoTipo ?? ''] ?? k.encerramentoTipo} — {k.encerramentoMotivo}</Info>}
                   </dl>
                   {k.escopo && <div className="mt-5"><Info rotulo="Escopo"><p className="whitespace-pre-line">{k.escopo}</p></Info></div>}
-                  {(k.obrigacoesContratada || k.obrigacoesContratante) && <div className="grid sm:grid-cols-2 gap-4 mt-5">
+                  {(k.obrigacoesContratada || k.obrigacoesContratante) && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
                     <Info rotulo="Obrigações da contratada"><p className="whitespace-pre-line">{k.obrigacoesContratada}</p></Info>
                     <Info rotulo="Obrigações da contratante"><p className="whitespace-pre-line">{k.obrigacoesContratante}</p></Info>
                   </div>}

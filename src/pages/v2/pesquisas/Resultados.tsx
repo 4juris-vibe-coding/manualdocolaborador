@@ -138,7 +138,7 @@ function Destaques({ res }: { res: ResultadosPesquisa }) {
   return (
     <Card>
       <CardHead title="Pontos fortes e pontos de atenção" sub={`Critério: média ≥ ${fmt(LIMIAR_FORTE)} é ponto forte; abaixo de ${fmt(LIMIAR_ATENCAO)} merece investigação (escala de 1 a 5).`} />
-      <div className="p-5 grid gap-5 sm:grid-cols-2">
+      <div className="p-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
           <h4 className="text-[12px] font-bold uppercase tracking-wide text-success mb-2">Pontos fortes · observado</h4>
           {d.fortes.length ? <ul className="space-y-1 text-[13.5px] text-ink-2">{d.fortes.map((x) => <li key={x.dimensao}><b className="text-ink">{x.dimensao}</b>: média {fmt(x.media)}</li>)}</ul> : <p className="text-[13px] text-muted">Nenhuma dimensão com média ≥ {fmt(LIMIAR_FORTE)}.</p>}
@@ -213,7 +213,7 @@ export default function Resultados() {
                             <div className="p-5 space-y-2 text-[14px] text-ink-2">{d.resumo.map((l, i) => <p key={i}>{l}</p>)}</div>
                           </Card>
 
-                          <div className="grid gap-6 lg:grid-cols-2">
+                          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                             <Card><CardHead title="Evolução das respostas" sub="Acumulado por data de envio" />
                               <div className="p-5"><LinhaTempo titulo="Respostas acumuladas" pontos={res.evolucao.map((e) => ({ rotulo: dataBR(e.data).slice(0, 5), valor: e.acumulado }))} /></div></Card>
                             <Card><CardHead title="Médias por dimensão" sub="Perguntas Likert e estrelas (escala de 1 a 5)" />

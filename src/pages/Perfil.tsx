@@ -119,7 +119,7 @@ export default function Perfil() {
             </div>
             <p className="text-[14px] text-muted mt-1">{s.cargoNome(user.cargoId)} · {s.setorNome(user.setorId)} · {PAPEL_LABEL[user.papel]}</p>
             <div className="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-[13px] text-ink-2">
-              <span className="flex items-center gap-1.5"><Icon name="Mail" className="h-4 w-4 text-muted" />{user.email}</span>
+              <span className="flex items-center gap-1.5 min-w-0 [overflow-wrap:anywhere]"><Icon name="Mail" className="h-4 w-4 text-muted shrink-0" />{user.email}</span>
               {user.telefone && <span className="flex items-center gap-1.5"><Icon name="Phone" className="h-4 w-4 text-muted" />{user.telefone}</span>}
               <span className="flex items-center gap-1.5"><Icon name="Handshake" className="h-4 w-4 text-muted" />Parceria há {tempoParceria(user.dataEntrada, hoje)}</span>
             </div>
@@ -130,7 +130,7 @@ export default function Perfil() {
       <Tabs tabs={tabs} active={tab} onChange={setTab} />
 
       {tab === 'pessoais' && (
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="px-5 sm:px-6 py-2"><dl>
             <Row label="Nome completo" value={user.nome} />
             <Row label="Nome social" value={user.nomeSocial} />
@@ -154,7 +154,7 @@ export default function Perfil() {
       )}
 
       {tab === 'contrato' && (
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="px-5 sm:px-6 py-2"><dl>
             <Row label="Forma de contratação" value={REGIME_LABEL[user.regime]} />
             <Row label="Razão social" value={user.razaoSocial} />
@@ -217,7 +217,7 @@ export default function Perfil() {
       )}
 
       {tab === 'beneficios' && (
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHead title="Meus benefícios" sub="Adesões vigentes" />
             {s.beneficiarios.filter((v) => v.colaboradorId === user.id).length === 0 ? <p className="p-5 text-[13px] text-muted">Você não tem benefícios vinculados. Veja as opções em Vantagens & parcerias.</p> : (
@@ -245,7 +245,7 @@ export default function Perfil() {
       )}
 
       {tab === 'privacidade' && (
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="p-5 sm:p-6">
             <h3 className="text-[15px] font-bold text-ink mb-1">O que a comunidade vê</h3>
             <p className="text-[12.5px] text-muted mb-5">Suas escolhas valem imediatamente em toda a plataforma.</p>
@@ -272,7 +272,7 @@ export default function Perfil() {
         footer={<><Button variant="ghost" onClick={() => setEdit(false)}>Cancelar</Button><Button icon="Check" type="submit" form="perfilForm">Salvar</Button></>}>
         <form id="perfilForm" onSubmit={save}>
           <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-3">Pessoais</h4>
-          <div className="grid sm:grid-cols-2 gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Field label="Nome social (opcional)" htmlFor="pf-ns"><input id="pf-ns" name="nomeSocial" className="input" defaultValue={user.nomeSocial} /></Field>
             <Field label="Telefone" htmlFor="pf-tel"><input id="pf-tel" name="telefone" className="input" defaultValue={user.telefone} inputMode="tel" /></Field>
             <Field label="Data de nascimento (opcional)" htmlFor="pf-nasc" hint="Dia e mês aparecem nas celebrações; o ano nunca é exibido."><input id="pf-nasc" name="nascimento" type="date" max={hoje} className="input" defaultValue={user.nascimento} /></Field>
@@ -283,7 +283,7 @@ export default function Perfil() {
           </div>
           <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-1 mt-2">Gostos para celebrações</h4>
           <p className="text-[12px] text-muted mb-3">Opcional. Aparece junto do seu aniversário para o time acertar no seu dia.</p>
-          <div className="grid sm:grid-cols-2 gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             {GOSTOS.map((g) => (
               <Field key={g.chave} label={`${g.emoji} ${g.rotulo}`} htmlFor={`pf-gosto-${g.chave}`}>
                 <input id={`pf-gosto-${g.chave}`} name={`gosto_${g.chave}`} className="input" maxLength={80} defaultValue={user.preferencias?.[g.chave]}
@@ -292,16 +292,16 @@ export default function Perfil() {
             ))}
           </div>
           <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-3 mt-2">Contatos, endereço e formação</h4>
-          <div className="grid sm:grid-cols-2 gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Field label="Celular" htmlFor="pf-cel"><input id="pf-cel" name="celular" className="input" defaultValue={user.celular} inputMode="tel" /></Field>
             <Field label="E-mail pessoal" htmlFor="pf-ep"><input id="pf-ep" name="emailPessoal" type="email" className="input" defaultValue={user.emailPessoal} /></Field>
           </div>
-          <div className="grid sm:grid-cols-[120px_1fr_100px] gap-x-4">
-            <Field label="CEP" htmlFor="pf-cep"><input id="pf-cep" name="cep" className="input" defaultValue={user.endereco?.cep} /></Field>
+          <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr_100px] gap-x-4">
+            <Field label="CEP" htmlFor="pf-cep"><input id="pf-cep" name="cep" className="input" inputMode="numeric" autoComplete="postal-code" defaultValue={user.endereco?.cep} /></Field>
             <Field label="Logradouro" htmlFor="pf-log"><input id="pf-log" name="logradouro" className="input" defaultValue={user.endereco?.logradouro} /></Field>
             <Field label="Número" htmlFor="pf-nu"><input id="pf-nu" name="numero" className="input" defaultValue={user.endereco?.numero} /></Field>
           </div>
-          <div className="grid sm:grid-cols-2 gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Field label="Complemento" htmlFor="pf-co"><input id="pf-co" name="complemento" className="input" defaultValue={user.endereco?.complemento} /></Field>
             <Field label="Bairro" htmlFor="pf-ba"><input id="pf-ba" name="bairro" className="input" defaultValue={user.endereco?.bairro} /></Field>
             <Field label="Escolaridade" htmlFor="pf-es"><Dropdown id="pf-es" name="escolaridade" className="input" defaultValue={user.escolaridade ?? ''}><option value="">Prefiro não informar</option>{Object.entries(ESCOLARIDADE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Dropdown></Field>
@@ -309,16 +309,16 @@ export default function Perfil() {
             <Field label="Tamanho de camiseta (kits)" htmlFor="pf-tc"><Dropdown id="pf-tc" name="tamanhoCamisa" className="input" defaultValue={user.tamanhoCamisa ?? ''}><option value="">—</option>{['PP', 'P', 'M', 'G', 'GG', 'XG'].map((t) => <option key={t}>{t}</option>)}</Dropdown></Field>
           </div>
           <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-3 mt-2">Emergência</h4>
-          <div className="grid sm:grid-cols-3 gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
             <Field label="Nome" htmlFor="pf-en"><input id="pf-en" name="emergenciaNome" className="input" defaultValue={user.emergenciaNome} /></Field>
-            <Field label="Telefone" htmlFor="pf-et"><input id="pf-et" name="emergenciaTelefone" className="input" defaultValue={user.emergenciaTelefone} /></Field>
+            <Field label="Telefone" htmlFor="pf-et"><input id="pf-et" name="emergenciaTelefone" className="input" type="tel" inputMode="tel" defaultValue={user.emergenciaTelefone} /></Field>
             <Field label="Relação" htmlFor="pf-ep"><input id="pf-ep" name="emergenciaParentesco" className="input" defaultValue={user.emergenciaParentesco} /></Field>
           </div>
           <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-3 mt-2">Pagamento</h4>
-          <div className="grid sm:grid-cols-3 gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
             <Field label="Banco" htmlFor="pf-b"><input id="pf-b" name="banco" className="input" defaultValue={user.banco} /></Field>
-            <Field label="Agência" htmlFor="pf-ag"><input id="pf-ag" name="agencia" className="input" defaultValue={user.agencia} /></Field>
-            <Field label="Conta" htmlFor="pf-ct"><input id="pf-ct" name="conta" className="input" defaultValue={user.conta} /></Field>
+            <Field label="Agência" htmlFor="pf-ag"><input id="pf-ag" name="agencia" className="input" inputMode="numeric" defaultValue={user.agencia} /></Field>
+            <Field label="Conta" htmlFor="pf-ct"><input id="pf-ct" name="conta" className="input" inputMode="numeric" defaultValue={user.conta} /></Field>
             <Field label="Tipo de chave PIX" htmlFor="pf-pt">
               <Dropdown id="pf-pt" name="pixTipo" className="input" defaultValue={user.pixTipo}>{['CNPJ', 'CPF', 'E-mail', 'Telefone', 'Aleatória'].map((t) => <option key={t}>{t}</option>)}</Dropdown>
             </Field>
@@ -332,7 +332,7 @@ export default function Perfil() {
         footer={<><Button variant="ghost" onClick={() => setDocOpen(false)}>Cancelar</Button><Button icon="Upload" type="submit" form="docForm">Enviar</Button></>}>
         <form id="docForm" onSubmit={enviarDoc}>
           <Field label="Arquivo" required hint="PDF ou imagem, até 10 MB." htmlFor="dc-a"><input id="dc-a" name="arquivo" type="file" accept=".pdf,image/*" className="input py-2" required /></Field>
-          <div className="grid sm:grid-cols-2 gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Field label="Tipo" htmlFor="dc-t"><Dropdown id="dc-t" name="tipo" className="input" defaultValue="Certidão">{TIPOS_DOC.map((t) => <option key={t}>{t}</option>)}</Dropdown></Field>
             <Field label="Validade (se houver)" htmlFor="dc-v"><input id="dc-v" name="validade" type="date" className="input" /></Field>
           </div>
@@ -358,7 +358,7 @@ function DiversidadeCard() {
         <span>Concordo em informar meus dados de diversidade para análises <b>agregadas e anônimas</b> da 4JURIS.</span>
       </label>
       {d.consentimento && (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4">
           <Field label="Gênero" htmlFor="dv-g"><Dropdown id="dv-g" className="input" value={d.genero ?? ''} onChange={(e) => setD({ ...d, genero: (e.target.value || undefined) as Diversidade['genero'] })}><option value="">—</option>{Object.entries(GENERO_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Dropdown></Field>
           <Field label="Raça/etnia" htmlFor="dv-r"><Dropdown id="dv-r" className="input" value={d.racaEtnia ?? ''} onChange={(e) => setD({ ...d, racaEtnia: (e.target.value || undefined) as Diversidade['racaEtnia'] })}><option value="">—</option>{Object.entries(RACA_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Dropdown></Field>
           <Field label="Estado civil" htmlFor="dv-e"><Dropdown id="dv-e" className="input" value={d.estadoCivil ?? ''} onChange={(e) => setD({ ...d, estadoCivil: (e.target.value || undefined) as Diversidade['estadoCivil'] })}><option value="">—</option>{Object.entries(ESTADO_CIVIL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Dropdown></Field>
@@ -385,7 +385,7 @@ export function PerfilComportamentalEditor({ pessoaId }: { pessoaId: string }) {
   const [remover, setRemover] = useState(false)
   return (
     <div>
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <h4 className="text-[12px] font-bold uppercase text-muted mb-2">DISC</h4>
           {CATEGORIAS_DISC.map((d) => <SliderBipolar key={d.chave} esquerda={`${d.label}: ${disc[d.chave]}`} valor={disc[d.chave]} cor={d.cor} onChange={(v) => setDisc({ ...disc, [d.chave]: v })} />)}
@@ -397,7 +397,7 @@ export function PerfilComportamentalEditor({ pessoaId }: { pessoaId: string }) {
       </div>
       <div className="mt-5">
         <h4 className="text-[12px] font-bold uppercase text-muted mb-2">Traços (24)</h4>
-        <div className="grid sm:grid-cols-2 gap-x-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
           {TRACOS.map((t) => <SliderBipolar key={t.chave} esquerda={t.esquerda} direita={t.direita} valor={tracos[t.chave] ?? 50} onChange={(v) => setTracos({ ...tracos, [t.chave]: v })} />)}
         </div>
       </div>
@@ -436,7 +436,7 @@ export function DependentesLista({ pessoaId }: { pessoaId: string }) {
       <Modal open={novo} onClose={() => setNovo(false)} title="Novo dependente" subtitle="Dados mínimos, usados apenas para adesão a benefícios." footer={<><Button variant="ghost" onClick={() => setNovo(false)}>Cancelar</Button><Button icon="Check" type="submit" form="depForm">Salvar</Button></>}>
         <form id="depForm" onSubmit={salvar}>
           <Field label="Nome" required htmlFor="dp-n"><input id="dp-n" name="nome" className="input" required /></Field>
-          <div className="grid sm:grid-cols-3 gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
             <Field label="Parentesco" htmlFor="dp-p"><Dropdown id="dp-p" name="parentesco" className="input">{['Cônjuge', 'Companheiro(a)', 'Filho(a)', 'Enteado(a)', 'Pai/Mãe', 'Outro'].map((p) => <option key={p}>{p}</option>)}</Dropdown></Field>
             <Field label="Nascimento" htmlFor="dp-d"><input id="dp-d" name="nascimento" type="date" max={hojeISO()} className="input" /></Field>
             <Field label="CPF (se exigido)" htmlFor="dp-c"><input id="dp-c" name="cpf" className="input" inputMode="numeric" /></Field>

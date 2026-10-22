@@ -71,7 +71,7 @@ export default function Cadastro() {
   const limpar = () => setErro('')
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-[1.05fr_.95fr] bg-midnight">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-[1.05fr_.95fr] bg-midnight">
       {/* -------- Painel de marca -------- */}
       <div className="relative overflow-hidden hidden lg:flex flex-col justify-between p-14 text-white tech-grid">
         <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />

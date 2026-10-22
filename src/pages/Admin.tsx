@@ -261,7 +261,7 @@ export default function Admin() {
 
       {tab === 'usuarios' && (
         <>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
             {PAPEIS.map((p) => (
               <button key={p} type="button" aria-pressed={papel === p} onClick={() => setPapel(papel === p ? 'todos' : p)} className={cn('card p-4 text-left hover:shadow-sm transition', papel === p && 'ring-2 ring-brand')}>
                 <div className="text-[22px] font-extrabold text-ink">{s.colaboradores.filter((c) => c.papel === p && c.status !== 'encerrado').length}</div>
@@ -330,7 +330,7 @@ export default function Admin() {
 
       {tab === 'matriz' && (
         <>
-          <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
             {PAPEIS.map((p) => <Card key={p} className="p-4"><div className="text-[13.5px] font-bold text-ink">{PAPEL_LABEL[p]}</div><p className="text-[12px] text-muted mt-1">{PAPEL_DESC[p]}</p></Card>)}
           </div>
           <Card>

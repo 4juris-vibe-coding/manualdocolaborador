@@ -71,7 +71,7 @@ function Areas({ editarId, onAberto }: { editarId: string | null; onAberto: () =
     <>
       <div className="flex justify-end mb-3"><Button icon="Plus" onClick={() => setForm({ cor: CORES[0], icon: 'Building2', liderancaIds: [], gestorId: null })}>Novo departamento</Button></div>
       {ordem.length === 0 && <Card><EmptyState icon="Building2" title="Nenhum departamento" desc="Crie o primeiro departamento para organizar cargos e pessoas." /></Card>}
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {ordem.map((a) => {
           const qtd = s.colaboradores.filter((c) => c.setorId === a.id && c.status !== 'encerrado').length
           const caminho = caminhoDepartamento(s.setores, a.id).slice(0, -1)
@@ -105,7 +105,7 @@ function Areas({ editarId, onAberto }: { editarId: string | null; onAberto: () =
       <Modal open={!!form} onClose={() => setForm(null)} wide title={form?.id ? 'Editar departamento' : 'Novo departamento'} footer={<><Button variant="ghost" onClick={() => setForm(null)}>Cancelar</Button><Button icon="Check" onClick={salvar}>Salvar</Button></>}>
         {form && (
           <>
-            <div className="grid sm:grid-cols-2 gap-x-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
               <Field label="Nome" required htmlFor="ar-n"><input id="ar-n" className="input" value={form.nome ?? ''} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></Field>
               <Field label="Departamento pai" htmlFor="ar-p"><Dropdown id="ar-p" className="input" value={form.paiId ?? ''} onChange={(e) => setForm({ ...form, paiId: e.target.value || undefined })}><option value="">Nenhum (departamento de topo)</option>{paisPossiveis.map((x) => <option key={x.id} value={x.id}>{caminhoDepartamento(s.setores, x.id).join(' › ')}</option>)}</Dropdown></Field>
               <Field label="Líder do departamento (opcional)" htmlFor="ar-lid"><Dropdown id="ar-lid" className="input" value={form.gestorId ?? ''} onChange={(e) => setForm({ ...form, gestorId: e.target.value || null, liderancaIds: (form.liderancaIds ?? []).filter((x) => x !== e.target.value) })}><option value="">Sem líder</option>{pessoas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</Dropdown></Field>
@@ -122,7 +122,7 @@ function Areas({ editarId, onAberto }: { editarId: string | null; onAberto: () =
             </fieldset>
             <p className="text-[12px] text-muted -mt-2 mb-4">Quem está no departamento e não tem gestor imediato definido aparece abaixo do líder no organograma. Sem líder, vale o líder do departamento pai.</p>
             <fieldset className="mb-4"><legend className="label">Outras lideranças (coordenam projetos e veem a disponibilidade do departamento)</legend>
-              <div className="max-h-48 overflow-y-auto rounded-xl border border-line p-2 grid sm:grid-cols-2 gap-1">
+              <div className="max-h-48 overflow-y-auto rounded-xl border border-line p-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
                 {pessoas.filter((c) => c.id !== form.gestorId).map((c) => { const on = (form.liderancaIds ?? []).includes(c.id); return (
                   <label key={c.id} className={cn('flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer', on ? 'bg-brand-50' : 'hover:bg-surface-2')}>
                     <input type="checkbox" className="h-4 w-4 accent-brand" checked={on} onChange={() => setForm({ ...form, liderancaIds: on ? form.liderancaIds!.filter((x) => x !== c.id) : [...(form.liderancaIds ?? []), c.id] })} />
@@ -145,7 +145,7 @@ function Funcoes() {
   const s = useStore()
   const [novo, setNovo] = useState<Record<string, { nome: string; nivel: Senioridade }>>({})
   return (
-    <div className="grid md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {s.setores.length === 0 && <Card className="md:col-span-2"><EmptyState icon="Briefcase" title="Crie um departamento primeiro" desc="Cada cargo pertence a um departamento." /></Card>}
       {s.setores.map((a) => {
         const f = novo[a.id] ?? { nome: '', nivel: 'Pleno' as Senioridade }
@@ -211,7 +211,7 @@ function Listas() {
   const [motivo, setMotivo] = useState('')
   const [tipo, setTipo] = useState('')
   return (
-    <div className="grid md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <Card>
         <CardHead title="Motivos de encerramento" sub="Usados ao encerrar uma parceria" />
         <ul className="divide-y divide-line">{s.motivosEncerramento.map((m) => <li key={m.id} className="flex items-center justify-between px-5 py-2.5"><span className={cn('text-[13.5px]', !m.ativo && 'text-muted line-through')}>{m.nome}</span><span className="flex items-center gap-2"><Toggle checked={m.ativo} onChange={(v) => feedback(s.salvarMotivo({ nome: m.nome, ativo: v }, m.id), 'Lista atualizada.')} /><Button size="icon-sm" variant="subtle" icon="Trash2" aria-label={`Remover ${m.nome}`} onClick={() => feedback(s.removerMotivo(m.id), 'Motivo removido.')} /></span></li>)}</ul>

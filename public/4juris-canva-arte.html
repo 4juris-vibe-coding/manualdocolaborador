@@ -212,6 +212,26 @@ select.sel[aria-expanded=true],#ftb select[aria-expanded=true]{border-color:rgb(
   .pg{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 @media (max-width:1180px){#app{grid-template-columns:170px 1fr 260px}}
+/* Telas de toque: campos com 16px para o Safari do iPhone não ampliar a página ao focar (a pinça continua livre). */
+@media (hover:none) and (pointer:coarse){input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]),select,textarea{font-size:16px!important}}
+/* Celular: uma coluna — barra, ferramentas (rolam de lado), a arte na largura da tela, páginas numa faixa e propriedades abaixo. */
+@media (max-width:760px){
+  #app,body.ro #app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto;height:auto;min-height:100vh}
+  #top{padding:8px 10px;min-height:56px}
+  #titulo{flex:1 0 150px;width:auto}
+  #bar{grid-column:1;grid-row:2;min-height:52px}
+  #main{grid-row:3;grid-column:1}
+  #stage{flex:none;height:min(64vh,calc(100vw + 40px));padding:12px}
+  #foot{padding:0 12px 12px;flex-wrap:wrap;justify-content:center}
+  #side{grid-row:4;flex-direction:row;align-items:center;border-right:0;border-top:1px solid var(--ui-line);border-bottom:1px solid var(--ui-line)}
+  #side .hd{display:none}
+  #thumbs{flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:10px 12px}
+  #thumbs>*{flex:none}
+  #insp{grid-row:5;grid-column:1;border-left:0}
+  #ibody{overflow:visible}
+  .btn{min-height:40px}
+  #ftb{max-width:calc(100vw - 16px);overflow-x:auto}
+}
 </style>
 </head>
 <body>

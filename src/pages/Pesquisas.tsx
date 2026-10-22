@@ -30,7 +30,7 @@ export default function Pesquisas() {
 
       <h2 className="text-[13px] font-bold uppercase tracking-wide text-muted mb-3">Abertas para você</h2>
       {disponiveis.length === 0 ? <Card className="mb-8"><EmptyState icon="MessagesSquare" title="Nenhuma pesquisa aberta" desc="Quando houver uma nova pesquisa, ela aparece aqui e nas suas pendências." /></Card> : (
-        <div className="grid md:grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {disponiveis.map((p) => {
             const ok = respondi(p.id)
             return (
@@ -104,7 +104,7 @@ function ResponderModal({ p, onClose }: { p: Pesquisa; onClose: () => void }) {
                 </div>
               )}
               {q.tipo === 'opcoes' && (
-                <div className="grid sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {(q.opcoes ?? []).map((o) => (
                     <label key={o} className={cn('flex items-center gap-2.5 rounded-xl border px-3 py-2.5 cursor-pointer', resp[q.id] === o ? 'border-brand bg-brand-50' : 'border-line')}>
                       <input type="radio" name={q.id} className="accent-brand" checked={resp[q.id] === o} onChange={() => set(q.id, o)} />

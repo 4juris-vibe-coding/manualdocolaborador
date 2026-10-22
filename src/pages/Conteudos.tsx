@@ -26,7 +26,7 @@ export default function Conteudos() {
         {cats.map((c) => <button key={c} type="button" aria-pressed={cat === c} onClick={() => setCat(c)} className={cn('chip', cat === c && 'chip-active')}>{c}</button>)}
       </div>
       {lista.length === 0 ? <Card><EmptyState icon="BookOpen" title="Nenhum conteúdo nesta categoria" /></Card> : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {lista.map((t) => {
             const feito = meus.get(t.id)
             return (

@@ -63,7 +63,7 @@ export default function ContratoForm() {
               {emVigor && <Callout tone="warning" icon="Lock" className="mb-4">Contrato em vigor: valor, vigência, modelo e fornecedor mudam por <b>aditivo</b> (na ficha do contrato), para manter o histórico.</Callout>}
               <Card className="p-5 sm:p-6 mb-4">
                 <h2 className="text-[15px] font-bold mb-4">Partes e responsáveis</h2>
-                <div className="grid sm:grid-cols-2 gap-x-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
                   <Field label="Número do contrato" required erro={erros.numero} htmlFor="c-numero"><input {...inp('numero')} maxLength={60} /></Field>
                   <Field label="Fornecedor (contratada)" required erro={erros.fornecedorId}>
                     <Dropdown aria-label="Fornecedor" className="w-full" value={f.fornecedorId} disabled={emVigor} onChange={(e) => {
@@ -100,7 +100,7 @@ export default function ContratoForm() {
                 <h2 className="text-[15px] font-bold mb-4">Objeto e remuneração</h2>
                 <Field label="Objeto" required erro={erros.objeto} htmlFor="c-objeto"><input {...inp('objeto')} maxLength={2000} /></Field>
                 <Field label="Escopo dos serviços" htmlFor="c-escopo"><textarea {...inp('escopo')} className="input h-28 py-2.5" /></Field>
-                <div className="grid sm:grid-cols-3 gap-x-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
                   <Field label="Modelo de remuneração">
                     <Dropdown aria-label="Modelo" className="w-full" value={f.modeloRemuneracao} disabled={emVigor} onChange={(e) => set('modeloRemuneracao')(e.target.value)}>
                       {Object.entries(ROTULO_MODELO).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
@@ -118,7 +118,7 @@ export default function ContratoForm() {
 
               <Card className="p-5 sm:p-6 mb-4">
                 <h2 className="text-[15px] font-bold mb-4">Vigência e renovação</h2>
-                <div className="grid sm:grid-cols-3 gap-x-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
                   <Field label="Prazo">
                     <Dropdown aria-label="Tipo de prazo" className="w-full" value={f.tipoPrazo} disabled={emVigor} onChange={(e) => set('tipoPrazo')(e.target.value)}>
                       <option value="determinado">Determinado</option><option value="indeterminado">Indeterminado</option>

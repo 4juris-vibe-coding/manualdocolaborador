@@ -39,7 +39,7 @@ export default function Pipeline() {
           <Card><EmptyState icon="BriefcaseBusiness" title="Nenhuma vaga com candidaturas disponíveis" desc="Quando houver vagas aprovadas ou publicadas, elas aparecem aqui para acompanhar o processo seletivo." action={gerenciar ? <Link to="/recrutamento/vagas" className="text-brand font-semibold text-[13.5px]">Ir para as vagas</Link> : undefined} /></Card>
         ) : null}>
           {(d) => (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {d.itens.map((v) => (
                 <button key={v.id} onClick={() => setSp({ vaga: v.id })} className="card p-5 text-left hover:border-brand transition outline-none focus-visible:ring-2 focus-visible:ring-brand">
                   <div className="flex items-start justify-between gap-2">

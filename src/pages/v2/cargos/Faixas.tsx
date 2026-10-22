@@ -114,7 +114,7 @@ function Lista({ gerencia }: { gerencia: boolean }) {
         subtitle={f?.revisaoDe ? 'A faixa atual será encerrada na véspera da nova vigência, se a revisão for aprovada.' : 'Fica em rascunho até ser enviada e aprovada por outra pessoa.'}
         footer={<><Button variant="ghost" onClick={() => setF(null)}>Cancelar</Button><Button onClick={() => void salvar()}>Salvar rascunho</Button></>}>
         {f && (
-          <form className="grid sm:grid-cols-2 gap-x-4" onSubmit={(e) => { e.preventDefault(); void salvar() }}>
+          <form className="grid grid-cols-1 sm:grid-cols-2 gap-x-4" onSubmit={(e) => { e.preventDefault(); void salvar() }}>
             <Field label="Cargo" required htmlFor="fx-c" erro={erros.cargoId} className="sm:col-span-2">
               <Dropdown id="fx-c" className="input" disabled={!!f.id || !!f.revisaoDe} value={f.cargoId} onChange={(e) => setF({ ...f, cargoId: e.target.value })}><option value="">Escolha…</option>{cat.dados?.itens.map((c) => <option key={c.cargoId} value={c.cargoId}>{c.nome}</option>)}</Dropdown>
             </Field>

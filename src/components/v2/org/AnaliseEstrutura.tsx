@@ -34,7 +34,7 @@ export function AnaliseEstrutura() {
               <StatCard icon="UserPlus" tone="brand" value={numero(i.posicoesVagas.total)} label="Posições vagas registradas" />
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <Bloco titulo="Pessoas por departamento" sub="Pessoas ativas por área cadastrada">
                 <div className="flex flex-col sm:flex-row items-center gap-6">
                   <DonutChart titulo="Pessoas por departamento" centro={numero(i.totalAtivos)} dados={i.porSetor.map((s, n) => ({ rotulo: s.nome, valor: s.qtd, cor: CORES[n % CORES.length] }))} />
@@ -46,7 +46,7 @@ export function AnaliseEstrutura() {
               </Bloco>
               <Bloco titulo="Distribuição por unidade"><BarList itens={barras(i.porUnidade)} total={i.totalAtivos} /></Bloco>
               <Bloco titulo="Distribuição por função e senioridade" sub="Senioridade vem do cadastro da função">
-                <div className="grid sm:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div><div className="text-[12px] font-bold text-muted mb-2">Funções</div><BarList itens={barras(i.porCargo, 6)} total={i.totalAtivos} /></div>
                   <div><div className="text-[12px] font-bold text-muted mb-2">Senioridade</div><BarList itens={barras(i.porSenioridade, 6)} total={i.totalAtivos} /></div>
                 </div>

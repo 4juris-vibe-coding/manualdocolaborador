@@ -1,6 +1,6 @@
 import { sairCompleto } from '@/data/sync'
 import { useNotificacoesUnificadas, useSincronizarNotifV2 } from '@/data/v2/notificacoes'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { useStore } from '@/lib/store'
 import { itemDaRota, grupoDaRota } from '@/lib/nav'
@@ -18,30 +18,52 @@ const notifIcon: Record<string, string> = {
   evento: 'CalendarHeart', gamificacao: 'Trophy', pendencia: 'AlertTriangle', disponibilidade: 'Palmtree',
 }
 
-export function Topbar({ onAbrirMenu, entrada }: { onAbrirMenu: () => void; entrada?: boolean }) {
-  const location = useLocation()
+/** Ações da conta (tema, visão de colaborador, sair): no desktop ficam na barra do topo; no celular, no rodapé do menu. */
+export function useConta() {
   const navigate = useNavigate()
-  const user = useStore((s) => s.currentUser())
   const real = useStore((s) => s.realUser())
   const preview = useStore((s) => s.previewColaborador)
   const setPreview = useStore((s) => s.setPreview)
-  const niveis = useStore((s) => s.config.gamificacao.niveis)
-  useSincronizarNotifV2()
-  const { itens: notifs, naoLidas, marcar: marcarNotif, marcarTodas: marcarTodasLidas } = useNotificacoesUnificadas()
-  const [openBell, setOpenBell] = useState(false)
-  const [paleta, setPaleta] = useState(false)
   const tema = useTema((x) => x.tema)
   const definirTema = useTema((x) => x.definir)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPaleta((v) => !v) } }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
   const proximoTema = tema === 'claro' ? 'escuro' : tema === 'escuro' ? 'sistema' : 'claro'
   const TemaIcon = tema === 'claro' ? Sun : tema === 'escuro' ? Moon : Monitor
   // Quem tem algo além da área pessoal (papel de gestão ou função adicional) pode conferir o portal como colaborador.
   const temFuncoes = useAcesso((x) => x.funcoes.length > 0)
   const podeAlternar = preview || real.papel !== 'colaborador' || temFuncoes
+  return {
+    tema, proximoTema, TemaIcon, trocarTema: () => definirTema(proximoTema),
+    preview, podeAlternar, alternarVisao: () => { setPreview(!preview); navigate('/') },
+    sair: () => { void sairCompleto().then(() => navigate('/login')) },
+  }
+}
+
+export function Topbar({ onAbrirMenu, entrada }: { onAbrirMenu: () => void; entrada?: boolean }) {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const user = useStore((s) => s.currentUser())
+  const niveis = useStore((s) => s.config.gamificacao.niveis)
+  useSincronizarNotifV2()
+  const { itens: notifs, naoLidas, marcar: marcarNotif, marcarTodas: marcarTodasLidas } = useNotificacoesUnificadas()
+  const [openBell, setOpenBell] = useState(false)
+  const [paleta, setPaleta] = useState(false)
+  const { tema, proximoTema, TemaIcon, trocarTema, preview, podeAlternar, alternarVisao, sair } = useConta()
+  const sino = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPaleta((v) => !v) } }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+  // Painel de notificações: fecha ao tocar/clicar fora ou com Esc. (Uma camada `fixed` aqui dentro ficaria presa à
+  // altura do cabeçalho, que tem backdrop-filter, e o toque fora atravessaria para a página.)
+  useEffect(() => {
+    if (!openBell) return
+    const fora = (e: PointerEvent) => { if (!sino.current?.contains(e.target as Node)) setOpenBell(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenBell(false) }
+    document.addEventListener('pointerdown', fora)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('pointerdown', fora); document.removeEventListener('keydown', esc) }
+  }, [openBell])
 
   const pontos = useStore((s) => s.pontosDe(user.id))
   const nivel = nivelDe(pontos, niveis)
@@ -56,7 +78,7 @@ export function Topbar({ onAbrirMenu, entrada }: { onAbrirMenu: () => void; entr
       <button onClick={onAbrirMenu} className="lg:hidden h-10 w-10 -ml-1 rounded-xl border border-line bg-surface flex items-center justify-center text-ink-2" aria-label="Abrir menu">
         <Menu className="h-5 w-5" />
       </button>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1 md:flex-initial">
         <nav aria-label="Você está em" className="hidden sm:flex items-center gap-1.5 text-[11.5px] text-muted font-medium truncate">
           <span>{grupo?.title ?? 'Portal 4JURIS'}</span>
           {detalhe && <><span aria-hidden>›</span><Link to={current!.to} className="hover:text-ink">{current!.label}</Link></>}
@@ -73,16 +95,16 @@ export function Topbar({ onAbrirMenu, entrada }: { onAbrirMenu: () => void; entr
 
       <div className="flex items-center gap-2 ml-auto shrink-0">
         <button type="button" onClick={() => setPaleta(true)} aria-label="Buscar" className="md:hidden h-10 w-10 rounded-xl border border-line bg-surface text-ink-2 flex items-center justify-center"><Search className="h-[18px] w-[18px]" /></button>
-        <button type="button" onClick={() => definirTema(proximoTema)} aria-label={`Tema: ${tema}. Mudar para ${proximoTema}`} title={`Tema: ${tema} (clique para ${proximoTema})`}
-          className="h-10 w-10 rounded-xl border border-line bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink flex items-center justify-center transition">
+        <button type="button" onClick={trocarTema} aria-label={`Tema: ${tema}. Mudar para ${proximoTema}`} title={`Tema: ${tema} (clique para ${proximoTema})`}
+          className="hidden sm:flex h-10 w-10 rounded-xl border border-line bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink items-center justify-center transition">
           <TemaIcon className="h-[18px] w-[18px]" />
         </button>
         {podeAlternar && (
           <button
-            onClick={() => { setPreview(!preview); navigate('/') }}
+            onClick={alternarVisao}
             title={preview ? 'Sair da visão de colaborador' : 'Ver o portal como colaborador'}
             aria-label={preview ? 'Sair da visão de colaborador' : 'Ver como colaborador'}
-            className={cn('flex items-center gap-2 h-10 px-2.5 sm:px-3 rounded-xl font-semibold text-[12.5px] border transition whitespace-nowrap shrink-0',
+            className={cn('hidden sm:flex items-center gap-2 h-10 px-2.5 sm:px-3 rounded-xl font-semibold text-[12.5px] border transition whitespace-nowrap shrink-0',
               preview ? 'bg-midnight text-white border-ink hover:bg-midnight-soft dark:bg-brand dark:border-brand' : 'bg-surface text-ink-2 border-line hover:bg-surface-2 hover:text-ink')}
           >
             {preview ? <EyeOff className="h-[17px] w-[17px]" /> : <Eye className="h-[17px] w-[17px]" />}
@@ -97,7 +119,7 @@ export function Topbar({ onAbrirMenu, entrada }: { onAbrirMenu: () => void; entr
           <span className="text-[10.5px] font-semibold bg-brand text-white rounded-full px-1.5 py-0.5">Nv {nivel.nivel}</span>
         </Link>
 
-        <div className="relative">
+        <div className="sm:relative" ref={sino}>
           <button
             onClick={() => setOpenBell((v) => !v)}
             aria-label={`Notificações${naoLidas ? ` (${naoLidas} não lidas)` : ''}`}
@@ -110,13 +132,13 @@ export function Topbar({ onAbrirMenu, entrada }: { onAbrirMenu: () => void; entr
 
           {openBell && (
             <>
-              <div className="fixed inset-0 z-40" onClick={() => setOpenBell(false)} />
-              <div className="absolute right-0 mt-2 w-[min(340px,calc(100vw-2rem))] bg-surface rounded-2xl shadow-lg border border-line z-50 animate-scale-in overflow-hidden">
+              {/* Celular: o painel ocupa a largura (ancorado no cabeçalho); a partir de sm: sob o sino. */}
+              <div className="absolute left-3 right-3 top-full mt-1 sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[340px] bg-surface rounded-2xl shadow-lg border border-line z-50 animate-scale-in overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-line">
                   <b className="text-[14px] text-ink">Notificações</b>
                   {naoLidas > 0 && <button onClick={marcarTodasLidas} className="text-[12px] font-semibold text-brand hover:underline">Marcar todas como lidas</button>}
                 </div>
-                <div className="max-h-[360px] overflow-y-auto">
+                <div className="max-h-[min(360px,calc(100dvh-180px))] overflow-y-auto overscroll-contain">
                   {notifs.length === 0 && <p className="text-[13px] text-muted p-5 text-center">Nenhuma notificação por enquanto.</p>}
                   {notifs.slice(0, 6).map((n) => (
                     <button
@@ -151,7 +173,7 @@ export function Topbar({ onAbrirMenu, entrada }: { onAbrirMenu: () => void; entr
           </div>
         </Link>
 
-        <button onClick={() => { void sairCompleto().then(() => navigate('/login')) }} title="Sair" aria-label="Sair" className="h-10 w-10 rounded-xl border border-line bg-surface text-muted hover:bg-danger-soft hover:text-danger flex items-center justify-center transition">
+        <button onClick={sair} title="Sair" aria-label="Sair" className="hidden sm:flex h-10 w-10 rounded-xl border border-line bg-surface text-muted hover:bg-danger-soft hover:text-danger items-center justify-center transition">
           <LogOut className="h-[18px] w-[18px]" />
         </button>
       </div>

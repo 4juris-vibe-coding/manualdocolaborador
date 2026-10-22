@@ -78,7 +78,7 @@ export default function InicioParceria() {
             <IndicadorCard titulo="Expiradas" valor={pendencias.length} icon="AlarmClockOff" tone="danger" definicao="Prazo de resposta vencido sem resposta." fonte="Avaliações de início de parceria" />
             <IndicadorCard titulo="Avaliadores com pendência" valor={new Set([...andamento, ...pendencias].map((a) => a.avaliadorId)).size} icon="UserCog" tone="ink" definicao="Pessoas responsáveis com ao menos uma avaliação pendente ou expirada." fonte="Avaliações de início de parceria" />
           </div>
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card><CardHead title="Respondidas por mês" /><div className="p-5"><ColunasMensais dados={serie12Meses(respondidas.map((a) => a.respondidaEm), hoje).slice(-6)} rotulo="Avaliações respondidas por mês" /></div></Card>
             <Card className="flex flex-col"><CardHead title="Nota média" sub="0–100" /><div className="p-5 flex-1 flex items-center justify-center"><RadialGauge valor={media} rotulo={`${respondidas.length} resposta(s)`} tamanho={150} /></div></Card>
             <Card><CardHead title="Encaminhamento" sub="Sinalizado por quem avaliou" /><div className="p-5"><DonutChart titulo="Encaminhamento" dados={(Object.keys(CONT) as (keyof typeof CONT)[]).map((k) => ({ rotulo: CONT[k].label, valor: respondidas.filter((a) => a.continuidade === k).length, cor: CONT[k].cor }))} /></div></Card>
@@ -100,7 +100,7 @@ function ConfigInicio() {
       <fieldset className="mt-5"><legend className="label">Marcos de avaliação</legend>
         <div className="flex flex-wrap gap-2">{MARCOS_OPCOES.map((m) => { const on = m.marcos.join() === c.marcos.join(); return <button key={m.label} type="button" aria-pressed={on} onClick={() => setC({ ...c, marcos: m.marcos })} className={cn('chip', on && 'chip-active')}>{m.label}</button> })}</div>
       </fieldset>
-      <div className="grid sm:grid-cols-2 gap-x-4 mt-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-4">
         <Field label="Gerar com antecedência de (dias)" htmlFor="ci-a"><input id="ci-a" type="number" min={0} className="input" value={c.antecedenciaDias} onChange={(e) => setC({ ...c, antecedenciaDias: Number(e.target.value) })} /></Field>
         <Field label="Prazo para responder após o marco (dias)" htmlFor="ci-p"><input id="ci-p" type="number" min={1} className="input" value={c.prazoRespostaDias} onChange={(e) => setC({ ...c, prazoRespostaDias: Number(e.target.value) })} /></Field>
       </div>

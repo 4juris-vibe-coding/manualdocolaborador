@@ -119,7 +119,7 @@ export default function Candidatar() {
 
               <Card className="p-5 sm:p-6 mb-5">
                 <h2 className="font-bold text-ink mb-4">Seus dados</h2>
-                <div className="grid sm:grid-cols-2 gap-x-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
                   <Field label="Nome completo" required erro={erros.nome} htmlFor="cand-nome" className="sm:col-span-2"><input id="cand-nome" autoComplete="name" className={cls('nome')} value={f.nome} onChange={(e) => set('nome', e.target.value)} {...ar('nome')} /></Field>
                   <Field label="E-mail" required erro={erros.email} htmlFor="cand-email"><input id="cand-email" type="email" autoComplete="email" className={cls('email')} value={f.email} onChange={(e) => set('email', e.target.value)} {...ar('email')} /></Field>
                   <Field label="Telefone / WhatsApp" required erro={erros.telefone} htmlFor="cand-tel"><input id="cand-tel" type="tel" autoComplete="tel" className={cls('telefone')} value={f.telefone} onChange={(e) => set('telefone', e.target.value)} {...ar('telefone')} /></Field>

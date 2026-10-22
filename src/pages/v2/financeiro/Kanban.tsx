@@ -2,7 +2,7 @@
    Colunas: aguardando → recebida → aprovada → paga, e recusada (devolvida).
    Mover um cartão chama o servidor, que executa as etapas do fluxo com as mesmas travas
    (nota própria, divergência com justificativa, segregação de funções). */
-import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge, Button, Callout, Card, EmptyState, Field, Icon, PageHeader, SearchBox, Select, TD, TH, Tabela, Tabs, Toggle } from '@/components/ui'
 import { Modal } from '@/components/Modal'
@@ -69,7 +69,7 @@ export default function KanbanNotas() {
 
   return (
     <>
-      <PageHeader title="Notas fiscais" subtitle="As notas de todos: quem já mandou, quem falta e em que pé está cada uma. Arraste o cartão para mudar a situação."
+      <PageHeader title="Notas fiscais" subtitle="As notas de todos: quem já mandou, quem falta e em que pé está cada uma. Arraste o cartão (no celular, toque e segure) ou use “Mover para…” para mudar a situação."
         actions={caps?.disparar && <>
           <Button variant="ghost" icon="CalendarClock" onClick={() => setAuto(true)}>Disparos automáticos</Button>
           <Button icon="Send" onClick={() => setDisparo({})}>Cobrar notas</Button>
@@ -107,9 +107,13 @@ export default function KanbanNotas() {
   )
 }
 
-/** Arrasto por ponteiro (mouse, trackpad e toque): o cartão segue o ponteiro e a coluna sob ele recebe a nota. */
+/** Arrasto por ponteiro (mouse, trackpad e toque): o cartão segue o ponteiro e a coluna sob ele recebe a nota.
+ *  No toque, o arrasto começa com um toque longo: deslizar o dedo continua rolando a página e o quadro normalmente. */
 interface Arrasto { c: Cartao; x: number; y: number; dx: number; dy: number; largura: number; ativo: boolean }
 const LIMIAR = 6 // px antes de virar arrasto (um clique continua sendo clique)
+const TOQUE_LONGO = 380 // ms parado antes de o cartão "descolar" no toque
+/** Enquanto um arrasto por toque está ativo, o dedo não rola a página (ver o touchmove não passivo no cartão). */
+let arrastoPorToque = false
 const podeArrastar = (c: Cartao, caps: Quadro['capacidades']) =>
   c.tipo === 'esperada' ? caps.registrar : caps.mover && DESTINOS[c.coluna].length > 0
 
@@ -122,22 +126,42 @@ function Quadro({ d, busca, abrir, mover, cobrar, registrar }: {
   const termo = busca.trim().toLowerCase()
   const visiveis = useMemo(() => d.cartoes.filter((c) => !termo || [c.pessoaNome, c.fornecedorNome, c.contratoNumero, c.numero].some((x) => x?.toLowerCase().includes(termo))), [d.cartoes, termo])
 
+  const rolagem = useRef<HTMLDivElement>(null)
   const colunaEm = (x: number, y: number): Coluna | null => (document.elementFromPoint(x, y)?.closest('[data-coluna]')?.getAttribute('data-coluna') as Coluna | null) ?? null
   const iniciar = (e: ReactPointerEvent<HTMLElement>, c: Cartao) => {
     if (e.button !== 0 || !podeArrastar(c, d.capacidades) || (e.target as HTMLElement).closest('button,a,select,input')) return
     const box = e.currentTarget.getBoundingClientRect()
     ref.current = { c, x: e.clientX, y: e.clientY, dx: e.clientX - box.left, dy: e.clientY - box.top, largura: box.width, ativo: false }
     const inicio = { x: e.clientX, y: e.clientY }
+    const toque = e.pointerType !== 'mouse'
+    // Toque: só vira arrasto se o dedo ficar parado TOQUE_LONGO ms; antes disso, mexer o dedo é rolagem.
+    const espera = toque ? setTimeout(() => {
+      const a = ref.current
+      if (!a) return
+      arrastoPorToque = true
+      navigator.vibrate?.(12)
+      ref.current = { ...a, ativo: true }
+      setArr(ref.current)
+      setSobre(colunaEm(a.x, a.y))
+    }, TOQUE_LONGO) : undefined
     const mov = (ev: PointerEvent) => {
       const a = ref.current
       if (!a) return
-      if (!a.ativo && Math.hypot(ev.clientX - inicio.x, ev.clientY - inicio.y) < LIMIAR) return
+      if (!a.ativo) {
+        if (Math.hypot(ev.clientX - inicio.x, ev.clientY - inicio.y) < LIMIAR) return
+        if (toque) { fim(ev); return } // mexeu antes do toque longo: é rolagem
+      }
       ev.preventDefault()
       ref.current = { ...a, x: ev.clientX, y: ev.clientY, ativo: true }
       setArr(ref.current)
       setSobre(colunaEm(ev.clientX, ev.clientY))
+      // Perto das bordas, o quadro rola sozinho (no celular as outras colunas ficam fora da tela).
+      const r = rolagem.current
+      if (r) { const b = r.getBoundingClientRect(); if (ev.clientX < b.left + 40) r.scrollLeft -= 14; else if (ev.clientX > b.right - 40) r.scrollLeft += 14 }
     }
     const fim = (ev: PointerEvent) => {
+      clearTimeout(espera)
+      arrastoPorToque = false
       window.removeEventListener('pointermove', mov)
       window.removeEventListener('pointerup', fim)
       window.removeEventListener('pointercancel', fim)
@@ -152,14 +176,15 @@ function Quadro({ d, busca, abrir, mover, cobrar, registrar }: {
   }
 
   return (
-    <div className={cn('overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-2', arr && 'select-none cursor-grabbing')}>
-      <div className="grid grid-cols-5 gap-3 min-w-[1100px]">
+    // Celular: uma coluna por tela (com a próxima aparecendo) e encaixe ao rolar. A partir de md: as 5 colunas lado a lado, como antes.
+    <div ref={rolagem} className={cn('overflow-x-auto overscroll-x-contain -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0 sm:scroll-px-0 pb-2', arr ? 'select-none cursor-grabbing' : 'snap-x snap-mandatory md:snap-none')}>
+      <div className="grid grid-flow-col auto-cols-[minmax(250px,84%)] sm:auto-cols-[minmax(260px,46%)] md:grid-flow-row md:auto-cols-auto md:grid-cols-5 gap-3 md:min-w-[1100px]">
         {COLUNAS.map((col) => {
           const cs = visiveis.filter((c) => c.coluna === col.chave)
           const alvoValido = !!arr && DESTINOS[arr.c.coluna].includes(col.chave)
           return (
             <section key={col.chave} aria-label={col.titulo} data-coluna={col.chave}
-              className={cn('rounded-2xl bg-surface-2 border border-line border-t-4 flex flex-col min-h-[320px] transition', col.tom,
+              className={cn('snap-start rounded-2xl bg-surface-2 border border-line border-t-4 flex flex-col min-h-[320px] transition', col.tom,
                 alvoValido && 'ring-2 ring-brand/30', alvoValido && sobre === col.chave && 'ring-brand bg-brand-50', arr && !alvoValido && arr.c.coluna !== col.chave && 'opacity-60')}>
               <header className="px-3.5 pt-3 pb-2">
                 <div className="flex items-center justify-between gap-2">
@@ -193,9 +218,19 @@ function CartaoNota({ c, caps, abrir, mover, cobrar, registrar, onPointerDown, a
 }) {
   const destinos = DESTINOS[c.coluna].filter((x) => c.tipo === 'nota' || x === 'recebida')
   const arrastavel = podeArrastar(c, caps)
+  // touchmove não passivo (o do React é passivo): durante o arrasto por toque, o dedo move o cartão em vez de rolar.
+  const el = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const a = el.current
+    if (!a || !arrastavel || fantasma) return
+    const mover = (e: TouchEvent) => { if (arrastoPorToque) e.preventDefault() }
+    a.addEventListener('touchmove', mover, { passive: false })
+    return () => a.removeEventListener('touchmove', mover)
+  }, [arrastavel, fantasma])
   return (
-    <article onPointerDown={onPointerDown} title={arrastavel && !fantasma ? 'Arraste para outra coluna' : undefined}
-      className={cn('bg-surface rounded-xl border border-line p-3 shadow-xs text-[12.5px] touch-pan-y', arrastavel && 'cursor-grab hover:border-brand hover:shadow-sm', arrastando && 'opacity-30', fantasma && 'border-brand')}>
+    <article ref={el} onPointerDown={onPointerDown} title={arrastavel && !fantasma ? 'Arraste para outra coluna' : undefined}
+      onContextMenu={arrastavel ? (e) => { if (arrastoPorToque || e.nativeEvent instanceof PointerEvent && e.nativeEvent.pointerType === 'touch') e.preventDefault() } : undefined}
+      className={cn('bg-surface rounded-xl border border-line p-3 shadow-xs text-[12.5px] [-webkit-touch-callout:none]', arrastavel && 'cursor-grab hover:border-brand hover:shadow-sm', arrastando && 'opacity-30', fantasma && 'border-brand')}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-semibold text-ink truncate">{c.pessoaNome ?? 'Sem responsável'}</p>
@@ -268,7 +303,7 @@ function MoverModal({ cartao: c, destino, segregacao, fechar, feito }: { cartao:
         {destino === 'paga' && <>
           {segregacao && <Callout tone="neutral" icon="ShieldCheck">Segregação de funções ligada: se foi você quem aprovou o serviço, outra pessoa precisa autorizar o pagamento.</Callout>}
           <p className="text-[13px] text-ink-2">Registre o pagamento feito no banco. O valor é o líquido (bruto menos retenções) e as retenções aplicadas por regra são marcadas como revisadas por você.</p>
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Data do pagamento" required htmlFor="mv-data"><input id="mv-data" type="date" className="input" value={data} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setData(e.target.value)} /></Field>
             <Field label="Forma" htmlFor="mv-forma"><select id="mv-forma" className="input" value={forma} onChange={(e) => setForma(e.target.value)}>{FORMAS_PAGAMENTO.map((x) => <option key={x} value={x}>{ROTULO_FORMA[x]}</option>)}</select></Field>
           </div>
@@ -295,7 +330,7 @@ function RegistrarNotaModal({ cartao: c, comp, fechar, feito }: { cartao: Cartao
     <Modal open onClose={fechar} title="Registrar nota recebida" subtitle={`${c.pessoaNome ?? c.fornecedorNome} · ${c.contratoNumero} · ${competenciaBR(comp)}`}
       footer={<><Button variant="ghost" onClick={fechar}>Cancelar</Button><Button disabled={enviando || !v.numero.trim() || !arquivo || !Number(v.valorBruto.replace(',', '.'))} onClick={enviar}>{enviando ? 'Enviando…' : 'Registrar'}</Button></>}>
       <p className="text-[13px] text-ink-2 mb-3">Use quando a nota chegou por outro canal (e-mail, WhatsApp). Ela entra em "Recebida" para conferência.</p>
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Número da NF" required htmlFor="rn-num"><input id="rn-num" className="input" value={v.numero} onChange={(e) => setV({ ...v, numero: e.target.value })} /></Field>
         <Field label="Série" htmlFor="rn-serie"><input id="rn-serie" className="input" value={v.serie} onChange={(e) => setV({ ...v, serie: e.target.value })} /></Field>
         <Field label="Emissão" required htmlFor="rn-em"><input id="rn-em" type="date" className="input" value={v.dataEmissao} onChange={(e) => setV({ ...v, dataEmissao: e.target.value })} /></Field>

@@ -62,10 +62,10 @@ export default function Sugestoes() {
         <Select label="Categoria" value={cat} onChange={setCat}><option value="">Todas as categorias</option>{CATEGORIAS_SUG.map((c) => <option key={c}>{c}</option>)}</Select>
         <Select label="Ordenar" value={ordem} onChange={(v) => setOrdem(v as 'apoios' | 'recentes')}><option value="apoios">Mais apoiadas</option><option value="recentes">Mais recentes</option></Select>
         <label className="flex items-center gap-2 text-[12.5px] text-ink-2 cursor-pointer select-none"><input type="checkbox" className="h-4 w-4 accent-brand" checked={soMinhas} onChange={(e) => setSoMinhas(e.target.checked)} />Só as minhas</label>
-        {moderador && <span className="text-[12px] text-muted ml-auto flex items-center gap-1.5"><Icon name="MousePointerClick" className="h-4 w-4 text-brand" />Como moderador(a), arraste os cartões entre as colunas.</span>}
+        {moderador && <span className="text-[12px] text-muted ml-auto flex items-center gap-1.5"><Icon name="MousePointerClick" className="h-4 w-4 text-brand" /><span className="toque:hidden">Como moderador(a), arraste os cartões entre as colunas.</span><span className="hidden toque:inline">Como moderador(a), mude a coluna pelo seletor de cada cartão.</span></span>}
       </div>
 
-      <div className="grid md:grid-cols-3 gap-4 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
         {COLUNAS.map((col) => {
           const cards = lista.filter((x) => x.status === col.key)
           return (

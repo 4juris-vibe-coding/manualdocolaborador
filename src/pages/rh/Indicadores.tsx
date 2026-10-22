@@ -102,7 +102,7 @@ export default function Indicadores() {
         {pessoas.map((i) => <IndicadorCard key={i.id} titulo={i.titulo} valor={i.valor} definicao={i.definicao} fonte={i.fonte} detalhe={i.detalhe} icon={ICON_IND[i.id]?.[0]} tone={ICON_IND[i.id]?.[1]} />)}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <Card>
           <CardHead title="Parcerias ativas por área" sub={`Em ${fmtDate(filtro.fim)}`} />
           <div className="p-5"><BarList itens={dist.map((d) => ({ rotulo: d.nome, valor: d.qtd, cor: d.cor }))} /></div>
@@ -117,7 +117,7 @@ export default function Indicadores() {
         </Card>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <Card><CardHead title="Novas parcerias por mês" sub="Últimos 6 meses até o fim do período" /><div className="p-5"><ColunasMensais dados={serieInicios} rotulo="Novas parcerias por mês" /></div></Card>
         <Card><CardHead title="Encerramentos por mês" sub="Últimos 6 meses até o fim do período" /><div className="p-5"><ColunasMensais dados={serieEnc} rotulo="Encerramentos por mês" /></div></Card>
       </div>
@@ -130,7 +130,7 @@ export default function Indicadores() {
         <IndicadorCard titulo="Itens pendentes do RH" valor={onb.pendRH} icon="ClipboardList" tone="warning" definicao="Itens sob responsabilidade do RH ainda não concluídos nas integrações em andamento." fonte="Checklists de integração" />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div>
           <h2 className="text-[13px] font-bold uppercase tracking-wide text-muted mb-3">Eventos e cultura</h2>
           <div className="grid grid-cols-2 gap-4 mb-4">
@@ -187,7 +187,7 @@ function AvisosRH() {
   return (
     <Card className="mb-8 no-print">
       <CardHead title="Central de avisos" sub="O que precisa de ação do RH agora" />
-      <ul className="grid sm:grid-cols-2 xl:grid-cols-3">
+      <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
         {avisos.map((a) => (
           <li key={a.t}><Link to={a.to} className="flex items-center gap-3 px-5 py-3.5 hover:bg-surface-2 border-b border-line">
             <span className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${cor[a.tone]}`}><Icon name={a.icon} className="h-5 w-5" /></span>

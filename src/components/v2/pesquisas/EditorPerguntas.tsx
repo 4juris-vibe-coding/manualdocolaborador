@@ -88,7 +88,7 @@ export function EditorPerguntas({ perguntas, onChange, desabilitado }: Props) {
               </div>
               {expandida && (
                 <fieldset disabled={desabilitado} className="border-0 px-4 sm:px-5 pb-5 pt-1 border-t border-line">
-                  <div className="grid gap-x-4 sm:grid-cols-[1fr_220px] pt-4">
+                  <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-[1fr_220px] pt-4">
                     <Field label="Enunciado" required erro={erro && !p.texto.trim() ? erro : undefined}>
                       <input className="input" value={p.texto} maxLength={500} onChange={(e) => atualizar(i, { texto: e.target.value })} />
                     </Field>
@@ -124,7 +124,7 @@ export function EditorPerguntas({ perguntas, onChange, desabilitado }: Props) {
                   )}
                   {erro && p.tipo === 'escala' && /escala/i.test(erro) && <p className="text-[11.5px] text-danger -mt-2 mb-3" role="alert">{erro}</p>}
 
-                  <div className="grid gap-x-4 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
                     <Field label="Dimensão de análise (opcional)" hint="Agrupa perguntas parecidas nos resultados, ex.: Liderança.">
                       <input className="input" maxLength={60} value={p.dimensao ?? ''} onChange={(e) => atualizar(i, { dimensao: e.target.value || undefined })} />
                     </Field>
@@ -144,7 +144,7 @@ export function EditorPerguntas({ perguntas, onChange, desabilitado }: Props) {
                           : <Button size="sm" variant="subtle" icon="X" onClick={() => atualizar(i, { condicao: undefined })}>Remover condição</Button>}
                     </div>
                     {p.condicao && (
-                      <div className="grid gap-2 mt-3 sm:grid-cols-[1fr_190px_1fr] items-end">
+                      <div className="grid grid-cols-1 gap-2 mt-3 sm:grid-cols-[1fr_190px_1fr] items-end">
                         <Field label="Mostrar se a pergunta" className="!mb-0">
                           <Dropdown className="input" value={p.condicao.perguntaId} onChange={(e) => atualizar(i, { condicao: { ...p.condicao!, perguntaId: e.target.value, valor: undefined } })}>
                             {!origem && <option value={p.condicao.perguntaId}>(pergunta indisponível)</option>}

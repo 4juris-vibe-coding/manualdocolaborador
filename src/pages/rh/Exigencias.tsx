@@ -102,7 +102,7 @@ export function ExigenciaForm({ e, onClose, pessoaFixa }: { e?: Exigencia; onClo
   return (
     <Modal open onClose={onClose} wide title={e ? 'Editar exigência' : 'Nova exigência'} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Check" type="submit" form="exForm">Salvar</Button></>}>
       <form id="exForm" onSubmit={salvar}>
-        <div className="grid sm:grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           {!pessoaFixa && <Field label="Pessoa" required htmlFor="ex-p"><Dropdown id="ex-p" name="colaboradorId" className="input" defaultValue={e?.colaboradorId ?? ''} required><option value="" disabled>Selecione…</option>{s.colaboradores.filter((c) => c.status !== 'encerrado').map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</Dropdown></Field>}
           <Field label="Tipo" htmlFor="ex-t"><Dropdown id="ex-t" name="tipo" className="input" defaultValue={e?.tipo ?? 'Certificação técnica'}>{TIPOS_EXIGENCIA.map((t) => <option key={t}>{t}</option>)}</Dropdown></Field>
           <Field label="Descrição" required htmlFor="ex-d" className="sm:col-span-2"><input id="ex-d" name="descricao" className="input" defaultValue={e?.descricao} /></Field>

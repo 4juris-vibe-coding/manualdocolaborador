@@ -74,7 +74,7 @@ export default function Competencias() {
       {tab === 'grupos' && (
         <>
           <div className="flex justify-end mb-3"><Toggle checked={verArquivados} onChange={setVerArquivados} label="Mostrar arquivados" /></div>
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {s.gruposCompetencia.filter((g) => verArquivados || g.ativo).map((g) => (
               <Card key={g.id} className={cn('p-5', !g.ativo && 'opacity-60')}>
                 <div className="flex items-start justify-between gap-2"><h3 className="text-[15px] font-bold text-ink">{g.nome}</h3><Badge tone={g.categoria9box === 'nenhuma' ? 'neutral' : 'brand'}>{CAT9[g.categoria9box]}</Badge></div>
@@ -92,7 +92,7 @@ export default function Competencias() {
       )}
 
       {tab === 'funcoes' && (
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {s.cargos.map((g) => {
             const comps = s.competencias.filter((c) => c.ativo && (c.cargoIds.includes(g.id) || c.cargoIds.length === 0))
             return (
@@ -122,7 +122,7 @@ function CompetenciaForm({ c, onClose }: { c?: Competencia; onClose: () => void 
   const salvar = () => { if (feedback(s.salvarCompetencia({ ...f, nome: f.nome.trim(), cargoIds: todas ? [] : f.cargoIds }, c?.id), c ? 'Competência atualizada.' : 'Competência criada.')) onClose() }
   return (
     <Modal open onClose={onClose} wide title={c ? 'Editar competência' : 'Nova competência'} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Check" onClick={salvar}>Salvar</Button></>}>
-      <div className="grid sm:grid-cols-2 gap-x-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
         <Field label="Nome" required htmlFor="cp-n"><input id="cp-n" className="input" value={f.nome} onChange={(e) => setF({ ...f, nome: e.target.value })} /></Field>
         <Field label="Grupo" htmlFor="cp-g"><Dropdown id="cp-g" className="input" value={f.grupoId} onChange={(e) => setF({ ...f, grupoId: e.target.value })}>{s.gruposCompetencia.filter((g) => g.ativo || g.id === f.grupoId).map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}</Dropdown></Field>
         <Field label="Usada em" htmlFor="cp-t"><Dropdown id="cp-t" className="input" value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value as TipoAvaliacaoCompetencia })}>{Object.entries(TIPO_COMP).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Dropdown></Field>
@@ -131,7 +131,7 @@ function CompetenciaForm({ c, onClose }: { c?: Competencia; onClose: () => void 
       </div>
       <Toggle checked={todas} onChange={setTodas} label="Vale para todas as funções" />
       {!todas && (
-        <div className="mt-3 grid sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto rounded-xl border border-line p-2">
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto rounded-xl border border-line p-2">
           {s.cargos.map((g) => { const on = f.cargoIds.includes(g.id); return <label key={g.id} className={cn('flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer text-[13px]', on ? 'bg-brand-50' : 'hover:bg-surface-2')}><input type="checkbox" className="h-4 w-4 accent-brand" checked={on} onChange={() => setF({ ...f, cargoIds: on ? f.cargoIds.filter((x) => x !== g.id) : [...f.cargoIds, g.id] })} />{g.nome} <span className="text-[11px] text-muted">· {s.setorNome(g.setorId)}</span></label> })}
         </div>
       )}

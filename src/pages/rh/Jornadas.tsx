@@ -38,7 +38,7 @@ export default function Jornadas() {
             {(['todos', 'integracao', 'encerramento'] as const).map((t) => <button key={t} type="button" aria-pressed={tipo === t} onClick={() => setTipo(t)} className={`chip ${tipo === t ? 'chip-active' : ''}`}>{t === 'todos' ? 'Todos' : t === 'integracao' ? 'Integração' : 'Encerramento'}</button>)}
           </div>
           {procs.length === 0 ? <Card><EmptyState icon="ListChecks" title="Nenhum processo" desc={tab === 'andamento' ? 'Inicie a integração de uma nova parceria.' : 'Processos concluídos aparecem aqui.'} /></Card> : (
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {procs.map((p) => {
                 const c = s.pessoa(p.colaboradorId)
                 const pr = progresso(p)
@@ -76,7 +76,7 @@ export default function Jornadas() {
       )}
 
       {tab === 'modelos' && (
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {s.checklists.map((m) => (
             <Card key={m.id}>
               <CardHead title={m.nome} sub={`${m.tipo === 'integracao' ? 'Integração' : 'Encerramento'} · ${m.itens.length} itens`}
@@ -119,7 +119,7 @@ function ModeloModal({ m, onClose }: { m?: ChecklistModelo; onClose: () => void 
   return (
     <Modal open onClose={onClose} wide title={m ? 'Editar checklist' : 'Novo checklist'} subtitle="Alterações valem para novos processos; os em andamento mantêm os itens originais."
       footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Check" onClick={() => { if (feedback(s.salvarChecklistModelo({ nome: nome.trim(), tipo, itens: itens.map((i) => ({ ...i, titulo: i.titulo.trim() })) }, m?.id), 'Checklist salvo.')) onClose() }}>Salvar</Button></>}>
-      <div className="grid sm:grid-cols-[1fr_200px] gap-x-4">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_200px] gap-x-4">
         <Field label="Nome" required htmlFor="cm-n"><input id="cm-n" className="input" value={nome} onChange={(e) => setNome(e.target.value)} /></Field>
         <Field label="Tipo" htmlFor="cm-t"><Dropdown id="cm-t" className="input" value={tipo} onChange={(e) => setTipo(e.target.value as TipoJornada)}><option value="integracao">Integração</option><option value="encerramento">Encerramento</option></Dropdown></Field>
       </div>

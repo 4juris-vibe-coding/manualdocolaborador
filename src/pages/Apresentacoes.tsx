@@ -267,11 +267,11 @@ function NovaModal({ onClose, onCriada }: { onClose: () => void; onCriada: (id: 
       <form id="novaApForm" onSubmit={criar} noValidate>
         <Field label="Título" required htmlFor="ap-t"><input id="ap-t" className="input" value={titulo} maxLength={80} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex.: Resultados do 3º trimestre" /></Field>
         <fieldset><legend className="label">Modelo</legend>
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
               <div className="flex items-center gap-2 mb-2"><span className="text-[13px] font-bold text-ink">Editor livre · 4JURIS Day</span><Badge tone="brand">Recomendado</Badge></div>
               <p className="text-[12px] text-muted mb-3">Edite direto no slide, com fotos, cores da marca, PDF e imagem (PNG). Escolha um ponto de partida:</p>
-              <div className="grid sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {MODELOS_EDITOR_LIVRE.map((mo) => {
                   const id = `${MODELO_EDITOR_LIVRE}:${mo.id}`
                   return (

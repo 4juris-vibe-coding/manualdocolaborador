@@ -29,7 +29,7 @@ export default function Avaliacoes() {
         actions={<Button icon="Plus" onClick={() => setWizard({ aberto: true })}>Solicitar avaliação</Button>} />
       <Callout tone="neutral" icon="Scale" className="mb-5">Os resultados apoiam conversas de alinhamento da prestação de serviços. Nenhuma decisão contratual deve ser tomada automaticamente a partir das notas.</Callout>
       {s.ciclos.length === 0 ? <Card><EmptyState icon="ClipboardCheck" title="Nenhum ciclo criado" action={<Button icon="Plus" onClick={() => setWizard({ aberto: true })}>Solicitar avaliação</Button>} /></Card> : (
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {s.ciclos.map((c) => {
             const parts = s.participantesCiclo.filter((p) => p.cicloId === c.id)
             const resp = s.respostasAvaliacao.filter((r) => r.cicloId === c.id).length
@@ -108,14 +108,14 @@ function Wizard({ id: idInicial, onClose }: { id?: string; onClose: () => void }
         <>
           <Field label="Nome da avaliação" required htmlFor="cv-n"><input id="cv-n" className="input" value={f.nome} onChange={(e) => set({ nome: e.target.value })} placeholder="Ex.: Alinhamento do semestre" /></Field>
           <Field label="Descrição" htmlFor="cv-d"><textarea id="cv-d" rows={2} className="input !h-auto py-2.5" value={f.descricao} onChange={(e) => set({ descricao: e.target.value })} /></Field>
-          <div className="grid sm:grid-cols-2 gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Field label="Abertura" required htmlFor="cv-a"><input id="cv-a" type="date" className="input" value={f.abertura} onChange={(e) => set({ abertura: e.target.value })} /></Field>
             <Field label="Encerramento" required htmlFor="cv-e"><input id="cv-e" type="date" className="input" value={f.encerramento} min={f.abertura} onChange={(e) => set({ encerramento: e.target.value })} /></Field>
           </div>
         </>
       )}
       {etapa === 2 && (
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <Field label="Níveis da escala"><div className="flex gap-2">{([5, 4] as const).map((n) => <button key={n} type="button" aria-pressed={f.niveisEscala === n} onClick={() => set({ niveisEscala: n })} className={cn('chip', f.niveisEscala === n && 'chip-active')}>{n} níveis</button>)}</div></Field>
             <Field label="Rótulos sugeridos" htmlFor="cv-r"><Dropdown id="cv-r" className="input" value={f.rotuloEscala} onChange={(e) => set({ rotuloEscala: e.target.value as RotuloEscala })}>{(Object.keys(ROTULOS_ESCALA) as RotuloEscala[]).map((k) => <option key={k} value={k}>{ROTULOS_ESCALA[k].titulo}</option>)}</Dropdown></Field>
@@ -135,7 +135,7 @@ function Wizard({ id: idInicial, onClose }: { id?: string; onClose: () => void }
       {etapa === 3 && (
         <>
           <fieldset className="mb-4"><legend className="label">Tipo de relação</legend>
-            <div className="grid sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {(Object.keys(TIPO_RELACAO_INFO) as TipoRelacaoAvaliacao[]).map((k) => (
                 <button key={k} type="button" aria-pressed={f.tipoRelacao === k} onClick={() => set({ tipoRelacao: k })} className={cn('text-left rounded-xl border p-3 transition', f.tipoRelacao === k ? 'border-brand bg-brand-50' : 'border-line hover:border-line-strong')}>
                   <div className="text-[13.5px] font-bold text-ink">{TIPO_RELACAO_INFO[k].titulo}</div><div className="text-[12px] text-muted">{TIPO_RELACAO_INFO[k].desc}</div>
@@ -144,7 +144,7 @@ function Wizard({ id: idInicial, onClose }: { id?: string; onClose: () => void }
             </div>
           </fieldset>
           <Toggle checked={!!f.autoavaliacao} onChange={(v) => set({ autoavaliacao: v })} label="Incluir autoavaliação" />
-          <div className="grid sm:grid-cols-3 gap-x-4 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 mt-4">
             <Field label="Parcerias iniciadas até" htmlFor="cv-ia" hint="Opcional"><input id="cv-ia" type="date" className="input" value={f.iniciadosAte ?? ''} onChange={(e) => set({ iniciadosAte: e.target.value || undefined })} /></Field>
             <Field label="Recorte da estrutura" htmlFor="cv-ne"><Dropdown id="cv-ne" className="input" value={f.nivelEstrutura ?? ''} onChange={(e) => set({ nivelEstrutura: (e.target.value || undefined) as CicloAvaliativo['nivelEstrutura'], opcaoEstruturaId: undefined })}><option value="">Toda a comunidade</option><option value="unidade">Unidade</option><option value="area">Área</option><option value="funcao">Função</option></Dropdown></Field>
             {f.nivelEstrutura && <Field label="Qual" htmlFor="cv-oe"><Dropdown id="cv-oe" className="input" value={f.opcaoEstruturaId ?? ''} onChange={(e) => set({ opcaoEstruturaId: e.target.value || undefined })}><option value="">Selecione…</option>{opcoesEstrutura.map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}</Dropdown></Field>}
@@ -226,7 +226,7 @@ function PainelCiclo({ c, onVoltar }: { c: CicloAvaliativo; onVoltar: () => void
       <Tabs tabs={[{ key: 'participacao', label: 'Participação' }, { key: 'geral', label: 'Relatório geral' }, { key: 'individual', label: 'Relatórios individuais' }]} active={tab} onChange={setTab} />
 
       {tab === 'participacao' && (
-        <div className="grid lg:grid-cols-[260px_1fr] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
           <Card className="p-5 flex flex-col items-center justify-center self-start">
             <RadialGauge valor={parts.length ? Math.round((resps.length / parts.length) * 100) : 0} rotulo={`${resps.length} de ${parts.length} respondidas`} tamanho={150} />
             <div className="text-[12px] text-muted mt-3 text-center">{avaliadores.filter((a) => parts.some((p) => p.avaliadorId === a && !respondido(p.id))).length} avaliador(es) com pendência</div>
@@ -253,7 +253,7 @@ function PainelCiclo({ c, onVoltar }: { c: CicloAvaliativo; onVoltar: () => void
 
       {tab === 'geral' && (
         <div className="space-y-6">
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card><CardHead title="Média por competência" sub={`Escala de 1 a ${c.niveisEscala}, sem autoavaliação`} /><div className="p-5">
               <BarList total={c.niveisEscala} itens={compsGerais.map((comp) => {
                 const v = resps.filter((r) => { const p = parts.find((x) => x.id === r.participanteId); return p && p.avaliadorId !== p.avaliadoId }).map((r) => r.notas[comp.id]).filter((n) => n != null)
@@ -310,7 +310,7 @@ export function ResultadoIndividualCard({ c, avaliadoId }: { c: CicloAvaliativo;
   const r = resultadoIndividual(avaliadoId, c, s.participantesCiclo, s.respostasAvaliacao, competenciasDe(p, s.competencias, 'desempenho'), responsaveisDe(p, s.colaboradores, s.setores))
   const REL = { responsavel: 'Responsável', autoavaliacao: 'Autoavaliação', pares_e_outros: 'Pares e outros' }
   return (
-    <div className="grid lg:grid-cols-[280px_1fr] gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
       <Card className="p-5 self-start">
         <div className="flex items-center gap-3 mb-4"><Avatar nome={p.nome} cor={p.avatarCor} size="md" /><div><Link to={`/rh/pessoas/${p.id}`} className="font-semibold text-ink hover:text-brand">{p.nome}</Link><div className="text-[12px] text-muted">{s.cargoNome(p.cargoId)}</div></div></div>
         <RadialGauge valor={r.nota} rotulo="Nota geral (0–100)" tamanho={140} />

@@ -54,7 +54,7 @@ function FaturamentoDemo() {
         <IndicadorCard titulo="Em análise" valor={brl(f.emAnalise)} icon="Send" tone="brand" definicao="Notas enviadas aguardando aprovação." fonte="Central de notas fiscais" />
         <IndicadorCard titulo="Reembolsos" valor={brl(f.reembolsos)} detalhe={`${brl(f.reembolsosPagos)} pagos`} icon="ReceiptText" tone="ink" definicao="Reembolsos não recusados com data de despesa nas competências." fonte="Central de reembolsos" />
       </div>
-      <div className="grid lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <Card><CardHead title="Por área" /><div className="p-5"><BarList itens={f.porArea.map((a) => ({ rotulo: a.rotulo, valor: Math.round(a.valor), cor: a.cor, sufixo: '' }))} /></div></Card>
         <Card><CardHead title="Por competência" />
           <Tabela minWidth={480}>

@@ -159,7 +159,7 @@ function Mes({ refDia, hoje, eventos, extrasDoDia, onAbrir, onMais, onCriar }: {
                 className={cn('h-7 min-w-7 px-1 rounded-full text-[12.5px] font-bold flex items-center justify-center transition outline-none focus-visible:ring-2 focus-visible:ring-brand',
                   ehHoje ? 'bg-brand text-white shadow-sm' : fora ? 'text-muted/70 hover:bg-surface-2' : 'text-ink-2 hover:bg-surface-2')}>{dataDe(dia).getDate()}</button>
               {onCriar && <button type="button" onClick={() => onCriar(dia)} aria-label="Criar neste dia"
-                className="h-6 w-6 rounded-md text-muted opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-surface-2 hover:text-brand flex items-center justify-center transition outline-none focus-visible:ring-2 focus-visible:ring-brand"><Icon name="Plus" className="h-3.5 w-3.5" /></button>}
+                className="h-6 w-6 rounded-md text-muted opacity-0 group-hover:opacity-100 focus-visible:opacity-100 toque:opacity-100 hover:bg-surface-2 hover:text-brand flex items-center justify-center transition outline-none focus-visible:ring-2 focus-visible:ring-brand"><Icon name="Plus" className="h-3.5 w-3.5" /></button>}
             </div>
             <div className={cn('space-y-[3px] min-w-0', fora && 'opacity-60')}>
               {evs.slice(0, visiveis).map((e) => <ChipEvento key={e.id} e={e} dia={dia} onAbrir={onAbrir} />)}

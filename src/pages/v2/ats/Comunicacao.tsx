@@ -77,7 +77,7 @@ function Modelos() {
       <Callout tone="neutral" icon="Info" className="mb-4">Variáveis disponíveis: <code>{'{{nome}}'}</code>, <code>{'{{vaga}}'}</code>, <code>{'{{etapa}}'}</code>, <code>{'{{empresa}}'}</code>, <code>{'{{data_entrevista}}'}</code>, <code>{'{{local_entrevista}}'}</code>, <code>{'{{link_acompanhamento}}'}</code>.</Callout>
       <Aguardar r={r}>
         {(d) => (
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {d.itens.map((t) => (
               <Card key={t.chave} className="p-5">
                 <h3 className="font-bold text-ink">{t.nome}</h3>

@@ -79,7 +79,7 @@ export default function Metas() {
       <Modal open={form.aberto} onClose={() => setForm({ aberto: false })} title={form.o ? 'Editar meta' : 'Nova meta'} footer={<><Button variant="ghost" onClick={() => setForm({ aberto: false })}>Cancelar</Button><Button icon="Check" type="submit" form="metaForm">Salvar</Button></>}>
         {form.aberto && (
           <form id="metaForm" onSubmit={salvar}>
-            <div className="grid sm:grid-cols-[140px_1fr] gap-x-4">
+            <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-x-4">
               <Field label="Código" htmlFor="mt-c"><input id="mt-c" name="codigo" className="input" defaultValue={form.o?.codigo} placeholder="OBJ-001" /></Field>
               <Field label="Nome da meta" required htmlFor="mt-t"><input id="mt-t" name="titulo" className="input" defaultValue={form.o?.titulo} required /></Field>
             </div>

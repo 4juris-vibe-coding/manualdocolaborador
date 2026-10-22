@@ -1,7 +1,7 @@
 /* Peças compartilhadas das telas de gestão de prestadores PJ (financeiro). */
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Button, Field, Icon } from '@/components/ui'
+import { Button, Field, Icon, quebraMoeda } from '@/components/ui'
 import { Modal } from '@/components/Modal'
 import { StatusBadge } from '@/components/v2/StatusBadge'
 import { api, lerBase64, useApi, type Remoto } from '@/data/v2/api'
@@ -116,7 +116,7 @@ export function Indicador({ titulo, valor, definicao, link, tom = 'neutral' }: {
   const corpo = (
     <div className={cn('card p-4 h-full transition', link && 'hover:border-brand')}>
       <div className="text-[12px] font-semibold text-muted">{titulo}</div>
-      <div className={cn('text-[22px] font-bold tabular-nums mt-1', tom === 'danger' ? 'text-danger' : tom === 'warning' ? 'text-warning' : tom === 'success' ? 'text-success' : 'text-ink')}>{valor}</div>
+      <div className={cn('text-[clamp(17px,5.2vw,22px)] sm:text-[22px] font-bold tabular-nums mt-1 leading-tight [overflow-wrap:anywhere]', tom === 'danger' ? 'text-danger' : tom === 'warning' ? 'text-warning' : tom === 'success' ? 'text-success' : 'text-ink')}>{quebraMoeda(valor)}</div>
       <p className="text-[11.5px] text-muted mt-1.5 leading-snug" title={definicao}>{definicao}</p>
     </div>
   )

@@ -52,16 +52,16 @@ export default function NotasFinanceiro({ embutido = false }: { embutido?: boole
           <Aguardar r={r} linhas={5} vazio={(d) => d.total ? null : <Card><EmptyState icon="FileText" title={aba === 'pendentes' ? 'Nada aguardando você' : 'Nenhuma nota encontrada'} /></Card>}>
             {(d) => (
               <Card className="overflow-hidden">
-                <Tabela minWidth={900}>
+                <Tabela minWidth={900} cartoes>
                   <thead><tr><th className={TH}>Nota</th><th className={TH}>Fornecedor / contrato</th><th className={TH}>Competência</th><th className={TH}>Valor bruto</th><th className={TH}>Situação</th><th className={TH}>Pagamento</th></tr></thead>
                   <tbody>{d.itens.map((n) => (
                     <tr key={n.id} className="hover:bg-surface-2 cursor-pointer" onClick={() => f.definir('nota', n.id)}>
                       <td className={TD}><button className="font-semibold text-ink hover:text-brand text-left" onClick={(e) => { e.stopPropagation(); f.definir('nota', n.id) }}>{n.numero}{n.serie ? `/${n.serie}` : ''}</button><div className="text-[11.5px] text-muted">emitida {dataBR(n.dataEmissao)}{n.reenvios ? ` · ${n.reenvios} reenvio(s)` : ''}</div></td>
-                      <td className={TD}>{n.fornecedorNome}<div className="text-[11.5px] text-muted">{n.contratoNumero ?? 'sem contrato (importada)'}</div></td>
-                      <td className={`${TD} capitalize`}>{competenciaBR(n.competencia)}</td>
-                      <td className={`${TD} tabular-nums`}>{dinheiro(n.valorBruto)}</td>
-                      <td className={TD}><div className="flex flex-col items-start gap-1"><BadgeNota valor={n.status} />{n.divergencias.length > 0 && ['recebida', 'conferida'].includes(n.status) && <Badge tone="warning">{n.divergencias.length} divergência(s)</Badge>}</div></td>
-                      <td className={TD}>{n.contaStatus ? <BadgeConta valor={n.contaStatus} /> : '—'}</td>
+                      <td className={TD} data-rotulo="Fornecedor / contrato">{n.fornecedorNome}<div className="text-[11.5px] text-muted">{n.contratoNumero ?? 'sem contrato (importada)'}</div></td>
+                      <td className={`${TD} capitalize`} data-rotulo="Competência">{competenciaBR(n.competencia)}</td>
+                      <td className={`${TD} tabular-nums`} data-rotulo="Valor bruto">{dinheiro(n.valorBruto)}</td>
+                      <td className={TD} data-rotulo="Situação"><div className="flex flex-col items-start gap-1"><BadgeNota valor={n.status} />{n.divergencias.length > 0 && ['recebida', 'conferida'].includes(n.status) && <Badge tone="warning">{n.divergencias.length} divergência(s)</Badge>}</div></td>
+                      <td className={TD} data-rotulo="Pagamento">{n.contaStatus ? <BadgeConta valor={n.contaStatus} /> : '—'}</td>
                     </tr>
                   ))}</tbody>
                 </Tabela>

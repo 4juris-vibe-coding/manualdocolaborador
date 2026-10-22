@@ -2,6 +2,7 @@
 import { type ReactNode, useEffect, useId, useRef } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { devolverFoco, travarRolagem, useFecharPeloFundo } from '@/lib/rolagem'
 
 export function Drawer({ open, onClose, titulo, subtitulo, children, rodape, largura = 'max-w-xl' }: {
   open: boolean; onClose: () => void; titulo: ReactNode; subtitulo?: ReactNode; children: ReactNode; rodape?: ReactNode; largura?: string
@@ -14,7 +15,7 @@ export function Drawer({ open, onClose, titulo, subtitulo, children, rodape, lar
   useEffect(() => {
     if (!open) return
     const anterior = document.activeElement as HTMLElement | null
-    const t = setTimeout(() => caixa.current?.focus(), 30)
+    const t = setTimeout(() => caixa.current?.focus({ preventScroll: true }), 30)
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') fechar.current()
       if (e.key === 'Tab' && caixa.current) {
@@ -26,25 +27,26 @@ export function Drawer({ open, onClose, titulo, subtitulo, children, rodape, lar
       }
     }
     document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
-    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = ''; clearTimeout(t); anterior?.focus?.() }
+    const destravar = travarRolagem()
+    return () => { document.removeEventListener('keydown', onKey); destravar(); clearTimeout(t); devolverFoco(anterior) }
   }, [open])
+  const fundo = useFecharPeloFundo(onClose)
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-[180] bg-midnight/40 backdrop-blur-sm animate-fade-in" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-[180] bg-midnight/40 backdrop-blur-sm animate-fade-in" {...fundo}>
       <div ref={caixa} role="dialog" aria-modal="true" aria-labelledby={id} tabIndex={-1}
         className={cn('absolute inset-y-0 right-0 w-full bg-surface shadow-lg flex flex-col outline-none animate-fade-in', largura)}>
-        <div className="flex items-start justify-between gap-4 px-5 sm:px-6 pt-5 pb-4 border-b border-line">
+        <div className="flex items-start justify-between gap-4 px-5 sm:px-6 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4 border-b border-line">
           <div className="min-w-0">
             <h2 id={id} className="text-[18px] font-bold text-ink truncate">{titulo}</h2>
             {subtitulo && <div className="text-[13px] text-muted mt-1">{subtitulo}</div>}
           </div>
-          <button type="button" onClick={onClose} aria-label="Fechar painel" className="h-9 w-9 shrink-0 rounded-lg border border-line text-muted hover:bg-winter hover:text-ink flex items-center justify-center transition">
+          <button type="button" onClick={onClose} aria-label="Fechar painel" className="h-11 w-11 sm:h-9 sm:w-9 -mr-1 sm:mr-0 shrink-0 rounded-lg border border-line text-muted hover:bg-winter hover:text-ink flex items-center justify-center transition">
             <X className="h-[18px] w-[18px]" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5">{children}</div>
-        {rodape && <div className="flex items-center justify-end gap-2.5 px-5 sm:px-6 py-4 border-t border-line flex-wrap">{rodape}</div>}
+        <div className={cn('flex-1 overflow-y-auto overscroll-contain px-5 sm:px-6 pt-5', rodape ? 'pb-5' : 'pb-[max(1.25rem,env(safe-area-inset-bottom))]')}>{children}</div>
+        {rodape && <div className="modal-acoes flex items-center justify-end gap-2.5 px-5 sm:px-6 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-line flex-wrap">{rodape}</div>}
       </div>
     </div>
   )

@@ -27,7 +27,7 @@ export default function Beneficios() {
       )}
       <Tabs tabs={CATS.map((c) => ({ key: c, label: c }))} active={cat} onChange={setCat} />
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {lista.map((b) => (
           <Card key={b.id} className="p-5 hover:shadow-sm hover:-translate-y-0.5 transition cursor-pointer flex flex-col" >
             <div onClick={() => setSel(b)} className="flex flex-col h-full">

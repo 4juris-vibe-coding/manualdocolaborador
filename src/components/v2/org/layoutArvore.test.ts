@@ -45,6 +45,18 @@ describe('layout do organograma', () => {
     expect(r.arestas).toHaveLength(8)
     expect(r.altura).toBe(4 * MEDIDAS.altura + 3 * MEDIDAS.espacoV)
   })
+  it('liderados diretos ficam todos na mesma altura quando algum irmão tem equipe (ninguém afunda sob a equipe de outro)', () => {
+    const equipe = (pref: string, q: number) => Array.from({ length: q }, (_, i) => n(`${pref}${i}`))
+    const diretos = [n('jardel', ...equipe('j', 16)), n('lais', ...equipe('l', 5)), ...['allisson', 'flavio', 'eduardo', 'matheus', 'pedro', 'ramon', 'rodrigo'].map((c) => n(c))]
+    const r = calcularLayout([n('nickson', ...diretos)])
+    const p = Object.fromEntries(r.nos.map((x) => [x.chave, x]))
+    const nivel1 = MEDIDAS.altura + MEDIDAS.espacoV
+    for (const d of diretos) expect(p[d.chave].y).toBe(nivel1)
+    // A equipe de cada líder continua abaixo dele (e em grade, porque ninguém nela tem equipe).
+    expect(p.j0.y).toBe(2 * nivel1)
+    expect(p.j3.y).toBeGreaterThan(p.j0.y)
+    expect(p.matheus.y).toBeLessThan(p.j0.y)
+  })
   it('subárvores dentro da grade não se sobrepõem', () => {
     const r = calcularLayout([n('a', n('b', n('b1'), n('b2'), n('b3'), n('b4')), n('c'), n('d'), n('e', n('e1')))])
     const ret = r.nos.map((x) => ({ ...x, x2: x.x + W, y2: x.y + MEDIDAS.altura }))

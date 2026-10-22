@@ -78,7 +78,7 @@ export default function ListaVagas() {
         ) : null}>
           {(d) => visao === 'lista' ? (
             <Card className="overflow-hidden">
-              <Tabela minWidth={980}>
+              <Tabela minWidth={980} cartoes>
                 <caption className="sr-only">Lista de vagas</caption>
                 <thead><tr>
                   <th className={TH} scope="col">Vaga</th><th className={TH} scope="col">Área e cargo</th><th className={TH} scope="col">Responsáveis</th>
@@ -92,12 +92,12 @@ export default function ListaVagas() {
                         <Link to={`/recrutamento/vagas/${v.id}`} className="font-semibold text-ink hover:text-brand outline-none focus-visible:underline">{v.titulo}</Link>
                         <div className="text-[11.5px] text-muted mt-0.5 flex items-center gap-1.5 flex-wrap">{v.codigo} · {ROTULO_MODALIDADE[v.modalidade] ?? v.modalidade}{v.cidade ? ` · ${v.cidade}` : ''} <BadgePrioridade valor={v.prioridade} /></div>
                       </td>
-                      <td className={TD}><div>{v.setorNome ?? '—'}</div><div className="text-[11.5px] text-muted">{v.cargoNome ?? 'Cargo não definido'}</div></td>
-                      <td className={TD}><div>{v.gestorResponsavelNome ?? v.gestorSolicitanteNome ?? '—'}</div><div className="text-[11.5px] text-muted">Recrutador(a): {v.recrutadorNome ?? 'não atribuído'}</div></td>
-                      <td className={`${TD} tabular-nums`}>{v.posicoesPreenchidas}/{v.qtdPosicoes}</td>
-                      <td className={`${TD} tabular-nums`}>{v.candidaturas ? <Link className="hover:text-brand" to={`/recrutamento/candidatos?vaga=${v.id}`}>{v.candidaturas.total} <span className="text-muted">({v.candidaturas.ativas} ativas)</span></Link> : '—'}</td>
-                      <td className={TD}><div className="flex flex-col items-start gap-1"><BadgeStatus valor={v.status} /><BadgePrazo situacao={v.situacaoPrazo} />{v.arquivada && <Badge>Arquivada</Badge>}</div></td>
-                      <td className={TD}><div>{dataBR(v.prazoPreenchimento)}</div><div className="text-[11.5px] text-muted">Aberta em {dataBR(v.dataAbertura)}</div></td>
+                      <td className={TD} data-rotulo="Área e cargo"><div>{v.setorNome ?? '—'}</div><div className="text-[11.5px] text-muted">{v.cargoNome ?? 'Cargo não definido'}</div></td>
+                      <td className={TD} data-rotulo="Responsáveis"><div>{v.gestorResponsavelNome ?? v.gestorSolicitanteNome ?? '—'}</div><div className="text-[11.5px] text-muted">Recrutador(a): {v.recrutadorNome ?? 'não atribuído'}</div></td>
+                      <td className={`${TD} tabular-nums`} data-rotulo="Posições">{v.posicoesPreenchidas}/{v.qtdPosicoes}</td>
+                      <td className={`${TD} tabular-nums`} data-rotulo="Candidaturas">{v.candidaturas ? <Link className="hover:text-brand" to={`/recrutamento/candidatos?vaga=${v.id}`}>{v.candidaturas.total} <span className="text-muted">({v.candidaturas.ativas} ativas)</span></Link> : '—'}</td>
+                      <td className={TD} data-rotulo="Situação"><div className="flex flex-col items-start gap-1"><BadgeStatus valor={v.status} /><BadgePrazo situacao={v.situacaoPrazo} />{v.arquivada && <Badge>Arquivada</Badge>}</div></td>
+                      <td className={TD} data-rotulo="Prazo"><div>{dataBR(v.prazoPreenchimento)}</div><div className="text-[11.5px] text-muted">Aberta em {dataBR(v.dataAbertura)}</div></td>
                       <td className={TD}>{menu(v)}</td>
                     </tr>
                   ))}

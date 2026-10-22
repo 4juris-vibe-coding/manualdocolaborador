@@ -318,7 +318,7 @@ export default function VagaForm() {
       {/* Ações sempre à mão no formulário longo; o recuo à direita deixa livre o botão flutuante de sugestões. */}
       <div className="sticky bottom-0 z-20 -mx-4 sm:mx-0 mt-5 px-4 sm:px-5 py-3 pr-20 sm:pr-40 flex items-center justify-between gap-3 flex-wrap bg-surface/95 backdrop-blur border-t sm:border sm:rounded-2xl border-line shadow-sm">
         <span className="text-[12px] text-muted" role="status" aria-live="polite">{indicador}</span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="ghost" icon="Save" disabled={!editavel || estado === 'salvando'} onClick={() => void salvar(false)}>{status === 'rascunho' ? 'Salvar rascunho' : 'Salvar alterações'}</Button>
           {editavel && podePublicar && !noAr && (
             <Button icon="Globe" disabled={publicando || estado === 'salvando'} onClick={publicar}>{publicando ? 'Publicando…' : 'Publicar vaga'}</Button>

@@ -111,7 +111,7 @@ export default function Dashboard() {
         ))}
       </nav>
 
-      <div className="grid lg:grid-cols-[1.5fr_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6">
         <div className="space-y-6 min-w-0">
           <Card>
             <CardHead title="O que pede sua atenção" sub="Gerado a partir das suas notas, integração, documentos e comunicados" action={<Badge tone={pendencias.length ? 'warning' : 'success'} dot>{pendencias.length ? `${pendencias.length} item(ns)` : 'Tudo em dia'}</Badge>} />

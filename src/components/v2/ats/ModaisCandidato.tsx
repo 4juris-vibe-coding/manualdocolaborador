@@ -34,10 +34,10 @@ export function CadastroManualModal({ vagaId, open, onClose, onFeito, podeSalari
   return (
     <Modal open={open} onClose={onClose} title="Cadastrar candidato" subtitle="Cadastro manual na vaga selecionada."
       footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={salvar} disabled={enviando}>{enviando ? 'Salvando…' : 'Cadastrar'}</Button></>}>
-      <div className="grid sm:grid-cols-2 gap-x-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
         <Field label="Nome completo" required erro={erros.nome} htmlFor="cm-nome" className="sm:col-span-2"><input id="cm-nome" className="input" value={f.nome} onChange={(e) => set('nome', e.target.value)} /></Field>
         <Field label="E-mail" required erro={erros.email} htmlFor="cm-email"><input id="cm-email" type="email" className="input" value={f.email} onChange={(e) => set('email', e.target.value)} /></Field>
-        <Field label="Telefone" erro={erros.telefone} htmlFor="cm-tel"><input id="cm-tel" className="input" value={f.telefone} onChange={(e) => set('telefone', e.target.value)} /></Field>
+        <Field label="Telefone" erro={erros.telefone} htmlFor="cm-tel"><input id="cm-tel" className="input" type="tel" inputMode="tel" autoComplete="tel" value={f.telefone} onChange={(e) => set('telefone', e.target.value)} /></Field>
         <Field label="Cidade" htmlFor="cm-cid"><input id="cm-cid" className="input" value={f.cidade} onChange={(e) => set('cidade', e.target.value)} /></Field>
         <Field label="UF" erro={erros.uf} htmlFor="cm-uf"><input id="cm-uf" className="input" maxLength={2} value={f.uf} onChange={(e) => set('uf', e.target.value.toUpperCase())} /></Field>
         <Field label="Origem" htmlFor="cm-ori">

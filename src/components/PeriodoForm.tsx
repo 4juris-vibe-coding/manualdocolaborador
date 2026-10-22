@@ -49,7 +49,7 @@ export function PeriodoForm({ open, onClose, editar }: { open: boolean; onClose:
       subtitle="Informe quando você não estará disponível para os projetos. Não há saldo de dias nem aprovação hierárquica."
       footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Check" type="submit" form="periodoForm" disabled={validacao.erros.length > 0}>{editar ? 'Salvar alterações' : 'Registrar período'}</Button></>}>
       <form id="periodoForm" onSubmit={salvar} noValidate>
-        <div className="grid sm:grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <Field label="Início" required htmlFor="p-ini"><input id="p-ini" type="date" className="input" value={f.inicio} onChange={(e) => set({ inicio: e.target.value })} required /></Field>
           <Field label="Fim" required htmlFor="p-fim" hint={dias ? `${dias} dia(s) corrido(s)` : undefined}><input id="p-fim" type="date" className="input" value={f.fim} min={f.inicio} onChange={(e) => set({ fim: e.target.value })} required /></Field>
         </div>
@@ -66,7 +66,7 @@ export function PeriodoForm({ open, onClose, editar }: { open: boolean; onClose:
         <Field label="Mensagem para a equipe" htmlFor="p-msg" hint={`Visível para a sua área e lideranças. ${f.mensagemEquipe.length}/280`}>
           <input id="p-msg" className="input" maxLength={280} value={f.mensagemEquipe} onChange={(e) => set({ mensagemEquipe: e.target.value })} placeholder="Ex.: Em descanso. Assuntos urgentes com a Ana." />
         </Field>
-        <div className="grid sm:grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <Field label="Contato para continuidade (opcional)" htmlFor="p-contato">
             <Dropdown id="p-contato" className="input" value={f.contatoContinuidadeId} onChange={(e) => set({ contatoContinuidadeId: e.target.value })}>
               <option value="">Ninguém específico</option>

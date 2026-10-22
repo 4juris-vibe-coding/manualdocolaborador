@@ -73,7 +73,7 @@ export default function Seguranca() {
       )}
 
       {tab === 'titular' && (
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="p-5 sm:p-6">
             <h3 className="text-[15px] font-bold text-ink mb-4">Atender a uma solicitação</h3>
             <Field label="Titular" htmlFor="tt-p"><Dropdown id="tt-p" className="input" value={pessoa} onChange={(e) => setPessoa(e.target.value)}><option value="">Selecione…</option>{s.colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome}{c.status === 'encerrado' ? ' (encerrada)' : ''}</option>)}</Dropdown></Field>
@@ -91,7 +91,7 @@ export default function Seguranca() {
       )}
 
       {tab === 'medidas' && (
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card><CardHead title="Medidas implementadas" /><ul className="p-5 space-y-2.5">{MEDIDAS.map((m) => <li key={m} className="flex gap-2.5 text-[13px] text-ink-2"><Icon name="CheckCircle2" className="h-4 w-4 text-success shrink-0 mt-0.5" />{m}</li>)}</ul></Card>
           <Card><CardHead title="Pendências antes da produção" sub="Exigem validação jurídica ou de segurança" /><ul className="p-5 space-y-2.5">{PENDENTES.map((m) => <li key={m} className="flex gap-2.5 text-[13px] text-ink-2"><Icon name="AlertTriangle" className="h-4 w-4 text-warning shrink-0 mt-0.5" />{m}</li>)}</ul></Card>
         </div>

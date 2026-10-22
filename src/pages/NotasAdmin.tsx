@@ -197,7 +197,7 @@ export default function NotasAdmin({ onVerColaborador }: { onVerColaborador: () 
             {listaFiltrada.length === 0 ? (
               <EmptyState icon="FileText" title="Nenhuma nota encontrada" desc="Ajuste os filtros ou gere as notas do mês." />
             ) : (
-              <div className="overflow-x-auto">
+              <div className="rolagem-x" tabIndex={0} role="region" aria-label="Tabela (role para os lados para ver todas as colunas)">
                 <table className="w-full text-[13.5px] min-w-[760px]">
                   <thead>
                     <tr className="text-left text-[11px] font-bold uppercase tracking-wide text-muted bg-surface-2 border-b border-line">
@@ -244,7 +244,7 @@ export default function NotasAdmin({ onVerColaborador }: { onVerColaborador: () 
             </div>
             <Progress value={ativos.length ? (entregaram.length / ativos.length) * 100 : 0} className="h-2.5" />
           </Card>
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHead title="Entregaram ✅" sub={`${entregaram.length} colaborador(es)`} />
               <div className="divide-y divide-line">

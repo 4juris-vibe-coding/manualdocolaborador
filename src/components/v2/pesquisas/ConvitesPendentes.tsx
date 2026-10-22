@@ -23,7 +23,7 @@ export function ConvitesPendentes() {
   return (
     <section className="mb-8" aria-label="Convites para responder">
       <h2 className="text-[13px] font-bold uppercase tracking-wide text-muted mb-3">Convites para você</h2>
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {r.dados.itens.map((c) => (
           <Card key={c.conviteId} className="p-5 flex flex-col">
             <div className="flex items-center gap-2 mb-2">

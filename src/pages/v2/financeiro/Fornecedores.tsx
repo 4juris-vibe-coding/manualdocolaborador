@@ -40,16 +40,16 @@ export default function Fornecedores() {
         <Aguardar r={r} vazio={(d) => d.total ? null : <Card><EmptyState icon="Building2" title="Nenhum fornecedor" /></Card>}>
           {(d) => (
             <Card className="overflow-hidden">
-              <Tabela minWidth={820}>
+              <Tabela minWidth={820} cartoes>
                 <thead><tr><th className={TH}>Fornecedor</th><th className={TH}>Documento</th><th className={TH}>Regime</th><th className={TH}>Representante</th><th className={TH}>Contratos vigentes</th><th className={TH}>Situação</th></tr></thead>
                 <tbody>{d.itens.map((x) => (
                   <tr key={x.id} className="hover:bg-surface-2">
                     <td className={TD}><Link to={`/financeiro/fornecedores/${x.id}`} className="font-semibold hover:text-brand">{x.razaoSocial}</Link><div className="text-[11.5px] text-muted">{ROTULO_TIPO_FORNECEDOR[x.tipo]}{x.nomeFantasia ? ` · ${x.nomeFantasia}` : ''}</div></td>
-                    <td className={`${TD} tabular-nums`}>{docFmt(x.documento)}{!x.documento && <div><Badge tone="warning">Sem documento</Badge></div>}</td>
-                    <td className={TD}>{ROTULO_REGIME[x.regimeTributario]}</td>
-                    <td className={TD}>{x.representanteNome ?? '—'}</td>
-                    <td className={`${TD} tabular-nums`}>{x.contratosVigentes}</td>
-                    <td className={TD}><div className="flex flex-col items-start gap-1"><BadgeSituacao s={x.status} />{x.semDadosPagamento && <Badge tone="warning">Sem dados de pagamento</Badge>}</div></td>
+                    <td className={`${TD} tabular-nums`} data-rotulo="Documento">{docFmt(x.documento)}{!x.documento && <div><Badge tone="warning">Sem documento</Badge></div>}</td>
+                    <td className={TD} data-rotulo="Regime">{ROTULO_REGIME[x.regimeTributario]}</td>
+                    <td className={TD} data-rotulo="Representante">{x.representanteNome ?? '—'}</td>
+                    <td className={`${TD} tabular-nums`} data-rotulo="Contratos vigentes">{x.contratosVigentes}</td>
+                    <td className={TD} data-rotulo="Situação"><div className="flex flex-col items-start gap-1"><BadgeSituacao s={x.status} />{x.semDadosPagamento && <Badge tone="warning">Sem dados de pagamento</Badge>}</div></td>
                   </tr>
                 ))}</tbody>
               </Tabela>
@@ -79,8 +79,8 @@ export function FornecedorDetalhe() {
             <>
               <PageHeader title={x.razaoSocial} subtitle={`${ROTULO_TIPO_FORNECEDOR[x.tipo]} · ${docFmt(x.documento)}`} eyebrow={<Link to="/financeiro/fornecedores" className="hover:text-brand">← Fornecedores</Link>}
                 actions={cap?.cadastrar && <><Button variant="ghost" icon="Pencil" onClick={() => setEditar(true)}>Editar</Button><Link to={`/financeiro/contratos/novo?fornecedor=${x.id}`}><Button icon="FilePlus2">Novo contrato</Button></Link></>} />
-              <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 mb-6">
-                <Card className="p-5"><dl className="grid sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 mb-6">
+                <Card className="p-5"><dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Info rotulo="Situação"><BadgeSituacao s={x.status} /></Info>
                   <Info rotulo="Regime tributário (informado)">{ROTULO_REGIME[x.regimeTributario]}</Info>
                   <Info rotulo="Nome fantasia">{x.nomeFantasia}</Info><Info rotulo="Inscrição municipal">{x.inscricaoMunicipal}</Info>
@@ -150,7 +150,7 @@ function FormFornecedor({ aberto, fechar, pronto, atual }: { aberto: boolean; fe
   return (
     <Modal open={aberto} onClose={fechar} wide title={atual ? 'Editar fornecedor' : 'Novo fornecedor'} subtitle="Colete só o necessário para contratar e pagar."
       footer={<><Button variant="ghost" onClick={fechar}>Cancelar</Button><Button onClick={salvar}>Salvar</Button></>}>
-      <div className="grid sm:grid-cols-2 gap-x-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
         <Field label="Tipo"><Dropdown aria-label="Tipo" className="w-full" value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })}>{Object.entries(ROTULO_TIPO_FORNECEDOR).map(([v, r]) => <option key={v} value={v}>{r}</option>)}</Dropdown></Field>
         {c('razaoSocial', f.tipo === 'pf' ? 'Nome completo' : 'Razão social')}
         {c('documento', f.tipo === 'pf' ? 'CPF' : 'CNPJ', { inputMode: 'numeric' })}
@@ -163,7 +163,7 @@ function FormFornecedor({ aberto, fechar, pronto, atual }: { aberto: boolean; fe
         <Field label="Situação"><Dropdown aria-label="Situação" className="w-full" value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}><option value="ativo">Ativo</option><option value="suspenso">Suspenso</option><option value="inativo">Inativo</option></Dropdown></Field>
       </div>
       <h3 className="text-[13px] font-bold mt-2 mb-2">Dados de pagamento da empresa <span className="font-normal text-muted">(vazios = usa os do perfil da pessoa representante)</span></h3>
-      <div className="grid sm:grid-cols-2 gap-x-4">{c('pixTipo', 'Tipo de chave PIX')}{c('pixChave', 'Chave PIX')}{c('banco', 'Banco')}{c('agencia', 'Agência')}{c('conta', 'Conta')}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">{c('pixTipo', 'Tipo de chave PIX')}{c('pixChave', 'Chave PIX')}{c('banco', 'Banco')}{c('agencia', 'Agência')}{c('conta', 'Conta')}</div>
       <Field label="Observações" htmlFor="fo-obs"><textarea id="fo-obs" className="input h-20 py-2.5" value={f.observacoes} onChange={(e) => setF({ ...f, observacoes: e.target.value })} /></Field>
     </Modal>
   )

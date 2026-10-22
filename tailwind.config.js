@@ -5,8 +5,15 @@ const v = (nome) => `rgb(var(--c-${nome}) / <alpha-value>)`
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   darkMode: 'class',
+  // `hover:` só onde existe hover de verdade: no toque, o realce não fica "grudado" no botão depois do toque.
+  future: { hoverOnlyWhenSupported: true },
   theme: {
     extend: {
+      // Variantes por tipo de ponteiro (não por largura): `mouse:` só onde há hover de verdade, `toque:` em telas de toque.
+      screens: {
+        mouse: { raw: '(hover: hover) and (pointer: fine)' },
+        toque: { raw: '(hover: none) and (pointer: coarse)' },
+      },
       colors: {
         // Paleta oficial 4JURIS (Rebranding)
         brand: {

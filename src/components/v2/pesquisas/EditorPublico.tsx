@@ -56,7 +56,7 @@ export function EditorPublico({ pesquisaId, publico, onChange, desabilitado }: {
         <Toggle checked={!!publico.todos} onChange={(v) => set({ todos: v || undefined })} label="Todas as pessoas ativas" disabled={desabilitado} />
         <p className="text-[12.5px] text-muted mt-2">Desligue para combinar critérios. Entre critérios diferentes vale “e” (ex.: área Jurídico <b>e</b> cargo Advogado); dentro de cada critério vale “ou”.</p>
         {!publico.todos && (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 mt-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 mt-4">
             <Lista titulo="Unidades" itens={unidades.map((u) => ({ id: u.id, nome: u.nome }))} marcados={publico.unidadeIds ?? []} onChange={(v) => set({ unidadeIds: v })} desabilitado={desabilitado} />
             <Lista titulo="Áreas / equipes" itens={setores.map((s) => ({ id: s.id, nome: s.nome }))} marcados={publico.setorIds ?? []} onChange={(v) => set({ setorIds: v })} desabilitado={desabilitado} />
             <Lista titulo="Gestor imediato (equipe)" itens={gestores} marcados={publico.gestorIds ?? []} onChange={(v) => set({ gestorIds: v })} desabilitado={desabilitado} />
@@ -65,7 +65,7 @@ export function EditorPublico({ pesquisaId, publico, onChange, desabilitado }: {
         )}
       </Card>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card className="p-5">
           <h3 className="text-[14px] font-bold text-ink mb-1">Incluir pessoas específicas</h3>
           <p className="text-[12.5px] text-muted mb-3">São somadas ao público acima.</p>

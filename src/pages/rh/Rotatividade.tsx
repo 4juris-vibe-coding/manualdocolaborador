@@ -20,17 +20,17 @@ export default function Rotatividade() {
     <>
       <PageHeader title="Rotatividade de parcerias" subtitle="Novas parcerias, encerramentos e taxa por janela de tempo (portado de Rotatividade do sistema de RH)." actions={<BotaoImprimir />} />
       <div className="flex gap-3 mb-5 no-print"><Select label="Área" value={area} onChange={setArea}><option value="">Todas as áreas</option>{s.setores.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</Select></div>
-      <div className="grid md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {janelas.map((j) => (
           <IndicadorCard key={j.dias} titulo={`Taxa — ${j.dias === 365 ? '12 meses' : `${j.dias} dias`}`} valor={`${j.taxa.toLocaleString('pt-BR')}%`} detalhe={`${j.encerramentos} encerramento(s) · ${j.inicios} início(s) · média ${j.mediaAtivos} ativas`}
             icon="RefreshCw" tone={j.taxa > 10 ? 'warning' : 'brand'} definicao="Encerramentos ÷ ((ativas no início + ativas no fim) ÷ 2) × 100." fonte={`Cadastro de pessoas · ${fmtDate(j.inicio)} a ${fmtDate(j.fim)}`} />
         ))}
       </div>
-      <div className="grid lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <Card><CardHead title="Encerramentos por mês" sub="Últimos 12 meses" /><div className="p-5"><ColunasMensais dados={serie12Meses(pessoas.map((c) => c.encerramento?.data), hoje)} rotulo="Encerramentos por mês" /></div></Card>
         <Card><CardHead title="Novas parcerias por mês" sub="Últimos 12 meses" /><div className="p-5"><ColunasMensais dados={serie12Meses(pessoas.map((c) => c.dataEntrada), hoje)} rotulo="Novas parcerias por mês" /></div></Card>
       </div>
-      <div className="grid lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <Card><CardHead title="Encerramentos por área" sub="12 meses" /><div className="p-5"><BarList itens={porArea} vazio="Nenhum encerramento." /></div></Card>
         <Card><CardHead title="Encerramentos por motivo" sub="12 meses" /><div className="p-5"><BarList itens={porMotivo} vazio="Nenhum encerramento." /></div></Card>
       </div>

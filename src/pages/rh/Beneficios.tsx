@@ -123,7 +123,7 @@ function BeneficioForm({ b, onClose }: { b?: Beneficio; onClose: () => void }) {
   const set = (p: Partial<typeof f>) => setF((x) => ({ ...x, ...p }))
   return (
     <Modal open onClose={onClose} wide title={b ? 'Editar benefício' : 'Novo benefício'} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Check" onClick={() => { if (feedback(s.salvarBeneficio({ ...f, nome: f.nome.trim() }, b?.id), 'Benefício salvo.')) onClose() }}>Salvar</Button></>}>
-      <div className="grid sm:grid-cols-2 gap-x-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
         <Field label="Nome" required htmlFor="bn-n"><input id="bn-n" className="input" value={f.nome} onChange={(e) => set({ nome: e.target.value })} /></Field>
         <Field label="Tipo" htmlFor="bn-t"><Dropdown id="bn-t" className="input" value={f.tipo} onChange={(e) => set({ tipo: e.target.value as TipoBeneficio })}>{Object.entries(TIPO_BEN).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Dropdown></Field>
         <Field label="Fornecedor" htmlFor="bn-f"><input id="bn-f" className="input" value={f.fornecedor} onChange={(e) => set({ fornecedor: e.target.value })} /></Field>
@@ -157,7 +157,7 @@ function VincularModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal open onClose={onClose} wide title="Vincular pessoas a um benefício" subtitle="Vínculo individual ou em lote (por área e função). Vínculos já existentes são ignorados."
       footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="Link" disabled={!sel.length} onClick={() => { if (feedback(s.vincularBeneficiarios(beneficio, sel, deps), 'Vínculos criados.')) onClose() }}>Vincular {sel.length || ''}</Button></>}>
-      <div className="grid sm:grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         <Field label="Benefício" htmlFor="vb-b"><Dropdown id="vb-b" className="input" value={beneficio} onChange={(e) => { setBeneficio(e.target.value); setSel([]) }}>{s.beneficios.filter((x) => x.ativo !== false).map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}</Dropdown></Field>
         <Field label="Área" htmlFor="vb-a"><Dropdown id="vb-a" className="input" value={area} onChange={(e) => setArea(e.target.value)}><option value="">Todas</option>{s.setores.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</Dropdown></Field>
         <Field label="Função" htmlFor="vb-f"><Dropdown id="vb-f" className="input" value={funcao} onChange={(e) => setFuncao(e.target.value)}><option value="">Todas</option>{s.cargos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}</Dropdown></Field>

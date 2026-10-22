@@ -162,7 +162,7 @@ export default function CentralDuvidas() {
         busca.length === 0 ? (
           <Card className="p-12 text-center text-muted text-[14px]">Nenhum assunto encontrado. Tente outro termo ou fale com o RH.</Card>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {busca.map((a) => <CardArtigo key={a.id} id={a.id} />)}
           </div>
         )
@@ -174,7 +174,7 @@ export default function CentralDuvidas() {
                 <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted">{g.title}</h3>
                 <span className="text-[12px] text-muted tabular-nums">{g.items.length} {g.items.length > 1 ? 'artigos' : 'artigo'}</span>
               </div>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {g.items.map((id) => <CardArtigo key={id} id={id} />)}
               </div>
             </div>
@@ -186,7 +186,7 @@ export default function CentralDuvidas() {
               <h3 className="text-[13px] font-bold uppercase tracking-wide text-muted">Em breve</h3>
               <span className="text-[12px] text-muted tabular-nums">{FAQ_SOON.length} temas planejados</span>
             </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {FAQ_SOON.map((s) => (
                 <div key={s.title} className="card p-5 flex flex-col gap-3.5 opacity-60">
                   <span className="h-11 w-11 rounded-xl bg-winter text-muted flex items-center justify-center"><Icon name={s.icon} className="h-[21px] w-[21px]" /></span>

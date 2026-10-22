@@ -38,7 +38,7 @@ export default function BuscaPerfil() {
         {consentidos.length} de {s.colaboradores.filter((c) => c.status !== 'encerrado').length} pessoas têm perfil com consentimento. A busca é apoio para formar times e conversas — <b>não</b> use como filtro automático de contratação, renovação ou encerramento.
       </Callout>
       <Tabs tabs={[{ key: 'personalizar', label: 'Personalizar (DISC)' }, { key: 'indicador', label: 'Por indicador' }, { key: 'prontos', label: 'Perfis prontos' }, { key: 'funcao', label: 'Aderência à função' }]} active={modo} onChange={setModo} />
-      <div className="grid lg:grid-cols-[340px_1fr] gap-6 [&>*]:min-w-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 [&>*]:min-w-0">
         <Card className="p-5 self-start">
           {modo === 'personalizar' && <>
             <h3 className="text-[13px] font-bold text-ink mb-2">Perfil alvo</h3>

@@ -49,18 +49,18 @@ export default function Contratos() {
         <Aguardar r={r} linhas={5} vazio={(d) => d.total ? null : <Card><EmptyState icon="FileSignature" title="Nenhum contrato encontrado" desc={podeCadastrar ? 'Cadastre o fornecedor e depois o contrato.' : undefined} /></Card>}>
           {(d) => (
             <Card className="overflow-hidden">
-              <Tabela minWidth={960}>
+              <Tabela minWidth={960} cartoes>
                 <caption className="sr-only">Contratos</caption>
                 <thead><tr><th className={TH}>Contrato</th><th className={TH}>Fornecedor / prestador</th><th className={TH}>Valor</th><th className={TH}>Vigência</th><th className={TH}>Gestor(a)</th><th className={TH}>Situação</th></tr></thead>
                 <tbody>
                   {d.itens.map((k) => (
                     <tr key={k.id} className="hover:bg-surface-2">
                       <td className={TD}><Link to={`/financeiro/contratos/${k.id}`} className="font-semibold text-ink hover:text-brand">{k.numero}</Link><div className="text-[11.5px] text-muted line-clamp-1">{k.objeto}</div></td>
-                      <td className={TD}><div>{k.fornecedorNome}</div><div className="text-[11.5px] text-muted">{k.prestadorNome ?? 'Sem prestador vinculado'}</div></td>
-                      <td className={`${TD} tabular-nums`}>{dinheiro(k.valor)}<div className="text-[11.5px] text-muted">{ROTULO_MODELO[k.modeloRemuneracao]}</div></td>
-                      <td className={TD}>{dataBR(k.inicio)} – {k.fim ? dataBR(k.fim) : 'indeterminado'}</td>
-                      <td className={TD}>{k.gestorNome ?? '—'}</td>
-                      <td className={TD}><div className="flex flex-col items-start gap-1"><BadgeContrato valor={k.status} /><BadgePrazo s={k.situacaoPrazo} /></div></td>
+                      <td className={TD} data-rotulo="Fornecedor / prestador"><div>{k.fornecedorNome}</div><div className="text-[11.5px] text-muted">{k.prestadorNome ?? 'Sem prestador vinculado'}</div></td>
+                      <td className={`${TD} tabular-nums`} data-rotulo="Valor">{dinheiro(k.valor)}<div className="text-[11.5px] text-muted">{ROTULO_MODELO[k.modeloRemuneracao]}</div></td>
+                      <td className={TD} data-rotulo="Vigência">{dataBR(k.inicio)} – {k.fim ? dataBR(k.fim) : 'indeterminado'}</td>
+                      <td className={TD} data-rotulo="Gestor(a)">{k.gestorNome ?? '—'}</td>
+                      <td className={TD} data-rotulo="Situação"><div className="flex flex-col items-start gap-1"><BadgeContrato valor={k.status} /><BadgePrazo s={k.situacaoPrazo} /></div></td>
                     </tr>
                   ))}
                 </tbody>

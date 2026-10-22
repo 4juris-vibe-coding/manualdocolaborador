@@ -16,7 +16,13 @@ interface Painel {
   operacao: Record<string, Ind>
   concentracao: { rotulo: string; valor: number; percentual: number }[]; concentracaoDefinicao: string
   porCentroCusto: { rotulo: string; valor: number }[]; porCentroCustoDefinicao: string
+  folha: Folha
   ultimaExecucaoAlertas: { iniciado_em: string; origem: string; notificacoes: number; renovacoes: number; erro: string | null } | null
+}
+type SituacaoFolha = 'pago' | 'parcial' | 'a_pagar' | 'nota_em_analise' | 'aguardando_nota'
+interface Folha {
+  competencia: string; total: number; pago: number; restante: number; pagoLiquido: number; pessoas: number; quitadas: number; semValor: number; definicao: string
+  itens: { contratoId: string; contratoNumero: string; pessoa: string; valor: number; pago: number; restante: number; pagoLiquido: number; pagoEm: string | null; situacao: SituacaoFolha }[]
 }
 interface ItemAgenda { data: string; tipo: string; titulo: string; detalhe: string; link: string; atrasado: boolean }
 
@@ -28,6 +34,53 @@ const ROTULO_OPERACAO: Record<string, string> = {
   contasAAutorizar: 'Pagamentos a autorizar', contasAPagar: 'Pagamentos a registrar', contasAConciliar: 'Pagamentos a conciliar',
   documentosPendentes: 'Documentos a conferir', documentosVencidos: 'Documentos vencidos', documentosLegadosSemArquivo: 'Registros antigos sem arquivo',
   diasMediosAprovacao: 'Dias até o aceite (média)', diasMediosLiquidacao: 'Dias até o pagamento (média)',
+}
+
+const SITUACAO_FOLHA: Record<SituacaoFolha, { rotulo: string; tom: string }> = {
+  pago: { rotulo: 'Pago', tom: 'success' }, parcial: { rotulo: 'Pago em parte', tom: 'warning' }, a_pagar: { rotulo: 'A pagar', tom: 'brand' },
+  nota_em_analise: { rotulo: 'Nota em análise', tom: 'neutral' }, aguardando_nota: { rotulo: 'Aguardando nota', tom: 'neutral' },
+}
+const nomeMes = (comp: string) => new Date(`${comp}-15T12:00:00`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+
+/** Folha da competência: total dos contratos mensais e quanto ainda falta pagar (cai a cada pagamento registrado). */
+function FolhaDoMes({ f }: { f: Folha }) {
+  const pct = f.total ? Math.min(100, Math.round((f.pago / f.total) * 1000) / 10) : 0
+  return (
+    <Card className="mb-6">
+      <CardHead title={`Folha de pagamento · ${nomeMes(f.competencia)}`} sub={f.definicao}
+        action={<Link to={`/financeiro/contas?status=prevista,autorizada`}><Button size="sm" variant="ghost" icon="Wallet">Contas a pagar</Button></Link>} />
+      <div className="px-5 pb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div><div className="text-[11px] font-bold uppercase text-muted">Folha do mês</div><div className="text-[20px] font-bold text-ink tabular-nums">{dinheiro(f.total)}</div><div className="text-[11.5px] text-muted">{f.pessoas} pessoa(s)</div></div>
+          <div><div className="text-[11px] font-bold uppercase text-muted">Já pago</div><div className="text-[20px] font-bold text-success tabular-nums">{dinheiro(f.pago)}</div><div className="text-[11.5px] text-muted">{f.quitadas} quitada(s) · líquido {dinheiro(f.pagoLiquido)}</div></div>
+          <div><div className="text-[11px] font-bold uppercase text-muted">Falta pagar</div><div className={`text-[20px] font-bold tabular-nums ${f.restante ? 'text-warning' : 'text-success'}`}>{dinheiro(f.restante)}</div><div className="text-[11.5px] text-muted">{f.pessoas - f.quitadas} pessoa(s)</div></div>
+        </div>
+        <div className="h-2.5 rounded-full bg-winter mt-4" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Folha paga">
+          <div className="h-2.5 rounded-full bg-success transition-all" style={{ width: `${pct}%` }} />
+        </div>
+        <div className="text-[11.5px] text-muted mt-1">{pct}% pago</div>
+        {f.semValor > 0 && <Callout tone="warning" icon="AlertTriangle" className="mt-3">{f.semValor} contrato(s) com valor “a definir” (R$ 0): defina o salário na ficha da pessoa para entrar na folha.</Callout>}
+      </div>
+      {f.itens.length === 0 ? <p className="px-5 pb-5 text-[13px] text-muted">Nenhum contrato mensal em vigor nesta competência.</p> : (
+        <ul className="border-t border-line divide-y divide-line max-h-[420px] overflow-y-auto">
+          {f.itens.map((i) => {
+            const s = SITUACAO_FOLHA[i.situacao]
+            return (
+              <li key={i.contratoId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-2.5">
+                <div className="flex-1 min-w-[160px]">
+                  <Link to={`/financeiro/contratos/${i.contratoId}`} className="text-[13.5px] font-semibold text-ink hover:text-brand">{i.pessoa}</Link>
+                  <div className="text-[11.5px] text-muted">{i.contratoNumero}{i.pagoEm ? ` · pago em ${dataBR(i.pagoEm)}` : ''}</div>
+                </div>
+                <Badge tone={s.tom}>{s.rotulo}</Badge>
+                <div className="w-28 text-right tabular-nums text-[13px]">{dinheiro(i.valor)}</div>
+                <div className={`w-28 text-right tabular-nums text-[13px] font-semibold ${i.restante ? 'text-ink' : 'text-muted'}`}>{i.restante ? `falta ${dinheiro(i.restante)}` : '—'}</div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </Card>
+  )
 }
 
 export default function PainelFinanceiro() {
@@ -67,6 +120,8 @@ export default function PainelFinanceiro() {
               <p className="text-[12px] text-muted mb-3">Período {dataBR(d.periodo.de)} a {dataBR(d.periodo.ate)} (competências {d.periodo.competencias}) · calculado em {dataHoraBR(d.atualizadoEm)}
                 {d.ultimaExecucaoAlertas && <> · alertas processados em {dataHoraBR(d.ultimaExecucaoAlertas.iniciado_em)} ({d.ultimaExecucaoAlertas.origem})</>}</p>
 
+              <FolhaDoMes f={d.folha} />
+
               <h2 className="text-[13px] font-bold uppercase tracking-wide text-muted mb-3">Valores (contratado ≠ faturado ≠ aprovado ≠ previsto ≠ pago)</h2>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
                 <Indicador titulo="Contratado (mensal)" valor={dinheiro(d.contratos.valorMensalContratado.valor)} definicao={d.contratos.valorMensalContratado.definicao} link="/financeiro/contratos?status=vigente" />
@@ -94,7 +149,7 @@ export default function PainelFinanceiro() {
                 ))}
               </div>
 
-              <div className="grid lg:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <Card>
                   <CardHead title="Concentração de pagamentos por fornecedor" sub={d.concentracaoDefinicao} />
                   <div className="p-5 space-y-2.5">

@@ -158,6 +158,9 @@ describe('nota fiscal → pagamento', () => {
     expect(p.financeiro.faturado.valor).toBe(5100)
     expect(p.contratos.ativos.valor).toBe(1)
     expect(p.financeiro.pago.definicao).toBeTruthy()
+    // Folha: contrato de 5.000 quitado pelo bruto (o líquido 4.998 fica à parte, por causa da retenção).
+    expect(p.folha).toMatchObject({ competencia: comp, total: 5000, pago: 5000, restante: 0, pagoLiquido: 4998, pessoas: 1, quitadas: 1 })
+    expect(p.folha.itens[0]).toMatchObject({ contratoId: ctrId, situacao: 'pago', restante: 0 })
     expect((await GET(m, 'financeiro/agenda', m.c.rh1)).status).toBe(200)
     const csv = await GET(m, 'financeiro/contas/exportar', m.c.rh1)
     expect(csv.binario?.dados.toString('utf8')).toContain('4998,00')

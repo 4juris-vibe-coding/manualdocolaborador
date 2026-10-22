@@ -36,7 +36,7 @@ export default function Avaliacoes() {
       <Tabs tabs={[{ key: 'responder', label: `Para responder${total ? ` (${total})` : ''}` }, { key: 'respondidas', label: 'Já respondidas' }, { key: 'resultados', label: 'Meus resultados' }]} active={tab} onChange={setTab} />
 
       {tab === 'responder' && (total === 0 ? <Card><EmptyState icon="ClipboardCheck" title="Nada para responder agora" desc="Quando um ciclo for aberto para você, ele aparece aqui e nas suas notificações." /></Card> : (
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {pendentesCiclo.map((p) => {
             const c = s.ciclos.find((x) => x.id === p.cicloId)!
             const avaliado = s.pessoa(p.avaliadoId)!
@@ -143,7 +143,7 @@ export function ResponderInicioModal({ a, onClose }: { a: AvaliacaoInicio; onClo
         ))}
       </ol>
       <fieldset className="mt-6"><legend className="label">Encaminhamento</legend>
-        <div className="grid sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {([['seguir', 'Seguir como combinado', 'ThumbsUp'], ['ajustar', 'Ajustar combinados', 'SlidersHorizontal'], ['revisar', 'Conversa com o RH', 'MessageCircleWarning']] as const).map(([k, t, ic]) => (
             <button key={k} type="button" aria-pressed={cont === k} onClick={() => setCont(k)} className={cn('flex items-center gap-2 rounded-xl border px-3 py-2.5 text-[12.5px] font-semibold', cont === k ? 'border-brand bg-brand-50 text-brand' : 'border-line text-ink-2')}><Icon name={ic} className="h-4 w-4" />{t}</button>
           ))}

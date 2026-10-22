@@ -19,7 +19,7 @@ export default function CulturaRH() {
     <>
       <PageHeader title="Cultura organizacional" subtitle="Propósito, missão, visão e valores — usados no portal e nos reconhecimentos."
         actions={<Button icon="Check" onClick={() => feedback(s.salvarCultura(c), 'Cultura atualizada. Os reconhecimentos já usam os novos valores.')}>Salvar</Button>} />
-      <div className="grid lg:grid-cols-[1.3fr_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-6">
         <div className="space-y-6 min-w-0">
           <Card className="p-5">
             <Field label="Propósito" htmlFor="cu-p"><textarea id="cu-p" rows={2} className="input !h-auto py-2.5" value={c.proposito} onChange={(e) => setC({ ...c, proposito: e.target.value })} /></Field>
@@ -31,7 +31,7 @@ export default function CulturaRH() {
             <CardHead title="Valores" sub="Aparecem como opções ao reconhecer um colega" action={<Button size="sm" variant="soft" icon="Plus" onClick={() => setC({ ...c, valores: [...c.valores, { nome: '', descricao: '', icone: 'Star', cor: CORES[c.valores.length % CORES.length] }] })}>Valor</Button>} />
             <ul className="divide-y divide-line">
               {c.valores.map((v, i) => (
-                <li key={i} className="p-4 grid sm:grid-cols-[auto_1fr_auto] gap-3 items-start">
+                <li key={i} className="p-4 grid grid-cols-1 sm:grid-cols-[auto_1fr_auto] gap-3 items-start">
                   <span className="h-11 w-11 rounded-xl flex items-center justify-center text-white" style={{ background: v.cor }}><Icon name={v.icone} className="h-5 w-5" /></span>
                   <div className="space-y-2 min-w-0">
                     <input aria-label="Nome do valor" className="input !h-9" value={v.nome} onChange={(e) => setValor(i, { nome: e.target.value })} placeholder="Nome do valor" />

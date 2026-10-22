@@ -1,7 +1,9 @@
 /* Layout puro do organograma (de cima para baixo). Sem React: testável e sem custo de render.
-   Regra de largura: um pai mostra no máximo `porLinha` filhos lado a lado. Com mais filhos, eles quebram em fileiras
-   (grade de colunas alinhadas) e o mapa cresce para baixo em vez de para os lados. As conexões descem por um "tronco"
-   no vão entre a 1ª e a 2ª coluna (sempre livre: cada subárvore ocupa só a própria coluna) e se ramificam em cada fileira. */
+   Regra de hierarquia: quem responde à mesma pessoa fica na mesma altura. Se algum dos filhos tem equipe aberta,
+   todos ficam numa fileira só (uma quebra empurraria o liderado direto para baixo da equipe de um irmão e ele
+   pareceria estar níveis abaixo). Só quando nenhum filho tem equipe aberta, e são mais de `porLinha`, eles quebram
+   em fileiras (grade de colunas alinhadas) para o mapa não crescer para os lados. As conexões da grade descem por um
+   "tronco" no vão entre a 1ª e a 2ª coluna e se ramificam em cada fileira. */
 
 export interface NoLayout {
   chave: string
@@ -27,7 +29,7 @@ export function calcularLayout(raizes: NoLayout[], m: Medidas = MEDIDAS): Result
     const filhos = n.filhos.map(medir)
     let b: Bloco
     if (!filhos.length) b = { w: m.largura, h: m.altura, grade: null }
-    else if (filhos.length <= porLinha) {
+    else if (filhos.length <= porLinha || n.filhos.some((f) => f.filhos.length > 0)) {
       // Uma fileira: larguras somadas, como um organograma clássico.
       const soma = filhos.reduce((s, f) => s + f.w, 0) + (filhos.length - 1) * m.espacoH
       b = { w: Math.max(m.largura, soma), h: m.altura + m.espacoV + Math.max(...filhos.map((f) => f.h)), grade: null }

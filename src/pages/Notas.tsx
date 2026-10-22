@@ -92,13 +92,13 @@ function NotasColaborador() {
         </Card>
       )}
 
-      <div className="grid lg:grid-cols-[1.2fr_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6">
         {/* Coluna esquerda: tutorial + dados de pagamento */}
         <div className="space-y-6">
           {/* Dados de pagamento / PIX */}
           <Card>
             <CardHead title="Dados de pagamento" sub="Sua chave PIX está associada ao CNPJ" />
-            <div className="p-5 grid sm:grid-cols-2 gap-4">
+            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Info label="Razão social" valor={user.razaoSocial || '—'} icon="Building2" />
               <Info label="CNPJ" valor={user.cnpj || '—'} icon="Hash" />
               <Info label="Tipo de chave PIX" valor={user.pixTipo ?? 'CNPJ'} icon="KeyRound" />

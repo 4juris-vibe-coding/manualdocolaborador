@@ -14,12 +14,12 @@ export default function Cultura() {
           <p className="text-[22px] sm:text-[28px] font-extrabold leading-snug mt-2">{c.proposito}</p>
         </div>
       </Card>
-      <div className="grid md:grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         <Card className="p-6"><div className="flex items-center gap-2 text-brand mb-2"><Icon name="Compass" className="h-5 w-5" /><b className="text-[13px] uppercase tracking-wide">Missão</b></div><p className="text-[15px] text-ink leading-relaxed">{c.missao}</p></Card>
         <Card className="p-6"><div className="flex items-center gap-2 text-brand mb-2"><Icon name="Telescope" className="h-5 w-5" /><b className="text-[13px] uppercase tracking-wide">Visão</b></div><p className="text-[15px] text-ink leading-relaxed">{c.visao}</p></Card>
       </div>
       <h2 className="text-[13px] font-bold uppercase tracking-wide text-muted mb-3">Nossos valores</h2>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {c.valores.map((v) => (
           <Card key={v.nome} className="p-5 hover:-translate-y-0.5 hover:shadow-sm transition">
             <span className="h-12 w-12 rounded-2xl flex items-center justify-center text-white mb-4" style={{ background: v.cor }}><Icon name={v.icone} className="h-6 w-6" /></span>

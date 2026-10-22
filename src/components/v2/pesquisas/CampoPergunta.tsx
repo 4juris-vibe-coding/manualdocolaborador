@@ -34,7 +34,7 @@ export function CampoPergunta({ pergunta: p, valor, onChange, desabilitado }: Pr
 
   if (p.tipo === 'likert') {
     return (
-      <div role="radiogroup" aria-label={p.texto} className="grid gap-2 sm:grid-cols-5">
+      <div role="radiogroup" aria-label={p.texto} className="grid grid-cols-1 gap-2 sm:grid-cols-5">
         {ROTULOS_LIKERT.map((r, i) => (
           <button key={r} type="button" role="radio" aria-checked={valor === i + 1} disabled={desabilitado} onClick={() => onChange(i + 1)}
             className={cn(botaoNota(valor === i + 1), 'flex sm:flex-col items-center justify-start sm:justify-center gap-2 px-3 py-2.5 text-left sm:text-center text-[13px] leading-tight')}>

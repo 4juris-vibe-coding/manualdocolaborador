@@ -199,7 +199,7 @@ export default function Login() {
   }
 
   return (
-    <div className={cn('min-h-screen grid lg:grid-cols-[1.05fr_.95fr] bg-midnight', saindo && 'animate-sair-login pointer-events-none')}>
+    <div className={cn('min-h-screen grid grid-cols-1 lg:grid-cols-[1.05fr_.95fr] bg-midnight', saindo && 'animate-sair-login pointer-events-none')}>
       {/* -------- Painel de marca (tecnológico) -------- */}
       <div ref={brandRef} className="relative overflow-hidden hidden lg:flex flex-col justify-between p-14 text-white tech-grid">
         <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
@@ -274,7 +274,7 @@ export default function Login() {
               <label className="label" htmlFor="login-email">E-mail</label>
               <div className="relative">
                 <Mail className="h-4 w-4 text-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input id="login-email" className="input pl-10" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErro('') }}
+                <input id="login-email" className="input pl-10" type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="next" value={email} onChange={(e) => { setEmail(e.target.value); setErro('') }}
                   autoComplete="username" placeholder="seu@email.com.br" aria-invalid={!!erro} aria-describedby={erro ? 'login-erro' : undefined} />
               </div>
               {erro && <p id="login-erro" role="alert" className="text-[12px] text-danger font-medium mt-1.5">{erro}</p>}
@@ -300,14 +300,14 @@ export default function Login() {
                 <>
                   <div className="flex items-center justify-between mt-4">
                     <label className="label !mb-0" htmlFor="login-senha">Senha</label>
-                    <button type="button" onClick={() => trocarModo('recuperar')} className="text-[12.5px] text-brand font-semibold hover:underline">Esqueceu a senha?</button>
+                    <button type="button" onClick={() => trocarModo('recuperar')} className="text-[12.5px] text-brand font-semibold hover:underline py-2.5 -my-2.5 px-1 -mx-1">Esqueceu a senha?</button>
                   </div>
                   <div className="relative mt-1.5">
                     <Lock className="h-4 w-4 text-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input id="login-senha" className="input pl-10 pr-11" type={verSenha ? 'text' : 'password'} value={senha} onChange={(e) => { setSenha(e.target.value); setErro('') }}
-                      autoComplete="current-password" placeholder="Sua senha" aria-invalid={!!erro} aria-describedby={erro ? 'login-erro' : undefined} />
+                      autoComplete="current-password" enterKeyHint="go" placeholder="Sua senha" aria-invalid={!!erro} aria-describedby={erro ? 'login-erro' : undefined} />
                     <button type="button" onClick={() => setVerSenha((v) => !v)} aria-label={verSenha ? 'Ocultar senha' : 'Mostrar senha'}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-lg text-muted hover:text-ink flex items-center justify-center">
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 rounded-lg text-muted hover:text-ink flex items-center justify-center">
                       {verSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>

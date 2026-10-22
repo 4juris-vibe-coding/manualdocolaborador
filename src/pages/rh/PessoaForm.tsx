@@ -65,23 +65,23 @@ export function PessoaForm({ pessoa, onClose, onSalvo }: { pessoa?: Colaborador;
         {secao === 'complementar' && (
           <>
             <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-3">Endereço</h4>
-            <div className="grid sm:grid-cols-[140px_1fr_110px] gap-x-4">
+            <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr_110px] gap-x-4">
               <Field label="CEP" htmlFor="pf-cep"><input id="pf-cep" className="input" inputMode="numeric" value={f.endereco?.cep ?? ''} onChange={(x) => setEnd({ cep: x.target.value.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d)/, '$1-$2') })} /></Field>
               <Field label="Logradouro" htmlFor="pf-log"><input id="pf-log" className="input" value={f.endereco?.logradouro ?? ''} onChange={(x) => setEnd({ logradouro: x.target.value })} /></Field>
               <Field label="Número" htmlFor="pf-num"><input id="pf-num" className="input" value={f.endereco?.numero ?? ''} onChange={(x) => setEnd({ numero: x.target.value })} /></Field>
             </div>
-            <div className="grid sm:grid-cols-3 gap-x-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
               <Field label="Complemento" htmlFor="pf-comp"><input id="pf-comp" className="input" value={f.endereco?.complemento ?? ''} onChange={(x) => setEnd({ complemento: x.target.value })} /></Field>
               <Field label="Bairro" htmlFor="pf-bai"><input id="pf-bai" className="input" value={f.endereco?.bairro ?? ''} onChange={(x) => setEnd({ bairro: x.target.value })} /></Field>
               <Field label="País" htmlFor="pf-pais"><input id="pf-pais" className="input" value={f.endereco?.pais ?? 'Brasil'} onChange={(x) => setEnd({ pais: x.target.value })} /></Field>
             </div>
             <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-3 mt-2">Contatos</h4>
-            <div className="grid sm:grid-cols-2 gap-x-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
               <Field label="Celular" htmlFor="pf-cel"><input id="pf-cel" className="input" inputMode="tel" value={f.celular} onChange={(x) => set({ celular: x.target.value })} /></Field>
               <Field label="E-mail pessoal" htmlFor="pf-ep"><input id="pf-ep" type="email" className="input" value={f.emailPessoal} onChange={(x) => set({ emailPessoal: x.target.value })} /></Field>
             </div>
             <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-3 mt-2">Formação e dados adicionais</h4>
-            <div className="grid sm:grid-cols-2 gap-x-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
               <Field label="Escolaridade" htmlFor="pf-esc"><Dropdown id="pf-esc" className="input" value={f.escolaridade ?? ''} onChange={(x) => set({ escolaridade: (x.target.value || undefined) as Escolaridade | undefined })}><option value="">Não informada</option>{Object.entries(ESCOLARIDADE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Dropdown></Field>
               <Field label="Curso" htmlFor="pf-cur"><input id="pf-cur" className="input" value={f.curso} onChange={(x) => set({ curso: x.target.value })} /></Field>
               <Field label="Responsável direto (ponto focal)" htmlFor="pf-resp" hint="Usado nas avaliações 90°/180°/360°."><Dropdown id="pf-resp" className="input" value={f.responsavelId} onChange={(x) => set({ responsavelId: x.target.value })}><option value="">Lideranças da área</option>{s.colaboradores.filter((c) => c.status !== 'encerrado' && c.id !== pessoa?.id).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</Dropdown></Field>
@@ -94,11 +94,11 @@ export function PessoaForm({ pessoa, onClose, onSalvo }: { pessoa?: Colaborador;
         )}
         <div className={secao === 'principal' ? '' : 'hidden'}>
         <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-3">Identificação</h4>
-        <div className="grid sm:grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <Field label="Nome completo" required erro={e('nome')} htmlFor="pf-nome"><input id="pf-nome" className="input" value={f.nome} onBlur={() => toque('nome')} onChange={(x) => set({ nome: x.target.value })} aria-invalid={!!e('nome')} /></Field>
           <Field label="Nome social" htmlFor="pf-ns"><input id="pf-ns" className="input" value={f.nomeSocial} onChange={(x) => set({ nomeSocial: x.target.value })} /></Field>
           <Field label="E-mail" required erro={e('email')} htmlFor="pf-email" hint="Usado para o acesso à plataforma."><input id="pf-email" type="email" className="input" value={f.email} onBlur={() => toque('email')} onChange={(x) => set({ email: x.target.value })} aria-invalid={!!e('email')} /></Field>
-          <Field label="Telefone" htmlFor="pf-tel"><input id="pf-tel" className="input" value={f.telefone} onChange={(x) => set({ telefone: x.target.value })} /></Field>
+          <Field label="Telefone" htmlFor="pf-tel"><input id="pf-tel" className="input" type="tel" inputMode="tel" value={f.telefone} onChange={(x) => set({ telefone: x.target.value })} /></Field>
           <Field label="Nascimento (opcional)" htmlFor="pf-nasc" hint="Apenas para celebrações, se a pessoa permitir."><input id="pf-nasc" type="date" max={hojeISO()} className="input" value={f.nascimento} onChange={(x) => set({ nascimento: x.target.value })} /></Field>
           <div className="grid grid-cols-[1fr_80px] gap-3">
             <Field label="Cidade" htmlFor="pf-cid"><input id="pf-cid" className="input" value={f.cidade} onChange={(x) => set({ cidade: x.target.value })} /></Field>
@@ -107,7 +107,7 @@ export function PessoaForm({ pessoa, onClose, onSalvo }: { pessoa?: Colaborador;
         </div>
 
         <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-3 mt-2">Atuação</h4>
-        <div className="grid sm:grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <Field label="Área" required htmlFor="pf-area"><Dropdown id="pf-area" className="input" value={f.setorId} onChange={(x) => set({ setorId: x.target.value, cargoId: '' })}>{s.setores.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</Dropdown></Field>
           <Field label="Função" htmlFor="pf-func" hint={cargos.length ? undefined : 'Cadastre funções da área em Estrutura.'}><Dropdown id="pf-func" className="input" value={f.cargoId} onChange={(x) => set({ cargoId: x.target.value })}><option value="">—</option>{cargos.map((g) => <option key={g.id} value={g.id}>{g.nome} · {g.nivel}</option>)}</Dropdown></Field>
           <Field label="Unidade" htmlFor="pf-un"><Dropdown id="pf-un" className="input" value={f.unidadeId} onChange={(x) => set({ unidadeId: x.target.value })}><option value="">—</option>{s.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}</Dropdown></Field>
@@ -125,7 +125,7 @@ export function PessoaForm({ pessoa, onClose, onSalvo }: { pessoa?: Colaborador;
         </div>
 
         <h4 className="text-[12px] font-bold uppercase tracking-wide text-muted mb-3 mt-2">Prestação de serviços</h4>
-        <div className="grid sm:grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <Field label="Forma de contratação" htmlFor="pf-reg"><Dropdown id="pf-reg" className="input" value={f.regime} onChange={(x) => set({ regime: x.target.value as Colaborador['regime'] })}>
             {Object.entries(REGIME_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </Dropdown></Field>

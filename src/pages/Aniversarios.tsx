@@ -110,7 +110,7 @@ export default function Aniversarios() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-[1.3fr_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-6">
         <div className="space-y-6 min-w-0">
           <Card>
             <CardHead title="🎂 Aniversários" sub={`${anivs.length} em ${MES_LONGO(mes)} · somente dia e mês`}

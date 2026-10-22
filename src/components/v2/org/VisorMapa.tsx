@@ -10,6 +10,7 @@ import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui'
 import { useAlturaDisponivel } from '@/lib/layout'
 import { cn } from '@/lib/utils'
+import { travarRolagem } from '@/lib/rolagem'
 import type { Aresta } from './layoutArvore'
 
 export interface VisorHandle {
@@ -138,13 +139,49 @@ export const VisorMapa = forwardRef<VisorHandle, {
     return () => el.removeEventListener('wheel', onWheel)
   }, [zoom, mover, maximizado])
 
+  // Pinça (dois dedos) amplia em torno do ponto entre os dedos; o arrasto de um dedo fica suspenso enquanto isso.
+  const dedos = useRef(new Map<number, { x: number; y: number }>())
+  const pinca = useRef<{ d0: number; k0: number; px: number; py: number } | null>(null)
+  const iniciarPinca = () => {
+    const [a, b] = [...dedos.current.values()]
+    const r = vp.current?.getBoundingClientRect()
+    if (!a || !b || !r) return
+    const cx = (a.x + b.x) / 2 - r.left, cy = (a.y + b.y) / 2 - r.top
+    // Ponto do mapa sob o centro da pinça: continua sob os dedos enquanto o zoom muda.
+    pinca.current = { d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, k0: vista.k, px: (cx - vista.x) / vista.k, py: (cy - vista.y) / vista.k }
+    arrasto.current = null
+  }
+  const acompanharDedo = (e: React.PointerEvent) => {
+    if (e.pointerType !== 'touch') return
+    dedos.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const mov = (ev: PointerEvent) => {
+      if (!dedos.current.has(ev.pointerId)) return
+      dedos.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY })
+      const pc = pinca.current, r = vp.current?.getBoundingClientRect()
+      if (!pc || dedos.current.size < 2 || !r) return
+      const [a, b] = [...dedos.current.values()]
+      const k = Math.min(K_MAX, Math.max(K_MIN, pc.k0 * Math.hypot(a.x - b.x, a.y - b.y) / pc.d0))
+      const cx = (a.x + b.x) / 2 - r.left, cy = (a.y + b.y) / 2 - r.top
+      mover(() => ({ k, x: cx - pc.px * k, y: cy - pc.py * k }), false)
+    }
+    const fim = (ev: PointerEvent) => {
+      if (ev.pointerId !== e.pointerId) return
+      dedos.current.delete(ev.pointerId)
+      if (dedos.current.size < 2) pinca.current = null
+      window.removeEventListener('pointermove', mov); window.removeEventListener('pointerup', fim); window.removeEventListener('pointercancel', fim)
+    }
+    window.addEventListener('pointermove', mov); window.addEventListener('pointerup', fim); window.addEventListener('pointercancel', fim)
+    if (dedos.current.size === 2) iniciarPinca()
+  }
+
   // Arrastar move o mapa. Um clique sem arrasto chega normalmente aos cartões.
   const iniciarArrasto = (e: React.PointerEvent) => {
-    if (e.button !== 0) return
+    acompanharDedo(e)
+    if (e.button !== 0 || dedos.current.size > 1) return
     arrasto.current = { sx: e.clientX, sy: e.clientY, ox: vista.x, oy: vista.y, moveu: false }
     const aoMover = (ev: PointerEvent) => {
       const a = arrasto.current
-      if (!a) return
+      if (!a || pinca.current) return
       const dx = ev.clientX - a.sx, dy = ev.clientY - a.sy
       if (!a.moveu && Math.abs(dx) + Math.abs(dy) < 5) return
       a.moveu = true
@@ -193,9 +230,9 @@ export const VisorMapa = forwardRef<VisorHandle, {
     if (cheia !== 'aberto') return
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') fecharCheia() }
     document.addEventListener('keydown', esc)
-    document.body.style.overflow = 'hidden'
-    vp.current?.focus()
-    return () => { document.removeEventListener('keydown', esc); document.body.style.overflow = '' }
+    const destravar = travarRolagem()
+    vp.current?.focus({ preventScroll: true })
+    return () => { document.removeEventListener('keydown', esc); destravar() }
   }, [cheia, fecharCheia])
 
   const teclas = (e: React.KeyboardEvent) => {
@@ -252,7 +289,8 @@ export const VisorMapa = forwardRef<VisorHandle, {
         aria-label={`${rotulo}. Use as setas para mover, mais e menos para ampliar e zero para enquadrar. Há uma visão em lista como alternativa.`}
         onPointerDown={iniciarArrasto} onKeyDown={teclas}
         style={maximizado ? undefined : { height: alturaCaixa }}
-        className={cn('cursor-grab active:cursor-grabbing select-none touch-pan-y outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset', maximizado && 'flex-1 min-h-0')}
+        // Na página, deslizar na vertical rola a página (o mapa responde ao horizontal e à pinça); em tela cheia, o dedo move o mapa em qualquer direção.
+        className={cn('cursor-grab active:cursor-grabbing select-none outline-none', maximizado ? 'touch-none' : 'touch-pan-y', 'focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset', maximizado && 'flex-1 min-h-0')}
       >
         <div style={{
           transform: `translate(${vista.x}px, ${vista.y}px) scale(${vista.k})`, transformOrigin: '0 0', width: largura, height: altura, position: 'relative',

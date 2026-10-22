@@ -165,7 +165,7 @@ export default function ReembolsosAdmin({ onVerColaborador }: { onVerColaborador
             {lista.length === 0 ? (
               <EmptyState icon="ReceiptText" title="Nenhum reembolso encontrado" desc="Ajuste os filtros de colaborador, categoria ou status." />
             ) : (
-              <div className="overflow-x-auto">
+              <div className="rolagem-x" tabIndex={0} role="region" aria-label="Tabela (role para os lados para ver todas as colunas)">
                 <table className="w-full text-[13.5px] min-w-[820px]">
                   <thead>
                     <tr className="text-left text-[11px] font-bold uppercase tracking-wide text-muted bg-surface-2 border-b border-line">

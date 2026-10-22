@@ -47,7 +47,7 @@ export function SecaoRecrutamento({ b, onDetalhe }: { b: any; onDetalhe: Abrir }
       <AvisoFiltros aplicados={b.filtrosAplicados} ignorados={b.filtrosIgnorados} />
       {b.candidatosSemDados && <Callout tone="neutral" icon="Info" className="mb-4">Ainda não há candidaturas nas vagas deste período; indicadores de funil, conversão e tempos ficam indisponíveis.</Callout>}
       <Grade indicadores={b.indicadores} anterior={b.periodoAnterior} onDetalhe={onDetalhe} />
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <BlocoCard titulo="Funil de recrutamento" periodo={b.periodo}>
           <Funil etapas={b.funil.map((f: any) => ({ rotulo: f.rotulo, valor: f.alcancaram }))} vazio="Sem candidaturas no período." />
         </BlocoCard>
@@ -93,7 +93,7 @@ export function SecaoPesquisas({ b, onDetalhe }: { b: any; onDetalhe: Abrir }) {
               Baixa participação em: {b.baixaAdesao.map((x: any) => `${x.titulo} (${numero(x.taxa ?? 0, 1)}%)`).join('; ')}. A taxa mede participação, não satisfação.
             </Callout>
           )}
-          <div className="grid lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <BlocoCard titulo="Evolução do eNPS" periodo={b.periodo} className="lg:col-span-2">
               {b.seriesEnps.length === 0 ? <p className="text-[13px] text-muted py-3">Nenhuma pesquisa do período tem eNPS com respostas suficientes para exibir.</p> : b.seriesEnps.map((s: any, i: number) => (
                 <div key={i} className="mb-3 last:mb-0">
@@ -149,7 +149,7 @@ export function SecaoEstrutura({ b, onDetalhe }: { b: any; onDetalhe: Abrir }) {
       {b.semDados ? <Card className="p-6"><EmptyState icon="Users" title="Nenhuma pessoa ativa neste recorte" desc="Ajuste os filtros de área, unidade ou gestor." /></Card> : (
         <>
           <Grade indicadores={b.indicadores} onDetalhe={onDetalhe} />
-          <div className="grid lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <BlocoCard titulo="Pessoas por departamento"><BarList itens={b.porSetor.map((x: any) => ({ rotulo: x.nome, valor: x.qtd }))} /></BlocoCard>
             <BlocoCard titulo="Pessoas por unidade"><DonutChart titulo="Pessoas por unidade" dados={b.porUnidade.map((x: any, i: number) => ({ rotulo: x.nome, valor: x.qtd, cor: CORES[i % CORES.length] }))} /></BlocoCard>
             <BlocoCard titulo="Pessoas por função"><BarList itens={b.porCargo.slice(0, 10).map((x: any) => ({ rotulo: x.nome, valor: x.qtd }))} /></BlocoCard>
@@ -173,7 +173,7 @@ export function Indisponiveis({ itens }: { itens: Indicador[] }) {
   return (
     <details className="mt-6 group">
       <summary className="cursor-pointer text-[13px] font-semibold text-ink-2 hover:text-ink select-none">Indicadores que este painel não calcula ({itens.length})</summary>
-      <div className="grid sm:grid-cols-2 gap-3 mt-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
         {itens.map((i) => (
           <Card key={i.chave} className="p-4">
             <div className="text-[13px] font-bold text-ink">{i.rotulo} <Badge tone="neutral">Indisponível</Badge></div>

@@ -37,7 +37,7 @@ export default function Familias() {
         actions={gerencia && <><Button icon="FolderPlus" onClick={() => setEd({ tipo: 'familia', nome: '', descricao: '', ativa: true })}>Nova família</Button><Button variant="ghost" icon="Route" onClick={() => setEd({ tipo: 'trilha', nome: '', descricao: '', ativa: true })}>Nova trilha</Button></>} />
       <Aguardar r={r}>
         {(d) => (
-          <div className="grid xl:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
             <Card>
               <CardHead title="Famílias ocupacionais" sub="Com subfamílias (um nível de profundidade)." />
               {d.familias.length === 0 ? <EmptyState icon="FolderTree" title="Nenhuma família ainda" desc={gerencia ? 'Crie a primeira família, como Jurídica ou Comercial.' : 'O RH ainda não cadastrou famílias.'} /> : (

@@ -23,13 +23,13 @@ export default function Configuracoes() {
   return (
     <>
       <PageHeader title="Configurações gerais" subtitle="Dados da empresa usados no portal e nas instruções de emissão de notas fiscais." />
-      <div className="grid lg:grid-cols-[1.2fr_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6">
         <Card className="p-5 sm:p-6">
           <h3 className="text-[15px] font-bold text-ink mb-4">Empresa</h3>
-          <div className="grid sm:grid-cols-2 gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Field label="Nome da empresa" required htmlFor="cg-n"><input id="cg-n" className="input" value={g.nomeEmpresa} onChange={(e) => setG({ ...g, nomeEmpresa: e.target.value })} /></Field>
             <Field label="Razão social do tomador" htmlFor="cg-r" hint="Quem aparece como tomador nas NFs"><input id="cg-r" className="input" value={g.razaoSocialTomador} onChange={(e) => setG({ ...g, razaoSocialTomador: e.target.value })} /></Field>
-            <Field label="CNPJ do tomador" htmlFor="cg-c"><input id="cg-c" className="input" value={g.cnpjTomador} onChange={(e) => setG({ ...g, cnpjTomador: mascaraCNPJ(e.target.value) })} /></Field>
+            <Field label="CNPJ do tomador" htmlFor="cg-c"><input id="cg-c" className="input" inputMode="numeric" value={g.cnpjTomador} onChange={(e) => setG({ ...g, cnpjTomador: mascaraCNPJ(e.target.value) })} /></Field>
             <Field label="E-mail do RH" htmlFor="cg-e"><input id="cg-e" type="email" className="input" value={g.emailRH} onChange={(e) => setG({ ...g, emailRH: e.target.value })} /></Field>
             <Field label="E-mail do Financeiro" htmlFor="cg-f"><input id="cg-f" type="email" className="input" value={g.emailFinanceiro} onChange={(e) => setG({ ...g, emailFinanceiro: e.target.value })} /></Field>
           </div>

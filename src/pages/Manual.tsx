@@ -144,7 +144,7 @@ export default function Manual() {
         <input className="input pl-10" placeholder="Buscar no manual..." value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
 
-      <div className="grid lg:grid-cols-[220px_1fr] gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-8 items-start">
         {/* Sumário */}
         <nav className="sticky top-[88px] hidden lg:block">
           <div className="text-[11px] font-bold uppercase tracking-wide text-muted mb-3">Nesta página</div>

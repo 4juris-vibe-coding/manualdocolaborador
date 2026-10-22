@@ -86,6 +86,14 @@
   input:where([type='radio']:not(.sr-only)):disabled { opacity: .5; cursor: not-allowed; }
   html {
     scroll-behavior: smooth;
+    /* iOS não infla o texto ao girar para paisagem (a ampliação manual continua livre). */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  /* Toque: tira o atraso/zoom do duplo toque em controles (botões de + e −, setas, abas tocados em sequência)
+     sem impedir o gesto de pinça. A ampliação de acessibilidade segue permitida (o viewport não a bloqueia). */
+  a, button, input, select, textarea, label, summary, [role='button'], [role='tab'], [role='option'], [role='switch'] {
+    touch-action: manipulation;
   }
   body {
     @apply bg-surface-3 text-ink font-sans antialiased;
@@ -135,6 +143,51 @@
   .chip-active {
     @apply bg-ink text-surface border-ink;
   }
+}
+
+/* Safari no iPhone amplia a página ao focar um campo com fonte menor que 16px (e não desfaz o zoom ao sair).
+   Em telas de toque, todo campo de digitação usa 16px; no desktop a tipografia compacta continua igual.
+   `!important` porque cada campo define o tamanho por classe utilitária; nenhum campo do projeto usa mais que 16px. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']):not([type='button']):not([type='submit']):not([type='reset']):not([type='image']),
+  select,
+  textarea,
+  [contenteditable='true'] {
+    font-size: 16px !important;
+  }
+}
+
+/* Ações do rodapé de modais e painéis: no celular os botões dividem a largura (alvos grandes, ao alcance do polegar). */
+@media (max-width: 639.98px) {
+  .modal-acoes > :is(button, a) { flex: 1 1 auto; }
+}
+
+/* Área com rolagem horizontal própria (tabelas largas): sombras nas bordas indicam que há mais conteúdo ao lado.
+   Feito só com fundos (local × scroll): sem JavaScript e sem cobrir o conteúdo. */
+.rolagem-x {
+  /* relative: elementos `absolute` lá dentro (ex.: o input oculto do Dropdown) passam a ser recortados pela rolagem
+     em vez de escaparem e alargarem a página inteira. */
+  position: relative;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  background:
+    linear-gradient(to right, rgb(var(--c-surface)) 30%, rgb(var(--c-surface) / 0)) left center / 28px 100% no-repeat local,
+    linear-gradient(to left, rgb(var(--c-surface)) 30%, rgb(var(--c-surface) / 0)) right center / 28px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgb(var(--c-shadow) / .16), transparent) left center / 12px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgb(var(--c-shadow) / .16), transparent) right center / 12px 100% no-repeat scroll;
+}
+
+/* <Tabela cartoes>: no celular, linhas viram cartões em duas colunas, com o rótulo de cada dado (data-rotulo). */
+@media (max-width: 639.98px) {
+  .tabela-cartoes { background: none; }
+  .tabela-cartoes table { min-width: 0 !important; }
+  .tabela-cartoes thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .tabela-cartoes tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .625rem .875rem; padding: .875rem 1rem; border-bottom: 1px solid rgb(var(--c-line)); }
+  .tabela-cartoes tbody td { display: block; padding: 0 !important; border: 0 !important; min-width: 0; overflow-wrap: anywhere; }
+  .tabela-cartoes tbody td:first-child, .tabela-cartoes tbody td[data-largo] { grid-column: 1 / -1; }
+  .tabela-cartoes tbody td[data-rotulo]::before { content: attr(data-rotulo); display: block; margin-bottom: 2px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: rgb(var(--c-muted)); }
+  .tabela-cartoes tbody td[colspan] { grid-column: 1 / -1; }
 }
 
 /* Grade tecnológica reutilizável (login / heros).

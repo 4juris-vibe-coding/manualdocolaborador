@@ -77,7 +77,7 @@ export default function Pessoas() {
       <Card>
         {lista.length === 0 ? <EmptyState icon="Users" title="Ninguém encontrado" desc="Ajuste a busca ou os filtros." action={<Button icon="UserPlus" onClick={() => setNovo(true)}>Cadastrar pessoa</Button>} /> : (
           <>
-            <Tabela minWidth={820}>
+            <Tabela minWidth={820} cartoes>
               <thead><tr><th className={TH}>Pessoa</th><th className={TH}>Área · Função</th><th className={TH}>Forma</th><th className={TH}>Início</th><th className={TH}>Contrato</th><th className={TH}>Situação</th></tr></thead>
               <tbody>
                 {visiveis.map((c) => {
@@ -92,11 +92,11 @@ export default function Pessoas() {
                           <div className="min-w-0"><Link to={`/rh/pessoas/${c.id}`} onClick={(e) => e.stopPropagation()} className="font-semibold text-ink hover:text-brand">{c.nome}</Link><div className="text-[11.5px] text-muted truncate">{c.email}</div></div>
                         </div>
                       </td>
-                      <td className={TD}><div className="text-ink-2">{s.setorNome(c.setorId)}</div><div className="text-[11.5px] text-muted">{s.cargoNome(c.cargoId)}</div></td>
-                      <td className={TD}>{c.regime}</td>
-                      <td className={TD}>{fmtDate(c.dataEntrada)}</td>
-                      <td className={TD}>{!k ? <span className="text-muted">—</span> : vence ? <Badge tone="warning" dot>Vence {fmtDate(k.fim)}</Badge> : <span className="text-[12.5px] text-ink-2">{k.fim ? `até ${fmtDate(k.fim)}` : 'Indeterminado'}</span>}</td>
-                      <td className={TD}><Badge tone={st.tone} dot>{st.label}</Badge></td>
+                      <td className={TD} data-largo data-rotulo="Área · Função"><div className="text-ink-2">{s.setorNome(c.setorId)}</div><div className="text-[11.5px] text-muted">{s.cargoNome(c.cargoId)}</div></td>
+                      <td className={TD} data-rotulo="Forma">{c.regime}</td>
+                      <td className={TD} data-rotulo="Início">{fmtDate(c.dataEntrada)}</td>
+                      <td className={TD} data-rotulo="Contrato">{!k ? <span className="text-muted">—</span> : vence ? <Badge tone="warning" dot>Vence {fmtDate(k.fim)}</Badge> : <span className="text-[12.5px] text-ink-2">{k.fim ? `até ${fmtDate(k.fim)}` : 'Indeterminado'}</span>}</td>
+                      <td className={TD} data-rotulo="Situação"><Badge tone={st.tone} dot>{st.label}</Badge></td>
                     </tr>
                   )
                 })}

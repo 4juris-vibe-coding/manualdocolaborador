@@ -59,7 +59,7 @@ export default function PainelPesquisas() {
                 </div>
                 <p className="text-[12px] text-muted -mt-3">Participação mede quantas pessoas responderam; não é um índice de satisfação.</p>
 
-                <div className="grid gap-6 lg:grid-cols-2">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                   <Card>
                     <CardHead title="Respostas por dia" sub="Últimos 30 dias, todas as pesquisas" />
                     <div className="p-5"><LinhaTempo titulo="Respostas por dia" pontos={d.respostasPorDia.map((x) => ({ rotulo: dataBR(x.data).slice(0, 5), valor: x.qtd }))} /></div>

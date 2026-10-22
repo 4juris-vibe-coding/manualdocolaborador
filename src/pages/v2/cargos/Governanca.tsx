@@ -34,7 +34,7 @@ export default function Governanca() {
         actions={gerencia && <Button variant="ghost" icon="BellRing" onClick={() => void notificar()}>Notificar revisões pendentes</Button>} />
       <Aguardar r={r}>
         {(d) => (
-          <div className="grid xl:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
             <Card className="xl:col-span-2">
               <CardHead title="Fila de aprovação" sub="Quem propôs a mudança não pode aprová-la (exceto a administração)." />
               {d.pendentes.length === 0 ? <EmptyState icon="CheckCircle2" title="Nada aguardando aprovação" /> : (

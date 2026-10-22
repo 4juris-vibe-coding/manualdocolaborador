@@ -98,8 +98,8 @@ export function Card({ children, className }: { children: ReactNode; className?:
 }
 export function CardHead({ title, sub, action }: { title: ReactNode; sub?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-line">
-      <div>
+    <div className="flex items-center justify-between flex-wrap gap-x-3 gap-y-2 px-5 py-4 border-b border-line">
+      <div className="min-w-0">
         <h3 className="text-[15px] font-bold text-ink">{title}</h3>
         {sub && <p className="text-xs text-muted mt-0.5">{sub}</p>}
       </div>
@@ -139,6 +139,10 @@ export function Progress({ value, className, barClassName, color }: { value: num
   )
 }
 
+/** Valores em reais vêm com espaço não separável ("R$ 1.234,00"): num cartão estreito, a quebra deve cair entre "R$" e o
+ *  número, nunca no meio dele. */
+export const quebraMoeda = (v: ReactNode): ReactNode => (typeof v === 'string' ? v.replace(/R\$\u00a0/g, 'R$ ') : v)
+
 /* ---------- StatCard ---------- */
 export function StatCard({ icon, tone = 'brand', value, label, trend, compacto }: { icon: string; tone?: string; value: ReactNode; label: string; trend?: ReactNode; compacto?: boolean }) {
   const iconTones: Record<string, string> = {
@@ -152,7 +156,7 @@ export function StatCard({ icon, tone = 'brand', value, label, trend, compacto }
         <Icon name={icon} className="h-[18px] w-[18px]" />
       </div>
       <div className="min-w-0">
-        <div className="text-[21px] font-extrabold tracking-tight text-ink leading-none tabular-nums">{value}</div>
+        <div className="text-[21px] font-extrabold tracking-tight text-ink leading-none tabular-nums [overflow-wrap:anywhere]">{quebraMoeda(value)}</div>
         <div className="text-[11.5px] text-muted mt-1 font-medium leading-snug">{label}</div>
       </div>
       {trend && <div className="ml-auto text-[11.5px] font-bold self-start">{trend}</div>}
@@ -164,7 +168,8 @@ export function StatCard({ icon, tone = 'brand', value, label, trend, compacto }
       <div className={cn('h-11 w-11 rounded-xl flex items-center justify-center mb-4', iconTones[tone])}>
         <Icon name={icon} className="h-[21px] w-[21px]" />
       </div>
-      <div className="text-[28px] font-extrabold tracking-tight text-ink leading-none">{value}</div>
+      {/* O número acompanha a largura do cartão (cqi): em duas colunas num celular estreito, valores em reais não vazam. */}
+      <div className="[container-type:inline-size]"><div className="text-[clamp(18px,15cqi,28px)] font-extrabold tracking-tight text-ink leading-[1.1] [overflow-wrap:anywhere]">{quebraMoeda(value)}</div></div>
       <div className="text-[12.5px] text-muted mt-2 font-medium">{label}</div>
     </Card>
   )
@@ -249,7 +254,7 @@ export function Tabs({ tabs, active, onChange, className }: { tabs: { key: strin
   }
   const seta = 'absolute top-0 bottom-0 z-[1] hidden sm:flex items-center w-12 text-muted hover:text-ink'
   return (
-    <div className={cn('relative border-b border-line mb-6', className)}>
+    <div className={cn('relative border-b border-line mb-6 min-w-0 max-w-full', className)}>
       <div ref={lista} role="tablist" onKeyDown={teclas} className="flex gap-1 overflow-x-auto overflow-y-hidden -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map((t, i) => (
           <button
@@ -286,10 +291,10 @@ export function Segmentado<T extends string>({ opcoes, valor, onChange, rotulo, 
   opcoes: readonly (readonly [T, string])[]; valor: T; onChange: (v: T) => void; rotulo?: string; rotuloId?: string; tamanho?: 'sm' | 'md'
 }) {
   return (
-    <div role="group" aria-label={rotuloId ? undefined : rotulo} aria-labelledby={rotuloId} className={cn('inline-flex border border-line overflow-hidden bg-surface', tamanho === 'sm' ? 'rounded-lg' : 'rounded-xl')}>
+    <div role="group" aria-label={rotuloId ? undefined : rotulo} aria-labelledby={rotuloId} className={cn('inline-flex max-w-full border border-line overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden bg-surface', tamanho === 'sm' ? 'rounded-lg' : 'rounded-xl')}>
       {opcoes.map(([k, rot]) => (
         <button key={k} type="button" aria-pressed={valor === k} onClick={() => onChange(k)}
-          className={cn('font-semibold transition outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand border-l border-line first:border-l-0',
+          className={cn('shrink-0 whitespace-nowrap font-semibold transition outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand border-l border-line first:border-l-0',
             tamanho === 'sm' ? 'h-9 px-3 text-[12.5px]' : 'h-10 px-3.5 text-[12.5px]',
             valor === k ? 'bg-brand text-white' : 'text-ink-2 hover:bg-winter')}>{rot}</button>
       ))}
@@ -325,16 +330,20 @@ export function IndicadorCard({ titulo, valor, definicao, fonte, detalhe, icon =
           <Icon name={icon} className="h-5 w-5" />
         </div>
         <details className="relative">
-          <summary className="list-none cursor-pointer h-7 w-7 rounded-lg text-muted hover:bg-winter hover:text-ink flex items-center justify-center [&::-webkit-details-marker]:hidden" aria-label={`Como é calculado: ${titulo}`}>
+          <summary className="list-none cursor-pointer h-10 w-10 -mr-2 -mt-1.5 sm:h-7 sm:w-7 sm:m-0 rounded-lg text-muted hover:bg-winter hover:text-ink flex items-center justify-center [&::-webkit-details-marker]:hidden" aria-label={`Como é calculado: ${titulo}`}>
             <Icon name="Info" className="h-4 w-4" />
           </summary>
-          <div className="absolute right-0 top-8 z-20 w-64 rounded-xl bg-midnight text-white p-3 text-[12px] leading-relaxed shadow-lg dark:bg-winter dark:border dark:border-line-strong">
+          {/* Celular: painel na base da tela (um balão preso à borda do cartão sairia da tela na coluna da esquerda); tocar fecha. */}
+          <div onClick={(e) => { if (window.innerWidth < 640) (e.currentTarget.parentElement as HTMLDetailsElement).open = false }}
+            className="fixed left-4 right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[95] sm:absolute sm:left-auto sm:bottom-auto sm:right-0 sm:top-8 sm:z-20 sm:w-64 rounded-xl bg-midnight text-white p-4 sm:p-3 text-[13px] sm:text-[12px] leading-relaxed shadow-lg dark:bg-winter dark:border dark:border-line-strong">
+            <p className="sm:hidden font-bold mb-1">{titulo}</p>
             <p>{definicao}</p>
             <p className="mt-2 text-[#aab6c0]"><b className="text-white">Fonte:</b> {fonte}</p>
+            <p className="sm:hidden mt-2 text-[11.5px] text-[#aab6c0]">Toque para fechar.</p>
           </div>
         </details>
       </div>
-      <div className="text-[26px] font-extrabold tracking-tight text-ink leading-none mt-3 tabular-nums">{valor}</div>
+      <div className="[container-type:inline-size] mt-3"><div className="text-[clamp(17px,15cqi,26px)] font-extrabold tracking-tight text-ink leading-[1.1] tabular-nums [overflow-wrap:anywhere]">{quebraMoeda(valor)}</div></div>
       <div className="text-[12.5px] text-ink-2 mt-1.5 font-semibold">{titulo}</div>
       {detalhe && <div className="text-[11.5px] text-muted mt-0.5">{detalhe}</div>}
     </Card>
@@ -366,16 +375,19 @@ export function ColunasMensais({ dados, rotulo }: { dados: { mes: string; qtd: n
   const nomeMes = (m: string) => new Date(m + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
   return (
     <figure>
-      <div className="flex items-end gap-2 h-36" role="img" aria-label={`${rotulo}: ${dados.map((d) => `${nomeMes(d.mes)} ${d.qtd}`).join(', ')}`}>
+      <div className="flex items-end gap-1 sm:gap-2 h-36" role="img" aria-label={`${rotulo}: ${dados.map((d) => `${nomeMes(d.mes)} ${d.qtd}`).join(', ')}`}>
         {dados.map((d) => (
-          <div key={d.mes} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
+          <div key={d.mes} className="flex-1 min-w-0 flex flex-col items-center justify-end h-full gap-1">
             <span className="text-[11px] font-bold text-ink-2 tabular-nums">{d.qtd}</span>
             <div className="w-full max-w-[38px] rounded-t-lg bg-brand transition-all" style={{ height: `${Math.max(3, (d.qtd / max) * 100)}%` }} />
           </div>
         ))}
       </div>
-      <div className="flex gap-2 mt-1.5" aria-hidden>
-        {dados.map((d) => <span key={d.mes} className="flex-1 text-center text-[10.5px] text-muted capitalize">{nomeMes(d.mes)}</span>)}
+      <div className="flex gap-1 sm:gap-2 mt-1.5" aria-hidden>
+        {/* Com muitos meses numa tela estreita, só a inicial (o nome completo segue no rótulo acessível). */}
+        {dados.map((d) => <span key={d.mes} className="flex-1 min-w-0 text-center text-[10.5px] text-muted capitalize">
+          {dados.length > 6 ? <><span className="min-[480px]:hidden">{nomeMes(d.mes).slice(0, 1)}</span><span className="hidden min-[480px]:inline">{nomeMes(d.mes)}</span></> : nomeMes(d.mes)}
+        </span>)}
       </div>
       <figcaption className="sr-only">{rotulo}</figcaption>
     </figure>
@@ -419,9 +431,12 @@ export function SearchBox({ value, onChange, placeholder = 'Buscar…', label = 
 }
 
 /* ---------- Tabela responsiva ---------- */
-export function Tabela({ children, minWidth = 680 }: { children: ReactNode; minWidth?: number }) {
+/** Tabela com rolagem lateral própria (a página nunca rola de lado); sombras nas bordas avisam que há mais colunas.
+ *  `cartoes`: no celular cada linha vira um cartão e cada célula mostra o rótulo da coluna (atributo `data-rotulo` no <td>);
+ *  a primeira célula ocupa a largura toda. No desktop nada muda. */
+export function Tabela({ children, minWidth = 680, cartoes }: { children: ReactNode; minWidth?: number; cartoes?: boolean }) {
   return (
-    <div className="overflow-x-auto">
+    <div className={cn('rolagem-x', cartoes && 'tabela-cartoes')} tabIndex={0} role="region" aria-label="Tabela (role para os lados para ver todas as colunas)">
       <table className="w-full text-[13.5px]" style={{ minWidth }}>{children}</table>
     </div>
   )
