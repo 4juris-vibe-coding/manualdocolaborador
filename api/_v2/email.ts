@@ -4,15 +4,16 @@
    - sem RESEND_API_KEY → 'nao_configurado' (nada foi enviado)
    - provedor recusou / rede falhou → 'falhou' (com o motivo)
    ============================================================ */
+import { emailDeTexto } from '../_emailsPortal.js'
+
 export type StatusEnvio = 'enviada' | 'falhou' | 'nao_configurado'
 export interface ResultadoEnvio { status: StatusEnvio; erro?: string }
 
 export const emailConfigurado = () => !!process.env.RESEND_API_KEY
 
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
-
-/** Converte texto simples (com quebras de linha) em HTML seguro. */
-export const textoParaHtml = (t: string) => `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#122029">${esc(t).replace(/\n/g, '<br>')}</div>`
+/** Converte texto simples em e-mail HTML no layout da marca 4JURIS (o texto continua indo como alternativa). */
+export const textoParaHtml = (t: string, assunto = '4JURIS') =>
+  emailDeTexto({ assunto, texto: t, portal: (process.env.PORTAL_URL || 'https://portaldocolaborador.somos4juris.com.br').replace(/\/$/, '') })
 
 export async function enviarEmail(para: string, assunto: string, corpoTexto: string, opts: { fetchImpl?: typeof fetch } = {}): Promise<ResultadoEnvio> {
   const chave = process.env.RESEND_API_KEY
@@ -25,7 +26,7 @@ export async function enviarEmail(para: string, assunto: string, corpoTexto: str
         from: process.env.RESEND_FROM || '4JURIS <nao-responda@4jurismarketing.com.br>',
         to: [para],
         subject: assunto,
-        html: textoParaHtml(corpoTexto),
+        html: textoParaHtml(corpoTexto, assunto),
         text: corpoTexto,
       }),
     })
