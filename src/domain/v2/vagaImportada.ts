@@ -51,7 +51,7 @@ const TITULOS: Record<Secao, string[]> = {
 }
 
 export const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
-const chave = (s: string) => semAcento(s).toLowerCase().replace(/\s+/g, ' ').trim()
+export const chave = (s: string) => semAcento(s).toLowerCase().replace(/\s+/g, ' ').trim()
 
 /** Se a linha é título de seção, devolve a seção e o que vier depois de ":" na mesma linha.
     Dentro de "Sobre a vaga", "Local: X" é um campo, não uma seção nova. */
@@ -78,7 +78,7 @@ const RUIDO = /^(?:\d{1,3}|p[aá]gina \d+(?: de \d+)?|\d+\s*\/\s*\d+)$/i
 const continua = (anterior: string, atual: string) => !/[.!?:;]$/.test(anterior) && /^[a-zà-ú(,]/.test(atual)
 
 /** Junta as quebras de linha do PDF em parágrafos. */
-function paragrafos(linhas: string[]): string {
+export function paragrafos(linhas: string[]): string {
   const out: string[] = []
   for (const l of linhas) {
     if (out.length && continua(out[out.length - 1], l)) out[out.length - 1] += ' ' + l
@@ -88,7 +88,7 @@ function paragrafos(linhas: string[]): string {
 }
 
 /** Um item por posição: com marcadores, cada marcador abre um item; sem eles, cada linha que não continua a anterior. */
-function itensDaLista(linhas: string[]): string[] {
+export function itensDaLista(linhas: string[]): string[] {
   const comMarcador = linhas.some((l) => MARCADOR.test(l))
   const out: string[] = []
   let abrir = true
@@ -103,6 +103,10 @@ function itensDaLista(linhas: string[]): string[] {
   }
   return out
 }
+
+/** Linhas do texto extraído do PDF, sem espaços repetidos, vazias nem números de página. */
+export const linhasDoPdf = (texto: string) =>
+  texto.replace(/\r\n?/g, '\n').split('\n').map((l) => l.replace(/\s+/g, ' ').trim()).filter((l) => l && !RUIDO.test(l))
 
 /* ---------- campos de "Sobre a vaga" ---------- */
 
@@ -146,7 +150,7 @@ const senioridadeDe = (s: string) => SENIORIDADES.find(([re]) => re.test(chave(s
 
 /** Separa o texto extraído do PDF nas seções do modelo e devolve os campos do formulário (já saneados). */
 export function extrairVagaDoTexto(texto: string): VagaImportada {
-  const linhas = texto.replace(/\r\n?/g, '\n').split('\n').map((l) => l.replace(/\s+/g, ' ').trim()).filter((l) => l && !RUIDO.test(l))
+  const linhas = linhasDoPdf(texto)
   const secoes = new Map<Secao | 'inicio', string[]>([['inicio', []]])
   let atual: Secao | 'inicio' = 'inicio'
   for (const l of linhas) {

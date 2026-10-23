@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { mundoPadrao, GET, POST, PUT, DEL, chamar } from './teste/harness'
+import { pdfComTexto } from './teste/pdfTexto'
 
 let m: Awaited<ReturnType<typeof mundoPadrao>>
 let tax: any
@@ -221,5 +222,25 @@ describe('faixas salariais', () => {
     const d = await POST(m, 'cargos/faixas', m.c.rh1, faixa({ cargoId: 'g2', vigenciaInicio: '2027-01-01' }))
     expect((await DEL(m, `cargos/faixas/${d.json.id}`, m.c.rh1)).status).toBe(200)
     expect((await DEL(m, `cargos/faixas/${id1}`, m.c.rh1)).status).toBe(409)
+  })
+})
+
+describe('importar ficha de PDF', () => {
+  const enviar = (linhas: string[]) => ({ arquivo: { nome: 'cargo.pdf', base64: pdfComTexto(linhas).toString('base64') } })
+  const CARGO = ['Cargo: Advogado Pleno', 'Objetivo do cargo', 'Proteger o cliente.', 'Responsabilidades', '• Elaborar peças', '• Acompanhar audiências', 'Competências técnicas', 'Direito civil, Processo civil']
+
+  it('lê o PDF e devolve os campos da ficha, sem gravar nada', async () => {
+    const antes = (await m.pg.query('select count(*)::int as n, max(atualizado_em) as a from cg_fichas')).rows[0]
+    const r = await POST(m, 'cargos/g1/ficha/importar', m.c.rh1, enviar(CARGO))
+    expect(r.status).toBe(200)
+    expect(r.json.campos).toMatchObject({ nome: 'Advogado Pleno', objetivo: 'Proteger o cliente.', responsabilidades: 'Elaborar peças\nAcompanhar audiências', competenciasTecnicas: ['Direito civil', 'Processo civil'] })
+    expect((await m.pg.query('select count(*)::int as n, max(atualizado_em) as a from cg_fichas')).rows[0]).toEqual(antes)
+  })
+
+  it('só para quem gerencia cargos, só PDF e só com conteúdo de cargo', async () => {
+    expect((await POST(m, 'cargos/g1/ficha/importar', m.c.ger1, enviar(CARGO))).status).toBe(403)
+    expect((await POST(m, 'cargos/nao-existe/ficha/importar', m.c.rh1, enviar(CARGO))).status).toBe(404)
+    expect((await POST(m, 'cargos/g1/ficha/importar', m.c.rh1, enviar([]))).status).toBe(400)
+    expect((await POST(m, 'cargos/g1/ficha/importar', m.c.rh1, enviar(['Nota fiscal', 'Total R$ 10,00']))).status).toBe(400)
   })
 })

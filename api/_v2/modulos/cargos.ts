@@ -12,6 +12,8 @@ import {
   CAMPOS_FICHA, RESSALVA_FAIXA, TRILHAS_INICIAIS, detectarDuplicidades, diffFichas, podeAprovar, posicaoNaFaixa, revisaoPendente,
   validarFaixa, vigenciasSobrepoem, type Vigencia,
 } from '../../../src/domain/v2/cargos.js'
+import { validarUpload } from '../arquivos.js'
+import { lerFichaDoPdf } from '../cargoPdf.js'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const uuid = (v: unknown, campo = 'id') => { if (typeof v !== 'string' || !UUID.test(v)) throw invalido(`${campo} inválido.`); return v }
@@ -681,6 +683,17 @@ export const rotas: Rota[] = [
           propostaPorMim: !!sol && sol.proposta_por === c.usuario.colaboradorId,
         },
       })
+    },
+  },
+  // Importação de PDF: só lê e devolve os campos; nada é gravado até a pessoa salvar a ficha.
+  {
+    metodo: 'POST', padrao: 'cargos/:cargoId/ficha/importar', cap: 'cargos:gerenciar',
+    h: async (c) => {
+      const cg = await cargoLegadoOu404(c.db, c.params.cargoId)
+      const up = validarUpload(c.req.corpo?.arquivo, ['pdf'])
+      const campos = await lerFichaDoPdf(up.dados)
+      await auditar(c.db, c.usuario.colaboradorId, 'cargos_ficha', cg.id, 'importar_pdf', { arquivo: up.nome })
+      return ok({ campos })
     },
   },
   {

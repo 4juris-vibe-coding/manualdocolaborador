@@ -10,6 +10,9 @@ import { api, executar, useApi, ErroApi } from '@/data/v2/api'
 import { dataBR, dataHoraBR, moeda } from '@/lib/fmt'
 import { toast } from '@/components/toast'
 import { Dropdown } from '@/components/Dropdown'
+import { BotaoImportarPdf } from '@/components/v2/vagas/ImportarPdf'
+import { normalizar } from '@/domain/v2/cargos'
+import type { FichaImportada } from '@/domain/v2/cargoImportado'
 
 interface Ficha {
   codigo: string | null; familiaId: string | null; subfamiliaId: string | null; area: string | null; trilhaId: string | null; nivelId: string | null
@@ -104,6 +107,28 @@ function AbaFicha({ d, cargoId, recarregar }: { d: Resp; cargoId: string; recarr
     if (!decisao) return
     if (await executar(() => api.post(`cargos/${encodeURIComponent(cargoId)}/ficha/decisao`, { decisao, justificativa }), decisao === 'aprovar' ? 'Ficha aprovada e versionada.' : 'Ficha devolvida ao rascunho.')) { setDecisao(null); setJustificativa(''); recarregar() }
   }
+  /** Preenche a ficha com o que veio do PDF. Campo vazio no PDF mantém o valor atual; nada é salvo até a pessoa salvar. */
+  function importar(p: FichaImportada) {
+    const mesmo = (a: string, b: string) => !!a && !!b && normalizar(a) === normalizar(b)
+    const familias = tax.dados?.familias ?? []
+    const familia = familias.find((x) => !x.paiId && mesmo(x.nome, p.familia))
+    const sub = familias.find((x) => x.paiId && mesmo(x.nome, p.familia))
+    const nivel = tax.dados?.trilhas.flatMap((t) => t.niveis.map((n) => ({ ...n, trilhaId: t.id }))).find((n) => mesmo(n.nome, p.nivel))
+    const textos = (['codigo', 'area', 'descricaoOficial', 'objetivo', 'responsabilidades', 'entregas', 'requisitosMinimos', 'formacao', 'experiencia'] as const)
+      .filter((k) => p[k]).map((k) => [k, p[k]])
+    const listas = (['competenciasTecnicas', 'competenciasComportamentais', 'conhecimentos', 'certificacoes', 'kpis'] as const)
+      .filter((k) => p[k].length).map((k) => [k, p[k]])
+    set({
+      ...Object.fromEntries([...textos, ...listas]),
+      ...(p.vigenciaInicio ? { vigenciaInicio: p.vigenciaInicio } : {}),
+      ...(familia ? { familiaId: familia.id, subfamiliaId: null } : sub ? { familiaId: sub.paiId!, subfamiliaId: sub.id } : {}),
+      ...(nivel ? { trilhaId: nivel.trilhaId, nivelId: nivel.id } : {}),
+    })
+    setErros({})
+    const n = textos.length + listas.length
+    if (p.nome && !mesmo(p.nome, d.cargo.nome)) toast(`${n} campos preenchidos, mas o PDF parece ser do cargo "${p.nome}". Confira antes de salvar.`, 'info')
+    else toast(`${n} campos preenchidos a partir do PDF. Revise e salve o rascunho.`)
+  }
   const acao = async (rota: string, ok: string) => { if (await executar(() => api.post(`cargos/${encodeURIComponent(cargoId)}/ficha/${rota}`), ok)) recarregar() }
   async function inativar() {
     if (await executar(() => api.post(`cargos/${encodeURIComponent(cargoId)}/ficha/inativar`, { motivo }), 'Cargo inativado.')) { setInativando(false); setMotivo(''); recarregar() }
@@ -138,7 +163,8 @@ function AbaFicha({ d, cargoId, recarregar }: { d: Resp; cargoId: string; recarr
 
       {(d.ficha || d.permissoes.editar) && (
         <Card>
-          <CardHead title="Ficha oficial" sub={d.ficha ? `Atualizada em ${dataHoraBR(d.ficha.atualizadoEm)}` : 'Preencha e salve para criar o rascunho.'} />
+          <CardHead title="Ficha oficial" sub={d.ficha ? `Atualizada em ${dataHoraBR(d.ficha.atualizadoEm)}` : 'Preencha e salve para criar o rascunho.'}
+            action={editavel ? <BotaoImportarPdf<FichaImportada> size="sm" rota={`cargos/${encodeURIComponent(cargoId)}/ficha/importar`} rotulo="Importar descrição (PDF)" aoImportar={importar} /> : undefined} />
           <form className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-x-5" onSubmit={(e) => { e.preventDefault(); void salvar() }}>
             <Field label="Código" htmlFor="f-cod" erro={erros.codigo} hint="Único. Em branco, gera automaticamente."><input id="f-cod" className="input" disabled={!editavel} value={f.codigo ?? ''} onChange={(e) => set({ codigo: e.target.value })} /></Field>
             <Field label="Área" htmlFor="f-area"><input id="f-area" className="input" disabled={!editavel} value={f.area ?? ''} onChange={(e) => set({ area: e.target.value })} /></Field>
