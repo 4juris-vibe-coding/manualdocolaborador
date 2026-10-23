@@ -52,7 +52,8 @@ interface DadosNota { numero: string; serie: string; dataEmissao: string; compet
 function lerDados(b: Linha, agora: Date): DadosNota {
   const competencia = texto(b.competencia, 'competência', { max: 7 })
   if (!RE_COMPETENCIA.test(competencia)) throw invalido('Competência inválida (AAAA-MM).', { competencia: 'Use AAAA-MM' })
-  const dataEmissao = dataISO(b.dataEmissao, 'data de emissão', true)!
+  // Sem data informada, vale o dia do envio.
+  const dataEmissao = dataISO(b.dataEmissao, 'data de emissão') ?? hoje(agora)
   if (dataEmissao > hoje(agora)) throw invalido('A data de emissão não pode estar no futuro.', { dataEmissao: 'Data futura' })
   return {
     numero: texto(b.numero, 'número da nota', { max: 30 }).replace(/\s+/g, ''), serie: texto(b.serie, 'série', { obrigatorio: false, max: 10 }),
@@ -72,6 +73,12 @@ async function exigirNaoDuplicada(ex: Executor, fornecedorId: string, d: DadosNo
   const dup = (await ex.query("select id from fin_notas where fornecedor_id = $1 and lower(numero) = lower($2) and serie = $3 and status <> 'cancelada' and id <> coalesce($4::uuid, '00000000-0000-0000-0000-000000000000')",
     [fornecedorId, d.numero, d.serie, ignorarId])).rows[0]
   if (dup) throw conflito('Esta nota (mesmo emitente, número e série) já foi registrada.')
+}
+
+/** O arquivo é obrigatório para quem presta o serviço; o financeiro pode registrar a nota como recebida sem ele. */
+function lerArquivo(b: Linha, u: Usuario, prestador: boolean) {
+  if (!b.arquivo && !prestador && tem(u, 'fin:conferir')) return null
+  return validarUpload(b.arquivo, ['pdf', 'png', 'jpg'], 'arquivo')
 }
 
 /** No aceite: cria a conta a pagar (uma por nota) e aplica as regras de retenção vigentes do fornecedor, pendentes de revisão. */
@@ -148,20 +155,20 @@ export const rotas: Rota[] = [
     h: async ({ db, req, usuario, agora }) => {
       const b = req.corpo ?? {}
       const d = lerDados(b, agora)
-      const up = validarUpload(b.arquivo, ['pdf', 'png', 'jpg'], 'arquivo')
       const id = await db.tx(async (t) => {
         const { k, prestador } = await contratoParaNota(t, usuario, idTexto(b.contratoId, 'contratoId'))
+        const up = lerArquivo(b, usuario, prestador)
         // Contrato encerrado ainda recebe a nota de serviços já prestados (sai marcada como divergência para conferência).
         if (k.status === 'rascunho') throw conflito('Este contrato ainda é rascunho e não aceita notas.')
         await exigirNaoDuplicada(t, k.fornecedor_id, d, null)
         const div = await calcularDivergencias(t, k, d, null)
-        const arq = await guardarArquivo(t, up, 'nota_fiscal', null, usuario.colaboradorId)
+        const arq = up && await guardarArquivo(t, up, 'nota_fiscal', null, usuario.colaboradorId)
         const r = await t.query(`insert into fin_notas (contrato_id, fornecedor_id, numero, serie, data_emissao, competencia, valor_bruto, descricao, centro_custo_id, vencimento, arquivo_id, divergencias, enviada_por)
           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13) returning id`,
           [k.id, k.fornecedor_id, d.numero, d.serie, d.dataEmissao, d.competencia, d.valorBruto, d.descricao, k.centro_custo_id, d.vencimento, arq, JSON.stringify(div), usuario.colaboradorId])
         const id = r.rows[0].id as string
-        await t.query('update arq_arquivos set dono_id = $2 where id = $1', [arq, id])
-        await auditar(t, usuario.colaboradorId, 'nota_fiscal', id, 'enviada', { contrato: k.numero, competencia: d.competencia, valor: d.valorBruto, divergencias: div.map((x) => x.codigo), emNomeDe: prestador ? null : 'financeiro' })
+        if (arq) await t.query('update arq_arquivos set dono_id = $2 where id = $1', [arq, id])
+        await auditar(t, usuario.colaboradorId, 'nota_fiscal', id, 'enviada', { contrato: k.numero, competencia: d.competencia, valor: d.valorBruto, divergencias: div.map((x) => x.codigo), emNomeDe: prestador ? null : 'financeiro', semArquivo: !arq || undefined })
         await notificarCap(t, 'fin:conferir', { tipo: 'nota_fiscal', titulo: 'Nota fiscal para conferir', corpo: `Contrato ${k.numero} · ${d.competencia}`, link: `/financeiro/notas?nota=${id}`, chave: `nf-nova:${id}` }, [usuario.colaboradorId])
         return id
       })
@@ -193,7 +200,7 @@ export const rotas: Rota[] = [
     h: async ({ db, params, usuario }) => {
       const n = await notaOu404(db, params.id)
       await acessoNota(db, usuario, n)
-      if (!n.arquivo_id) throw naoEncontrado('Nota importada do controle anterior: não há arquivo anexado.')
+      if (!n.arquivo_id) throw naoEncontrado(n.legado ? 'Nota importada do controle anterior: não há arquivo anexado.' : 'Esta nota foi registrada sem arquivo anexado.')
       const out = await baixarArquivo(db, n.arquivo_id)
       if (!out?.binario) throw naoEncontrado('Arquivo não encontrado.')
       return { ...out, binario: { ...out.binario, inline: true } }
@@ -260,15 +267,16 @@ export const rotas: Rota[] = [
     h: async ({ db, params, req, usuario, agora }) => {
       const b = req.corpo ?? {}
       const d = lerDados(b, agora)
-      const up = validarUpload(b.arquivo, ['pdf', 'png', 'jpg'], 'arquivo')
       await db.tx(async (t) => {
         const n = await notaOu404(t, params.id, true)
         const acesso = await acessoNota(t, usuario, n)
         if (!acesso.prestador && !tem(usuario, 'fin:conferir')) throw proibido('Só quem presta o serviço reenvia a nota.')
         if (n.status !== 'devolvida') throw conflito('Só notas devolvidas podem ser reenviadas.')
+        const up = lerArquivo(b, usuario, acesso.prestador)
         await exigirNaoDuplicada(t, n.fornecedor_id, d, n.id)
         const div = await calcularDivergencias(t, acesso.k!, d, n.id)
-        const arq = await guardarArquivo(t, up, 'nota_fiscal', n.id, usuario.colaboradorId)
+        // Reenvio do financeiro sem arquivo novo mantém o anterior (se houver).
+        const arq = up ? await guardarArquivo(t, up, 'nota_fiscal', n.id, usuario.colaboradorId) : n.arquivo_id
         await t.query(`update fin_notas set numero = $2, serie = $3, data_emissao = $4, competencia = $5, valor_bruto = $6, descricao = $7, vencimento = $8, arquivo_id = $9,
           divergencias = $10::jsonb, status = 'recebida', conferida_por = null, conferida_em = null, reenvios = reenvios + 1, versao = versao + 1 where id = $1`,
           [n.id, d.numero, d.serie, d.dataEmissao, d.competencia, d.valorBruto, d.descricao, d.vencimento, arq, JSON.stringify(div)])

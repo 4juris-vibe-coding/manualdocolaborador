@@ -148,7 +148,7 @@ function ModalEnviarNota({ aberto, contratos, inicial, fechar, pronto }: { abert
   const base = () => {
     const n = inicial?.reenviar
     const k = contratos.find((x) => x.id === (inicial?.contratoId ?? n?.contratoId)) ?? contratos.find((x) => x.status === 'vigente')
-    return { contratoId: k?.id ?? '', numero: n?.numero ?? '', serie: n?.serie ?? '', dataEmissao: n?.dataEmissao ?? new Date().toISOString().slice(0, 10), competencia: n?.competencia ?? mes, valorBruto: n ? String(n.valorBruto) : k && k.modeloRemuneracao === 'mensal_fixo' ? String(k.valor) : '', descricao: n?.descricao ?? '', vencimento: n?.vencimento ?? '' }
+    return { contratoId: k?.id ?? '', numero: n?.numero ?? '', competencia: n?.competencia ?? mes, valorBruto: n ? String(n.valorBruto) : k && k.modeloRemuneracao === 'mensal_fixo' ? String(k.valor) : '' }
   }
   const [f, setF] = useState(base)
   const [arq, setArq] = useState<{ nome: string; base64: string } | null>(null)
@@ -160,7 +160,9 @@ function ModalEnviarNota({ aberto, contratos, inicial, fechar, pronto }: { abert
   const salvar = async () => {
     setEnviando(true)
     try {
-      const corpo = { ...f, valorBruto: f.valorBruto.replace(',', '.'), arquivo: arq }
+      // A data de emissão fica a do envio (servidor). No reenvio, série/descrição/vencimento já registrados são mantidos.
+      const n = inicial?.reenviar
+      const corpo = { ...f, serie: n?.serie, descricao: n?.descricao, vencimento: n?.vencimento, valorBruto: f.valorBruto.replace(',', '.'), arquivo: arq }
       if (inicial?.reenviar) await api.post(`financeiro/notas/${inicial.reenviar.id}/reenviar`, corpo)
       else await api.post('financeiro/notas', corpo)
       toast(inicial?.reenviar ? 'Nota corrigida e reenviada para conferência.' : 'Nota enviada. Você será avisado(a) da conferência e do pagamento.')
@@ -171,7 +173,7 @@ function ModalEnviarNota({ aberto, contratos, inicial, fechar, pronto }: { abert
     <Field label={rot} required={obrig} erro={erros[c] ?? erros[rot.toLowerCase()]} htmlFor={`nf-${c}`}><input id={`nf-${c}`} className="input" value={f[c]} onChange={(e) => setF({ ...f, [c]: e.target.value })} {...extra} /></Field>
   )
   return (
-    <Modal open={aberto} onClose={fechar} title={inicial?.reenviar ? `Corrigir nota ${inicial.reenviar.numero}` : 'Enviar nota fiscal'} subtitle="Os dados precisam ser iguais aos da nota emitida. O arquivo é verificado no servidor."
+    <Modal open={aberto} onClose={fechar} title={inicial?.reenviar ? `Corrigir nota ${inicial.reenviar.numero}` : 'Enviar nota fiscal'} subtitle="Anexe o arquivo e confira o número e o valor. A data do envio é registrada automaticamente."
       footer={<><Button variant="ghost" onClick={fechar}>Cancelar</Button><Button disabled={!arq || !f.contratoId || enviando} onClick={salvar}>{enviando ? 'Enviando…' : 'Enviar'}</Button></>}>
       {inicial?.reenviar?.motivoDevolucao && <Callout tone="danger" icon="Undo2" className="mb-3">Motivo da devolução: {inicial.reenviar.motivoDevolucao}</Callout>}
       {!inicial?.reenviar && <Field label="Contrato" required><Dropdown aria-label="Contrato" className="w-full" value={f.contratoId} onChange={(e) => {
@@ -180,13 +182,10 @@ function ModalEnviarNota({ aberto, contratos, inicial, fechar, pronto }: { abert
       }}>{contratos.map((x) => <option key={x.id} value={x.id}>{x.numero} · {x.objeto}</option>)}</Dropdown></Field>}
       {k && <p className="text-[12px] text-muted -mt-2 mb-3">{ROTULO_MODELO[k.modeloRemuneracao]}: {dinheiro(k.valor)}. Valor diferente do contrato vai para análise com justificativa.</p>}
       <div className="grid grid-cols-2 gap-x-3">
-        {campo('numero', 'Número da nota')}{campo('serie', 'Série', {}, false)}
-        {campo('dataEmissao', 'Data de emissão', { type: 'date' })}
+        {campo('numero', 'Número da nota')}
         <Field label="Competência (mês do serviço)" required htmlFor="nf-comp" erro={erros['competência']}><input id="nf-comp" type="month" className="input" value={f.competencia} onChange={(e) => setF({ ...f, competencia: e.target.value })} /></Field>
         {campo('valorBruto', 'Valor bruto', { inputMode: 'decimal' })}
-        {campo('vencimento', 'Vencimento (se constar na nota)', { type: 'date' }, false)}
       </div>
-      <Field label="Descrição do serviço" htmlFor="nf-desc"><textarea id="nf-desc" className="input h-16 py-2.5" value={f.descricao} onChange={(e) => setF({ ...f, descricao: e.target.value })} /></Field>
       <CampoArquivo id="nf-arq" rotulo="Arquivo da nota (PDF)" obrigatorio valor={arq} onChange={setArq} />
       <p className="text-[11.5px] text-muted">{AVISO_INTEGRACOES}</p>
     </Modal>

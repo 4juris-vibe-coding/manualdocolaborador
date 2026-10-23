@@ -111,7 +111,7 @@ export function DetalheNota({ id, fechar, mudou }: { id: string; fechar: () => v
             <Info rotulo="Vencimento informado">{dataBR(n.vencimento)}</Info><Info rotulo="Prestador">{n.prestadorNome}</Info>
             {n.descricao && <Info rotulo="Descrição" className="col-span-2">{n.descricao}</Info>}
           </dl>
-          {n.temArquivo ? <LinkArquivo rota={`financeiro/notas/${n.id}/arquivo`}>Abrir arquivo da nota</LinkArquivo> : <p className="text-[12.5px] text-muted">Sem arquivo (registro importado).</p>}
+          {n.temArquivo ? <LinkArquivo rota={`financeiro/notas/${n.id}/arquivo`}>Abrir arquivo da nota</LinkArquivo> : <p className="text-[12.5px] text-muted">{n.legado ? 'Sem arquivo (registro importado).' : 'Registrada pelo financeiro sem arquivo anexado.'}</p>}
           {n.contaId && <Link to={`/financeiro/contas?conta=${n.contaId}`} className="block text-[13px] font-semibold text-brand hover:underline">Ver conta a pagar →</Link>}
           {a?.aceitar && n.divergencias.length > 0 && <Field label="Justificativa para aceitar com divergência" required hint="Mínimo de 10 caracteres. Fica no histórico." htmlFor="nf-just">
             <textarea id="nf-just" className="input h-24 py-2.5" value={justificativa} onChange={(e) => setJustificativa(e.target.value)} /></Field>}

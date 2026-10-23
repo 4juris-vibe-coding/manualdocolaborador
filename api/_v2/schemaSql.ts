@@ -59,5 +59,9 @@ export const SCHEMA_V2: { nome: string; sql: string }[] = [
   {
     "nome": "95-pessoas-fotos.sql",
     "sql": "-- 95 · Foto de perfil das pessoas (recortada no navegador, até 512 KB). Fora das coleções legadas para não pesar\n-- o carregamento do estado: a interface busca só o mapa de versões e cada imagem por rota autenticada.\ncreate table if not exists pes_fotos (\n  colaborador_id text primary key,\n  mime text not null,\n  dados bytea not null,\n  atualizado_em timestamptz not null default now(),\n  atualizado_por text\n);\nalter table pes_fotos enable row level security;\n"
+  },
+  {
+    "nome": "96-notas-sem-arquivo.sql",
+    "sql": "-- 96 · Nota fiscal sem arquivo: o financeiro pode registrar a nota como recebida sem anexar o documento.\n-- A regra antiga (check sem nome em 60-financeiro) exigia contrato E arquivo fora do legado; agora só o contrato.\ndo $$\ndeclare c text;\nbegin\n  for c in select conname from pg_constraint where conrelid = 'fin_notas'::regclass and contype = 'c'\n    and pg_get_constraintdef(oid) ilike '%arquivo_id%' loop\n    execute format('alter table fin_notas drop constraint %I', c);\n  end loop;\nend $$;\nalter table fin_notas drop constraint if exists fin_notas_contrato_check;\nalter table fin_notas add constraint fin_notas_contrato_check check (legado or contrato_id is not null);\n"
   }
 ]

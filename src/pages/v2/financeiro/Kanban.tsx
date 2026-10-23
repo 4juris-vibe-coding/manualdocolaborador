@@ -317,26 +317,24 @@ function MoverModal({ cartao: c, destino, segregacao, fechar, feito }: { cartao:
 
 /* ---------- registrar nota recebida por outro canal ---------- */
 function RegistrarNotaModal({ cartao: c, comp, fechar, feito }: { cartao: Cartao; comp: string; fechar: () => void; feito: () => void }) {
-  const [v, setV] = useState({ numero: '', serie: '', dataEmissao: new Date().toISOString().slice(0, 10), valorBruto: c.valor ? String(c.valor) : '' })
+  const [v, setV] = useState({ numero: '', valorBruto: c.valor ? String(c.valor) : '' })
   const [arquivo, setArquivo] = useState<{ nome: string; base64: string } | null>(null)
   const [enviando, setEnviando] = useState(false)
   const enviar = async () => {
     setEnviando(true)
-    const ok = await executar(() => api.post('financeiro/notas', { contratoId: c.contratoId, competencia: comp, ...v, valorBruto: Number(v.valorBruto.replace(',', '.')), arquivo }), 'Nota registrada como recebida.')
+    const ok = await executar(() => api.post('financeiro/notas', { contratoId: c.contratoId, competencia: comp, ...v, valorBruto: Number(v.valorBruto.replace(',', '.')), arquivo: arquivo ?? undefined }), 'Nota registrada como recebida.')
     setEnviando(false)
     if (ok) feito()
   }
   return (
     <Modal open onClose={fechar} title="Registrar nota recebida" subtitle={`${c.pessoaNome ?? c.fornecedorNome} · ${c.contratoNumero} · ${competenciaBR(comp)}`}
-      footer={<><Button variant="ghost" onClick={fechar}>Cancelar</Button><Button disabled={enviando || !v.numero.trim() || !arquivo || !Number(v.valorBruto.replace(',', '.'))} onClick={enviar}>{enviando ? 'Enviando…' : 'Registrar'}</Button></>}>
-      <p className="text-[13px] text-ink-2 mb-3">Use quando a nota chegou por outro canal (e-mail, WhatsApp). Ela entra em "Recebida" para conferência.</p>
+      footer={<><Button variant="ghost" onClick={fechar}>Cancelar</Button><Button disabled={enviando || !v.numero.trim() || !Number(v.valorBruto.replace(',', '.'))} onClick={enviar}>{enviando ? 'Enviando…' : 'Registrar'}</Button></>}>
+      <p className="text-[13px] text-ink-2 mb-3">Use quando a nota chegou por outro canal (e-mail, WhatsApp). Ela entra em "Recebida" para conferência, com a data de hoje. O arquivo é opcional.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Número da NF" required htmlFor="rn-num"><input id="rn-num" className="input" value={v.numero} onChange={(e) => setV({ ...v, numero: e.target.value })} /></Field>
-        <Field label="Série" htmlFor="rn-serie"><input id="rn-serie" className="input" value={v.serie} onChange={(e) => setV({ ...v, serie: e.target.value })} /></Field>
-        <Field label="Emissão" required htmlFor="rn-em"><input id="rn-em" type="date" className="input" value={v.dataEmissao} onChange={(e) => setV({ ...v, dataEmissao: e.target.value })} /></Field>
         <Field label="Valor bruto (R$)" required htmlFor="rn-val"><input id="rn-val" inputMode="decimal" className="input" value={v.valorBruto} onChange={(e) => setV({ ...v, valorBruto: e.target.value })} /></Field>
       </div>
-      <div className="mt-3"><CampoArquivo id="rn-arq" rotulo="Arquivo da nota" obrigatorio valor={arquivo} onChange={setArquivo} /></div>
+      <div className="mt-3"><CampoArquivo id="rn-arq" rotulo="Arquivo da nota (opcional)" valor={arquivo} onChange={setArquivo} /></div>
     </Modal>
   )
 }

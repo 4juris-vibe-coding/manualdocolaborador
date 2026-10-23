@@ -165,6 +165,15 @@ describe('nota fiscal → pagamento', () => {
     const csv = await GET(m, 'financeiro/contas/exportar', m.c.rh1)
     expect(csv.binario?.dados.toString('utf8')).toContain('4998,00')
   })
+
+  it('financeiro registra como recebida sem arquivo; emissão vira a data do envio', async () => {
+    const r = await POST(m, 'financeiro/notas', m.c.rh1, { contratoId: ctrId, numero: '125', competencia: comp, valorBruto: 5000 })
+    expect(r.status).toBe(201)
+    const det = (await GET(m, `financeiro/notas/${r.json.id}`, m.c.rh1)).json
+    expect(det.nota.temArquivo).toBe(false)
+    expect(det.nota.dataEmissao).toBe(hoje)
+    expect((await GET(m, `financeiro/notas/${r.json.id}/arquivo`, m.c.rh1)).status).toBe(404)
+  })
 })
 
 describe('encerramento, renovação automática e alertas', () => {
