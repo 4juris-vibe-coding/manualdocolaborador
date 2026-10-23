@@ -174,6 +174,18 @@ describe('nota fiscal → pagamento', () => {
     expect(det.nota.dataEmissao).toBe(hoje)
     expect((await GET(m, `financeiro/notas/${r.json.id}/arquivo`, m.c.rh1)).status).toBe(404)
   })
+
+  it('prestador envia só o arquivo: número fica S/N e o valor vem do contrato mensal fixo', async () => {
+    const corpo = { contratoId: ctrId, competencia: comp, arquivo: PDF }
+    const r = await POST(m, 'financeiro/notas', m.c.col1, corpo)
+    expect(r.status).toBe(201)
+    const n = (await GET(m, `financeiro/notas/${r.json.id}`, m.c.rh1)).json.nota
+    expect(n.numero).toBe('S/N')
+    expect(n.valorBruto).toBe(5000)
+    expect(n.dataEmissao).toBe(hoje)
+    // Sem número não há como acusar duplicidade: a conferência lê o documento.
+    expect((await POST(m, 'financeiro/notas', m.c.col1, corpo)).status).toBe(201)
+  })
 })
 
 describe('encerramento, renovação automática e alertas', () => {

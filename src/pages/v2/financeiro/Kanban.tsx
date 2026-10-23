@@ -317,23 +317,18 @@ function MoverModal({ cartao: c, destino, segregacao, fechar, feito }: { cartao:
 
 /* ---------- registrar nota recebida por outro canal ---------- */
 function RegistrarNotaModal({ cartao: c, comp, fechar, feito }: { cartao: Cartao; comp: string; fechar: () => void; feito: () => void }) {
-  const [v, setV] = useState({ numero: '', valorBruto: c.valor ? String(c.valor) : '' })
   const [arquivo, setArquivo] = useState<{ nome: string; base64: string } | null>(null)
   const [enviando, setEnviando] = useState(false)
   const enviar = async () => {
     setEnviando(true)
-    const ok = await executar(() => api.post('financeiro/notas', { contratoId: c.contratoId, competencia: comp, ...v, valorBruto: Number(v.valorBruto.replace(',', '.')), arquivo: arquivo ?? undefined }), 'Nota registrada como recebida.')
+    const ok = await executar(() => api.post('financeiro/notas', { contratoId: c.contratoId, competencia: comp, valorBruto: c.valor || undefined, arquivo: arquivo ?? undefined }), 'Nota registrada como recebida.')
     setEnviando(false)
     if (ok) feito()
   }
   return (
     <Modal open onClose={fechar} title="Registrar nota recebida" subtitle={`${c.pessoaNome ?? c.fornecedorNome} · ${c.contratoNumero} · ${competenciaBR(comp)}`}
-      footer={<><Button variant="ghost" onClick={fechar}>Cancelar</Button><Button disabled={enviando || !v.numero.trim() || !Number(v.valorBruto.replace(',', '.'))} onClick={enviar}>{enviando ? 'Enviando…' : 'Registrar'}</Button></>}>
-      <p className="text-[13px] text-ink-2 mb-3">Use quando a nota chegou por outro canal (e-mail, WhatsApp). Ela entra em "Recebida" para conferência, com a data de hoje. O arquivo é opcional.</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Field label="Número da NF" required htmlFor="rn-num"><input id="rn-num" className="input" value={v.numero} onChange={(e) => setV({ ...v, numero: e.target.value })} /></Field>
-        <Field label="Valor bruto (R$)" required htmlFor="rn-val"><input id="rn-val" inputMode="decimal" className="input" value={v.valorBruto} onChange={(e) => setV({ ...v, valorBruto: e.target.value })} /></Field>
-      </div>
+      footer={<><Button variant="ghost" onClick={fechar}>Cancelar</Button><Button disabled={enviando} onClick={enviar}>{enviando ? 'Enviando…' : 'Registrar'}</Button></>}>
+      <p className="text-[13px] text-ink-2 mb-3">Use quando a nota chegou por outro canal (e-mail, WhatsApp). Ela entra em "Recebida" para conferência, com a data de hoje{c.valor ? ` e o valor do contrato (${dinheiro(c.valor)})` : ''}. O arquivo é opcional.</p>
       <div className="mt-3"><CampoArquivo id="rn-arq" rotulo="Arquivo da nota (opcional)" valor={arquivo} onChange={setArquivo} /></div>
     </Modal>
   )

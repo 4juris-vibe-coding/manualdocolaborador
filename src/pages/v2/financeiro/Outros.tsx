@@ -148,7 +148,7 @@ function ModalEnviarNota({ aberto, contratos, inicial, fechar, pronto }: { abert
   const base = () => {
     const n = inicial?.reenviar
     const k = contratos.find((x) => x.id === (inicial?.contratoId ?? n?.contratoId)) ?? contratos.find((x) => x.status === 'vigente')
-    return { contratoId: k?.id ?? '', numero: n?.numero ?? '', competencia: n?.competencia ?? mes, valorBruto: n ? String(n.valorBruto) : k && k.modeloRemuneracao === 'mensal_fixo' ? String(k.valor) : '' }
+    return { contratoId: k?.id ?? '', competencia: n?.competencia ?? mes, valorBruto: n ? String(n.valorBruto) : '' }
   }
   const [f, setF] = useState(base)
   const [arq, setArq] = useState<{ nome: string; base64: string } | null>(null)
@@ -157,12 +157,14 @@ function ModalEnviarNota({ aberto, contratos, inicial, fechar, pronto }: { abert
   const [aberturaAnterior, setAberturaAnterior] = useState(false)
   if (aberto !== aberturaAnterior) { setAberturaAnterior(aberto); if (aberto) { setF(base()); setArq(null); setErros({}) } }
   const k = contratos.find((x) => x.id === f.contratoId)
+  // Contrato mensal fixo: a nota entra com o valor do contrato. Nos demais (hora, entrega, projeto) o valor muda e é informado.
+  const pedeValor = !!k && k.modeloRemuneracao !== 'mensal_fixo'
   const salvar = async () => {
     setEnviando(true)
     try {
-      // A data de emissão fica a do envio (servidor). No reenvio, série/descrição/vencimento já registrados são mantidos.
+      // Número e data de emissão ficam por conta do servidor (S/N e data do envio). No reenvio, o que já estava registrado é mantido.
       const n = inicial?.reenviar
-      const corpo = { ...f, serie: n?.serie, descricao: n?.descricao, vencimento: n?.vencimento, valorBruto: f.valorBruto.replace(',', '.'), arquivo: arq }
+      const corpo = { contratoId: f.contratoId, competencia: f.competencia, serie: n?.serie, descricao: n?.descricao, vencimento: n?.vencimento, valorBruto: pedeValor ? f.valorBruto.replace(',', '.') : undefined, arquivo: arq }
       if (inicial?.reenviar) await api.post(`financeiro/notas/${inicial.reenviar.id}/reenviar`, corpo)
       else await api.post('financeiro/notas', corpo)
       toast(inicial?.reenviar ? 'Nota corrigida e reenviada para conferência.' : 'Nota enviada. Você será avisado(a) da conferência e do pagamento.')
@@ -173,18 +175,17 @@ function ModalEnviarNota({ aberto, contratos, inicial, fechar, pronto }: { abert
     <Field label={rot} required={obrig} erro={erros[c] ?? erros[rot.toLowerCase()]} htmlFor={`nf-${c}`}><input id={`nf-${c}`} className="input" value={f[c]} onChange={(e) => setF({ ...f, [c]: e.target.value })} {...extra} /></Field>
   )
   return (
-    <Modal open={aberto} onClose={fechar} title={inicial?.reenviar ? `Corrigir nota ${inicial.reenviar.numero}` : 'Enviar nota fiscal'} subtitle="Anexe o arquivo e confira o número e o valor. A data do envio é registrada automaticamente."
+    <Modal open={aberto} onClose={fechar} title={inicial?.reenviar ? `Corrigir nota ${inicial.reenviar.numero}` : 'Enviar nota fiscal'} subtitle="É só anexar o arquivo. A data do envio é registrada automaticamente."
       footer={<><Button variant="ghost" onClick={fechar}>Cancelar</Button><Button disabled={!arq || !f.contratoId || enviando} onClick={salvar}>{enviando ? 'Enviando…' : 'Enviar'}</Button></>}>
       {inicial?.reenviar?.motivoDevolucao && <Callout tone="danger" icon="Undo2" className="mb-3">Motivo da devolução: {inicial.reenviar.motivoDevolucao}</Callout>}
       {!inicial?.reenviar && <Field label="Contrato" required><Dropdown aria-label="Contrato" className="w-full" value={f.contratoId} onChange={(e) => {
         const kk = contratos.find((x) => x.id === e.target.value)
-        setF({ ...f, contratoId: e.target.value, valorBruto: kk?.modeloRemuneracao === 'mensal_fixo' ? String(kk.valor) : f.valorBruto })
+        setF({ ...f, contratoId: e.target.value })
       }}>{contratos.map((x) => <option key={x.id} value={x.id}>{x.numero} · {x.objeto}</option>)}</Dropdown></Field>}
-      {k && <p className="text-[12px] text-muted -mt-2 mb-3">{ROTULO_MODELO[k.modeloRemuneracao]}: {dinheiro(k.valor)}. Valor diferente do contrato vai para análise com justificativa.</p>}
+      {k && <p className="text-[12px] text-muted -mt-2 mb-3">{ROTULO_MODELO[k.modeloRemuneracao]}: {dinheiro(k.valor)}.{pedeValor ? '' : ' A nota entra com esse valor.'}</p>}
       <div className="grid grid-cols-2 gap-x-3">
-        {campo('numero', 'Número da nota')}
         <Field label="Competência (mês do serviço)" required htmlFor="nf-comp" erro={erros['competência']}><input id="nf-comp" type="month" className="input" value={f.competencia} onChange={(e) => setF({ ...f, competencia: e.target.value })} /></Field>
-        {campo('valorBruto', 'Valor bruto', { inputMode: 'decimal' })}
+        {pedeValor && campo('valorBruto', 'Valor bruto', { inputMode: 'decimal' })}
       </div>
       <CampoArquivo id="nf-arq" rotulo="Arquivo da nota (PDF)" obrigatorio valor={arq} onChange={setArq} />
       <p className="text-[11.5px] text-muted">{AVISO_INTEGRACOES}</p>

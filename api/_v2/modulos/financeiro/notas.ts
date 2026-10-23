@@ -48,18 +48,28 @@ async function acessoNota(ex: Executor, u: Usuario, n: Linha) {
   return { k, prestador, gestor }
 }
 
+/** Nota enviada só com o arquivo: o número fica para a conferência ler no documento. */
+export const SEM_NUMERO = 'S/N'
+
 interface DadosNota { numero: string; serie: string; dataEmissao: string; competencia: string; valorBruto: number; descricao: string | null; vencimento: string | null }
-function lerDados(b: Linha, agora: Date): DadosNota {
+/** `padrao`: o que vale quando a pessoa não informa número ou valor (no envio, o valor mensal fixo do contrato; no reenvio, os da nota). */
+function lerDados(b: Linha, agora: Date, padrao: { numero: string; valor: number }): DadosNota {
   const competencia = texto(b.competencia, 'competência', { max: 7 })
   if (!RE_COMPETENCIA.test(competencia)) throw invalido('Competência inválida (AAAA-MM).', { competencia: 'Use AAAA-MM' })
   // Sem data informada, vale o dia do envio.
   const dataEmissao = dataISO(b.dataEmissao, 'data de emissão') ?? hoje(agora)
   if (dataEmissao > hoje(agora)) throw invalido('A data de emissão não pode estar no futuro.', { dataEmissao: 'Data futura' })
   return {
-    numero: texto(b.numero, 'número da nota', { max: 30 }).replace(/\s+/g, ''), serie: texto(b.serie, 'série', { obrigatorio: false, max: 10 }),
-    dataEmissao, competencia, valorBruto: dinheiro(b.valorBruto, 'valor bruto'), descricao: texto(b.descricao, 'descrição', { obrigatorio: false, max: 2000 }) || null,
+    numero: texto(b.numero, 'número da nota', { obrigatorio: false, max: 30 }).replace(/\s+/g, '') || padrao.numero, serie: texto(b.serie, 'série', { obrigatorio: false, max: 10 }),
+    dataEmissao, competencia, valorBruto: lerValor(b.valorBruto, padrao.valor), descricao: texto(b.descricao, 'descrição', { obrigatorio: false, max: 2000 }) || null,
     vencimento: dataISO(b.vencimento, 'vencimento'),
   }
+}
+
+function lerValor(v: unknown, padrao: number) {
+  if (v !== undefined && v !== null && v !== '') return dinheiro(v, 'valor bruto')
+  if (padrao > 0) return padrao
+  throw invalido('Informe o valor da nota: o contrato não tem valor mensal fixo.', { 'valor bruto': 'Informe o valor' })
 }
 
 async function calcularDivergencias(ex: Executor, k: Linha, d: DadosNota, ignorarId: string | null) {
@@ -70,6 +80,7 @@ async function calcularDivergencias(ex: Executor, k: Linha, d: DadosNota, ignora
 }
 
 async function exigirNaoDuplicada(ex: Executor, fornecedorId: string, d: DadosNota, ignorarId: string | null) {
+  if (d.numero === SEM_NUMERO) return
   const dup = (await ex.query("select id from fin_notas where fornecedor_id = $1 and lower(numero) = lower($2) and serie = $3 and status <> 'cancelada' and id <> coalesce($4::uuid, '00000000-0000-0000-0000-000000000000')",
     [fornecedorId, d.numero, d.serie, ignorarId])).rows[0]
   if (dup) throw conflito('Esta nota (mesmo emitente, número e série) já foi registrada.')
@@ -154,9 +165,9 @@ export const rotas: Rota[] = [
     metodo: 'POST', padrao: 'financeiro/notas',
     h: async ({ db, req, usuario, agora }) => {
       const b = req.corpo ?? {}
-      const d = lerDados(b, agora)
       const id = await db.tx(async (t) => {
         const { k, prestador } = await contratoParaNota(t, usuario, idTexto(b.contratoId, 'contratoId'))
+        const d = lerDados(b, agora, { numero: SEM_NUMERO, valor: k.modelo_remuneracao === 'mensal_fixo' ? Number(k.valor) : 0 })
         const up = lerArquivo(b, usuario, prestador)
         // Contrato encerrado ainda recebe a nota de serviços já prestados (sai marcada como divergência para conferência).
         if (k.status === 'rascunho') throw conflito('Este contrato ainda é rascunho e não aceita notas.')
@@ -266,9 +277,9 @@ export const rotas: Rota[] = [
     metodo: 'POST', padrao: 'financeiro/notas/:id/reenviar',
     h: async ({ db, params, req, usuario, agora }) => {
       const b = req.corpo ?? {}
-      const d = lerDados(b, agora)
       await db.tx(async (t) => {
         const n = await notaOu404(t, params.id, true)
+        const d = lerDados(b, agora, { numero: n.numero, valor: Number(n.valor_bruto) })
         const acesso = await acessoNota(t, usuario, n)
         if (!acesso.prestador && !tem(usuario, 'fin:conferir')) throw proibido('Só quem presta o serviço reenvia a nota.')
         if (n.status !== 'devolvida') throw conflito('Só notas devolvidas podem ser reenviadas.')

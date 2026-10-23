@@ -39,7 +39,7 @@ Conta: prevista ──(retenções revisadas; fin:autorizar)──► autorizada
 
 Regras aplicadas no servidor:
 
-- No envio, a pessoa informa só contrato, competência, número, valor e o arquivo. Se a data de emissão não for informada, vale a data do envio. O arquivo é obrigatório para o prestador, mas o financeiro (`fin:conferir`) pode registrar a nota como recebida sem ele.
+- No envio, basta o arquivo (contrato e competência já vêm escolhidos). Sem número informado, a nota fica `S/N` e não entra na checagem de duplicidade; sem valor, vale o valor do contrato mensal fixo (nos demais modelos o valor é pedido); sem data de emissão, vale a data do envio. O arquivo é obrigatório para o prestador, mas o financeiro (`fin:conferir`) pode registrar a nota como recebida sem ele.
 
 - Ninguém decide sobre registro em nome próprio: a pessoa não confere, não aceita, não autoriza, não paga nem concilia a própria nota ou conta (vale também para quem representa o fornecedor).
 - Com a **segregação ligada** (padrão, em *Configurações financeiras*):

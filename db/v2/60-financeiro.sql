@@ -175,7 +175,7 @@ create table if not exists fin_notas (
   check (legado or (contrato_id is not null and arquivo_id is not null))
 );
 -- Mesma nota (fornecedor + número + série) só uma vez, exceto as canceladas.
-create unique index if not exists fin_nf_unica_uk on fin_notas (fornecedor_id, lower(numero), serie) where status <> 'cancelada';
+create unique index if not exists fin_nf_unica_uk on fin_notas (fornecedor_id, lower(numero), serie) where status <> 'cancelada' and numero <> 'S/N';
 create index if not exists fin_nf_ctr_idx on fin_notas (contrato_id, competencia);
 create index if not exists fin_nf_status_idx on fin_notas (status, enviada_em);
 
