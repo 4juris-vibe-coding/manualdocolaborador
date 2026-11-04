@@ -18,8 +18,9 @@ import { EditarColunasModal, comColunaNova, hexColuna, salvarColunas, SeletorCor
 interface Cartao {
   id: string; nome: string; email: string; cidade?: string; uf?: string; etapaId: string; status: string; origem: string
   diasNaEtapa: number; temCurriculo: boolean; entrevistasAgendadas: number; mediaAvaliacoes: number | null
+  criadoEm?: string; pretensao?: number | null; etapaNome?: string
 }
-interface EtapaCol { id: string; nome: string; tipo: string; cor: string | null; candidaturas: Cartao[] }
+interface EtapaCol { id: string; nome: string; tipo: string; cor: string | null; nomePublico?: string | null; candidaturas: Cartao[] }
 interface PipelineDados { vaga: { id: string; codigo: string; titulo: string; status: string; qtdPosicoes: number; posicoesPreenchidas: number }; etapas: EtapaCol[]; saidas: Record<string, number>; encerradas?: Cartao[]; total: number }
 
 const STATUS_SAIDA = [{ v: 'reprovado', r: 'Reprovar' }, { v: 'desistiu', r: 'Registrar desistência' }, { v: 'cancelada', r: 'Cancelar candidatura' }]
@@ -69,6 +70,15 @@ function Quadro({ vagaId, vagas, aoTrocar }: { vagaId: string; vagas: any[]; aoT
   const [busca, setBusca] = useState('')
   const [origem, setOrigem] = useState('')
   const [saidas, setSaidas] = useState(false)
+  const [visao, setVisao] = useState<'kanban' | 'lista'>(() => { try { return localStorage.getItem('4juris_pipeline_visao') === 'lista' ? 'lista' : 'kanban' } catch { return 'kanban' } })
+  const trocarVisao = (v: 'kanban' | 'lista') => { setVisao(v); try { localStorage.setItem('4juris_pipeline_visao', v) } catch { /* sem armazenamento */ } }
+  const [maisFiltros, setMaisFiltros] = useState(false)
+  const [desde, setDesde] = useState('')
+  const [ate, setAte] = useState('')
+  const [local, setLocal] = useState('')
+  const [pretMax, setPretMax] = useState('')
+  const [notaMin, setNotaMin] = useState('')
+  const [ordem, setOrdem] = useState<'etapa' | 'recentes' | 'nota' | 'pretensao'>('etapa')
   const q = useAtraso(busca)
   const r = useApi<PipelineDados>(`ats/vagas/${vagaId}/pipeline${qs({ q, origem, saidas: saidas ? 1 : undefined })}`)
   const [cadastro, setCadastro] = useState(false)
@@ -81,9 +91,21 @@ function Quadro({ vagaId, vagas, aoTrocar }: { vagaId: string; vagas: any[]; aoT
   const encerrada = r.dados ? ['encerrada', 'cancelada'].includes(r.dados.vaga.status) : false
   const editaColunas = gerenciar && !encerrada
 
-  const etapas = r.dados?.etapas ?? []
+  // Filtros complementares aplicados sobre o que o servidor já autorizou (pretensão só chega a quem pode vê-la).
+  const passa = (c: Cartao) => {
+    const dia = (c.criadoEm ?? '').slice(0, 10)
+    if (desde && dia < desde) return false
+    if (ate && dia > ate) return false
+    if (local.trim() && !`${c.cidade ?? ''} ${c.uf ?? ''}`.toLowerCase().includes(local.trim().toLowerCase())) return false
+    if (pretMax && podeSalario && (c.pretensao == null || c.pretensao > Number(pretMax))) return false
+    if (notaMin && (c.mediaAvaliacoes == null || c.mediaAvaliacoes < Number(notaMin))) return false
+    return true
+  }
+  const filtrosExtras = [desde, ate, local, pretMax, notaMin].filter(Boolean).length
+  const etapasBrutas = r.dados?.etapas ?? []
+  const etapas = useMemo(() => etapasBrutas.map((e) => ({ ...e, candidaturas: e.candidaturas.filter(passa) })), [etapasBrutas, desde, ate, local, pretMax, notaMin]) // eslint-disable-line react-hooks/exhaustive-deps
   const todos = useMemo(() => etapas.flatMap((e) => e.candidaturas), [etapas])
-  const colunas = useMemo(() => etapas.map((e) => ({ id: e.id, nome: e.nome, tipo: e.tipo, cor: e.cor, ativas: e.candidaturas.length })), [etapas])
+  const colunas = useMemo(() => etapas.map((e) => ({ id: e.id, nome: e.nome, tipo: e.tipo, cor: e.cor, nomePublico: e.nomePublico ?? null, ativas: e.candidaturas.length })), [etapas])
 
   async function mover(c: Cartao, corpo: Record<string, unknown>, ok = 'Candidatura atualizada.') {
     const res = await executar(() => api.post(`ats/candidaturas/${c.id}/mover`, { deEtapaId: c.etapaId, ...corpo }), ok)
@@ -110,6 +132,12 @@ function Quadro({ vagaId, vagas, aoTrocar }: { vagaId: string; vagas: any[]; aoT
         <SearchBox value={busca} onChange={setBusca} placeholder="Buscar por nome ou e-mail" label="Buscar candidato" />
         <Select label="Origem" value={origem} onChange={setOrigem}><option value="">Todas as origens</option>{ORIGENS.map((o) => <option key={o} value={o}>{ROTULO_ORIGEM[o]}</option>)}</Select>
         <label className="inline-flex items-center gap-2 text-[13px] text-ink-2"><input type="checkbox" checked={saidas} onChange={(e) => setSaidas(e.target.checked)} /> Mostrar encerrados</label>
+        <Button size="sm" variant={maisFiltros || filtrosExtras ? 'soft' : 'ghost'} icon="SlidersHorizontal" onClick={() => setMaisFiltros((x) => !x)} aria-expanded={maisFiltros}>Filtros{filtrosExtras ? ` (${filtrosExtras})` : ''}</Button>
+        <div className="inline-flex rounded-xl border border-line p-0.5 bg-surface" role="tablist" aria-label="Visualização">
+          {([['kanban', 'Columns3', 'Kanban'], ['lista', 'List', 'Lista']] as const).map(([k, ic, rot]) => (
+            <Button key={k} size="sm" variant={visao === k ? 'primary' : 'subtle'} icon={ic} role="tab" aria-selected={visao === k} onClick={() => trocarVisao(k)}>{rot}</Button>
+          ))}
+        </div>
         <div className="flex gap-2 ml-auto flex-wrap">
           {podeExportar && <a className="inline-flex items-center h-9 px-3 rounded-lg border border-line text-[12.5px] font-semibold text-ink hover:bg-surface-2" href={api.url(`ats/exportar${qs({ vagaId })}`)}>Exportar CSV</a>}
           {editaColunas && <Button size="sm" variant="ghost" icon="Settings2" onClick={() => setEditarColunas({ foco: null })}>Editar colunas</Button>}
@@ -117,6 +145,20 @@ function Quadro({ vagaId, vagas, aoTrocar }: { vagaId: string; vagas: any[]; aoT
           {gerenciar && <Button size="sm" icon="UserPlus" onClick={() => setCadastro(true)}>Cadastrar candidato</Button>}
         </div>
       </div>
+
+      {maisFiltros && (
+        <Card className="p-4 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 items-end">
+            <label className="text-[12px] font-semibold text-ink-2">Inscrição a partir de<input type="date" className="input mt-1" value={desde} onChange={(e) => setDesde(e.target.value)} /></label>
+            <label className="text-[12px] font-semibold text-ink-2">Inscrição até<input type="date" className="input mt-1" value={ate} onChange={(e) => setAte(e.target.value)} /></label>
+            <label className="text-[12px] font-semibold text-ink-2">Localização<input className="input mt-1" placeholder="Cidade ou UF" value={local} onChange={(e) => setLocal(e.target.value)} /></label>
+            {podeSalario && <label className="text-[12px] font-semibold text-ink-2">Pretensão até (R$)<input type="number" min={0} className="input mt-1" value={pretMax} onChange={(e) => setPretMax(e.target.value)} /></label>}
+            <label className="text-[12px] font-semibold text-ink-2">Avaliação mínima<Dropdown className="input mt-1" value={notaMin} onChange={(e) => setNotaMin(e.target.value)}><option value="">Qualquer</option>{[2, 3, 3.5, 4, 4.5].map((n) => <option key={n} value={n}>★ {n}+</option>)}</Dropdown></label>
+            {filtrosExtras > 0 && <Button size="sm" variant="subtle" onClick={() => { setDesde(''); setAte(''); setLocal(''); setPretMax(''); setNotaMin('') }}>Limpar filtros</Button>}
+          </div>
+          <p className="text-[11.5px] text-muted mt-2">O responsável pela seleção é definido por vaga (recrutador). Para filtrar por ele, use a lista de vagas.</p>
+        </Card>
+      )}
 
       {r.dados && (
         <p className="text-[12.5px] text-muted mb-4">
@@ -129,8 +171,9 @@ function Quadro({ vagaId, vagas, aoTrocar }: { vagaId: string; vagas: any[]; aoT
         {(d) => (
           <>
             {d.total === 0 && !q && !origem && <Card className="mb-4"><EmptyState icon="Inbox" title="Nenhuma candidatura nesta vaga ainda" desc="As candidaturas enviadas pelo portal de carreiras aparecem aqui automaticamente." /></Card>}
-            <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0" role="list" aria-label="Etapas do processo seletivo">
-              {d.etapas.map((e) => (
+            {visao === 'lista' && <ListaCandidaturas etapas={etapas} ordem={ordem} setOrdem={setOrdem} gerenciar={gerenciar} podeSalario={podeSalario} aoMover={pedirMover} />}
+            <div className={cn('flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0', visao === 'lista' && 'hidden')} role="list" aria-label="Etapas do processo seletivo">
+              {etapas.map((e) => (
                 <div key={e.id} role="listitem" aria-label={`${e.nome}: ${e.candidaturas.length} candidato(s)`}
                   onDragOver={(ev) => { if (arrastando && gerenciar) { ev.preventDefault(); setSobre(e.id) } }}
                   onDragLeave={() => setSobre((s) => (s === e.id ? null : s))}
@@ -145,10 +188,10 @@ function Quadro({ vagaId, vagas, aoTrocar }: { vagaId: string; vagas: any[]; aoT
                   </div>
                   <div className="space-y-2 min-h-[56px]">
                     {e.candidaturas.map((c) => (
-                      <CartaoKanban key={c.id} c={c} etapas={d.etapas} gerenciar={gerenciar} podeSalario={podeSalario}
+                      <CartaoKanban key={c.id} c={c} etapas={etapas} gerenciar={gerenciar} podeSalario={podeSalario}
                         aoArrastar={(id) => setArrastando(id)} aoSoltar={() => { setArrastando(null); setSobre(null) }} aoMover={(dest) => pedirMover(c, dest)} />
                     ))}
-                    {e.candidaturas.length === 0 && <p className="text-[12px] text-muted-2 text-center py-4">{q || origem ? 'Nenhum resultado.' : 'Vazio'}</p>}
+                    {e.candidaturas.length === 0 && <p className="text-[12px] text-muted-2 text-center py-4">{q || origem || filtrosExtras ? 'Nenhum resultado.' : 'Vazio'}</p>}
                   </div>
                 </div>
               ))}
@@ -254,5 +297,51 @@ function CartaoKanban({ c, etapas, gerenciar, podeSalario, aoArrastar, aoSoltar,
         </Dropdown>
       )}
     </article>
+  )
+}
+
+/** Visão em lista: todas as candidaturas em andamento numa tabela ordenável, com ação rápida de mover. */
+function ListaCandidaturas({ etapas, ordem, setOrdem, gerenciar, podeSalario, aoMover }: {
+  etapas: EtapaCol[]; ordem: 'etapa' | 'recentes' | 'nota' | 'pretensao'; setOrdem: (o: 'etapa' | 'recentes' | 'nota' | 'pretensao') => void
+  gerenciar: boolean; podeSalario: boolean; aoMover: (c: Cartao, destino: string) => void
+}) {
+  const linhas = etapas.flatMap((e, i) => e.candidaturas.map((c) => ({ c, etapa: e, i })))
+  const ord = [...linhas].sort((a, b) => ordem === 'recentes' ? (b.c.criadoEm ?? '').localeCompare(a.c.criadoEm ?? '')
+    : ordem === 'nota' ? (b.c.mediaAvaliacoes ?? -1) - (a.c.mediaAvaliacoes ?? -1)
+    : ordem === 'pretensao' ? (a.c.pretensao ?? Infinity) - (b.c.pretensao ?? Infinity)
+    : a.i - b.i || b.c.diasNaEtapa - a.c.diasNaEtapa)
+  if (!linhas.length) return <Card className="mb-4"><EmptyState icon="SearchX" title="Nenhuma candidatura em andamento com estes filtros" /></Card>
+  return (
+    <Card className="mb-4 overflow-hidden">
+      <div className="flex items-center justify-end gap-2 px-4 py-2.5 border-b border-line">
+        <Select label="Ordenar por" value={ordem} onChange={(v) => setOrdem(v as typeof ordem)}>
+          <option value="etapa">Etapa do processo</option><option value="recentes">Inscrição mais recente</option><option value="nota">Melhor avaliação</option>{podeSalario && <option value="pretensao">Menor pretensão</option>}
+        </Select>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[860px] text-[13px]">
+          <thead><tr className="text-left text-[11.5px] uppercase tracking-wide text-muted border-b border-line">
+            <th className="px-4 py-2.5">Candidato</th><th className="px-3 py-2.5">Etapa</th><th className="px-3 py-2.5">Inscrição</th><th className="px-3 py-2.5">Localização</th>
+            {podeSalario && <th className="px-3 py-2.5">Pretensão</th>}<th className="px-3 py-2.5">Avaliação</th><th className="px-3 py-2.5">Origem</th>{gerenciar && <th className="px-3 py-2.5">Ação</th>}
+          </tr></thead>
+          <tbody>{ord.map(({ c, etapa }) => (
+            <tr key={c.id} className="border-b border-line last:border-0 hover:bg-brand-50/40">
+              <td className="px-4 py-2.5"><Link to={`/recrutamento/candidatos/${c.id}`} className="font-semibold text-ink hover:text-brand">{c.nome}</Link><div className="text-[11.5px] text-muted">{c.email}</div></td>
+              <td className="px-3 py-2.5"><span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: hexColuna(etapa.cor) }} />{etapa.nome}</span><div className={cn('text-[11px]', c.diasNaEtapa > 7 ? 'text-warning' : 'text-muted')}>{c.diasNaEtapa} d na etapa</div></td>
+              <td className="px-3 py-2.5">{c.criadoEm ? new Date(c.criadoEm).toLocaleDateString('pt-BR') : '—'}</td>
+              <td className="px-3 py-2.5">{[c.cidade, c.uf].filter(Boolean).join('/') || '—'}</td>
+              {podeSalario && <td className="px-3 py-2.5">{c.pretensao != null ? c.pretensao.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) : '—'}</td>}
+              <td className="px-3 py-2.5">{c.mediaAvaliacoes != null ? `★ ${numero(c.mediaAvaliacoes, 1)}` : '—'}</td>
+              <td className="px-3 py-2.5"><Badge tone="neutral">{ROTULO_ORIGEM[c.origem] ?? c.origem}</Badge></td>
+              {gerenciar && <td className="px-3 py-2.5"><Dropdown aria-label={`Mover ${c.nome}`} className="h-8 rounded-lg border border-line bg-surface-2 text-[12px] px-2" value="" onChange={(e) => { aoMover(c, e.target.value); e.target.value = '' }}>
+                <option value="">Mover para…</option>
+                <optgroup label="Etapas">{etapas.filter((e) => e.id !== c.etapaId).map((e) => <option key={e.id} value={e.id}>{e.nome}</option>)}</optgroup>
+                <optgroup label="Encerrar">{STATUS_SAIDA.map((x) => <option key={x.v} value={x.v}>{x.r}</option>)}</optgroup>
+              </Dropdown></td>}
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </Card>
   )
 }

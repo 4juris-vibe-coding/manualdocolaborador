@@ -27,6 +27,9 @@ import { BarrasDisc } from '@/components/charts'
 import { CATEGORIAS_DISC } from '@/domain/perfil'
 import { TIPO_BEN } from './Beneficios'
 import { Dropdown } from '@/components/Dropdown'
+import { ReativarModal, CorrigirEncerramentoModal, HistoricoVinculos, SeletorIniciativa } from '@/components/rh/CicloVida'
+import { INICIATIVA_CURTA, vinculosDe, dataDaMudanca } from '@/domain/vinculos'
+import type { IniciativaEncerramento } from '@/lib/types'
 import { MODO_API } from '@/data/config'
 import { api, ErroApi, useApi } from '@/data/v2/api'
 import { ListaDocumentos } from '@/components/v2/financeiro/Documentos'
@@ -53,6 +56,7 @@ export default function PessoaDetalhe() {
   const [editar, setEditar] = useState(false)
   const [encerrar, setEncerrar] = useState(false)
   const [reativar, setReativar] = useState(false)
+  const [corrigir, setCorrigir] = useState(false)
   const [excluir, setExcluir] = useState(false)
   const navigate = useNavigate()
   const podeExcluir = s.pode('admin:usuarios') && !!p && p.id !== s.realUser().id
@@ -75,8 +79,8 @@ export default function PessoaDetalhe() {
         actions={<>
           <Button variant="ghost" icon="Pencil" onClick={() => setEditar(true)}>Editar</Button>
           {p.status === 'encerrado'
-            ? <Button variant="soft" icon="RotateCcw" onClick={() => setReativar(true)}>Reativar parceria</Button>
-            : <Button variant="danger" icon="UserMinus" onClick={() => setEncerrar(true)}>Encerrar parceria</Button>}
+            ? <><Button variant="ghost" icon="CalendarClock" onClick={() => setCorrigir(true)}>Corrigir encerramento</Button><Button variant="soft" icon="RotateCcw" onClick={() => setReativar(true)}>Reativar parceria</Button></>
+            : !p.encerramentoAgendado && <Button variant="danger" icon="UserMinus" onClick={() => setEncerrar(true)}>Encerrar parceria</Button>}
           {podeExcluir && <Button variant="subtle" icon="Trash2" onClick={() => setExcluir(true)}>Excluir cadastro</Button>}
         </>} />
 
@@ -95,10 +99,18 @@ export default function PessoaDetalhe() {
         <Card className="p-4"><div className="text-[11.5px] text-muted">Participação</div><div className="text-[17px] font-bold text-ink mt-1">{pontos.toLocaleString('pt-BR')} pts</div><div className="text-[11.5px] text-muted">Nível {nivelDe(pontos, s.config.gamificacao.niveis).nome}</div></Card>
       </div>
 
-      {p.encerramento && <Callout tone="neutral" icon="UserMinus" className="mb-6">Parceria encerrada em <b>{fmtDate(p.encerramento.data)}</b> · {s.motivosEncerramento.find((m) => m.id === p.encerramento!.motivoId)?.nome}{p.encerramento.observacao ? ` — ${p.encerramento.observacao}` : ''}</Callout>}
+      {p.encerramentoAgendado && p.status !== 'encerrado' && (
+        <Callout tone="warning" icon="CalendarClock" className="mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span><b>Encerramento agendado para {fmtDate(p.encerramentoAgendado.data)}</b> · {s.motivosEncerramento.find((m) => m.id === p.encerramentoAgendado!.motivoId)?.nome} · {INICIATIVA_CURTA[p.encerramentoAgendado.iniciativa]} · registrado por {s.nomeDe(p.encerramentoAgendado.porId)}. Até a data, a parceria e o acesso seguem ativos.</span>
+            {s.pode('pessoas:gerenciar') && <Button size="sm" variant="ghost" icon="X" onClick={() => feedback(s.cancelarEncerramentoAgendado(p.id), 'Agendamento cancelado.')}>Cancelar agendamento</Button>}
+          </div>
+        </Callout>
+      )}
+      {p.encerramento && <Callout tone="neutral" icon="UserMinus" className="mb-6">Parceria encerrada em <b>{fmtDate(p.encerramento.data)}</b> (data efetiva) · {s.motivosEncerramento.find((m) => m.id === p.encerramento!.motivoId)?.nome} · {p.encerramento.iniciativa ? INICIATIVA_CURTA[p.encerramento.iniciativa] : <b>iniciativa não classificada</b>}{p.encerramento.porId ? ` · registrado por ${s.nomeDe(p.encerramento.porId)}` : ''}{p.encerramento.observacao ? ` — ${p.encerramento.observacao}` : ''}</Callout>}
 
       <Tabs tabs={[
-        { key: 'dados', label: 'Dados' }, { key: 'contrato', label: `Contratos (${contratos.length})` }, { key: 'documentos', label: `Documentos (${docs.length})` },
+        { key: 'dados', label: 'Dados' }, { key: 'vinculos', label: `Vínculos & movimentações (${vinculosDe(p).length})` }, { key: 'contrato', label: `Contratos (${contratos.length})` }, { key: 'documentos', label: `Documentos (${docs.length})` },
         { key: 'jornadas', label: 'Integração / encerramento' }, { key: 'registros', label: `Registros (${regs.length})` },
         { key: 'feedbacks', label: `Feedbacks (${s.feedbacks.filter((f) => f.colaboradorId === id).length})` },
         { key: 'avaliacoes', label: 'Avaliações' },
@@ -106,6 +118,8 @@ export default function PessoaDetalhe() {
         { key: 'beneficios', label: 'Benefícios & dependentes' }, { key: 'perfil', label: 'Perfil comportamental' },
         { key: 'historico', label: 'Histórico' }, { key: 'disponibilidade', label: 'Disponibilidade' }, { key: 'pontos', label: 'Pontos' },
       ]} active={tab} onChange={setTab} />
+
+      {tab === 'vinculos' && <HistoricoVinculos pessoa={p} />}
 
       {tab === 'dados' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -158,16 +172,19 @@ export default function PessoaDetalhe() {
       )}
       {tab === 'historico' && (
         <Card>
-          <CardHead title="Histórico de função e valor de contrato" sub="Registrado automaticamente a cada mudança" />
+          <CardHead title="Histórico de área, função, gestor e valor" sub="Registrado automaticamente a cada mudança, com a data efetiva. Só acrescenta: nada é apagado." />
           {s.historicoFuncao.filter((h) => h.colaboradorId === id).length === 0 ? <EmptyState icon="History" title="Sem mudanças registradas" /> : (
             <ol className="p-5 space-y-4">
-              {s.historicoFuncao.filter((h) => h.colaboradorId === id).sort((a, b) => b.em.localeCompare(a.em)).map((h) => (
+              {s.historicoFuncao.filter((h) => h.colaboradorId === id).sort((a, b) => dataDaMudanca(b).localeCompare(dataDaMudanca(a)) || b.em.localeCompare(a.em)).map((h) => (
                 <li key={h.id} className="flex gap-3">
-                  <span className="h-8 w-8 rounded-lg bg-brand-50 text-brand flex items-center justify-center shrink-0"><Icon name={h.cargoNovoId || h.cargoAnteriorId ? 'Briefcase' : 'Coins'} className="h-4 w-4" /></span>
+                  <span className="h-8 w-8 rounded-lg bg-brand-50 text-brand flex items-center justify-center shrink-0"><Icon name={h.setorNovoId || h.setorAnteriorId ? 'Building2' : h.cargoNovoId || h.cargoAnteriorId ? 'Briefcase' : h.gestorNovoId !== undefined || h.gestorAnteriorId !== undefined ? 'UserCog' : 'Coins'} className="h-4 w-4" /></span>
                   <div className="text-[13px]">
+                    {(h.setorAnteriorId || h.setorNovoId) && <div className="text-ink"><b>Área:</b> {h.setorAnteriorId ? s.setorNome(h.setorAnteriorId) : '—'} → {h.setorNovoId ? s.setorNome(h.setorNovoId) : '—'}</div>}
                     {(h.cargoAnteriorId || h.cargoNovoId) && <div className="text-ink"><b>Função:</b> {h.cargoAnteriorId ? s.cargoNome(h.cargoAnteriorId) : '—'} → {h.cargoNovoId ? s.cargoNome(h.cargoNovoId) : '—'}</div>}
+                    {(h.gestorAnteriorId !== undefined || h.gestorNovoId !== undefined) && <div className="text-ink"><b>Gestor:</b> {h.gestorAnteriorId ? s.nomeDe(h.gestorAnteriorId) : 'sem gestor'} → {h.gestorNovoId ? s.nomeDe(h.gestorNovoId) : 'sem gestor'}</div>}
+                    {h.observacao && <div className="text-ink-2 italic">“{h.observacao}”</div>}
                     {(h.valorAnterior != null || h.valorNovo != null) && <div className="text-ink"><b>Valor do contrato:</b> {brl(h.valorAnterior ?? 0)} → {brl(h.valorNovo ?? 0)}</div>}
-                    <div className="text-[11.5px] text-muted">{fmtDate(h.em)} · por {s.nomeDe(h.porId)}</div>
+                    <div className="text-[11.5px] text-muted">{h.dataEfetiva ? <>Vale a partir de <b>{fmtDate(h.dataEfetiva)}</b> · registrado em {fmtDate(h.em)}</> : fmtDate(h.em)} · por {s.nomeDe(h.porId)}</div>
                   </div>
                 </li>
               ))}
@@ -241,9 +258,8 @@ export default function PessoaDetalhe() {
           ? 'Exclusão definitiva só é possível para cadastros sem contratos, documentos, notas ou pagamentos (esse histórico tem prazo de guarda). Para quem tem histórico, encerre a parceria e use a anonimização (LGPD).'
           : `${p.nome} e tudo o que está ligado a essa pessoa (contratos, documentos, reembolsos, notas, pontos, avaliações…) serão apagados. Esta ação não pode ser desfeita. Para manter o histórico, prefira encerrar a parceria.`}
         onConfirm={() => { if (feedback(s.excluirPessoa(id), 'Cadastro excluído.')) { setExcluir(false); navigate('/rh/pessoas') } }} />
-      <ConfirmModal open={reativar} onClose={() => setReativar(false)} perigo={false} titulo="Reativar parceria?" confirmar="Reativar"
-        texto="A pessoa volta a ter acesso à plataforma. Registre também um novo contrato, se for o caso."
-        onConfirm={() => { if (feedback(s.reativarParceria(id), 'Parceria reativada.')) setReativar(false) }} />
+      {reativar && <ReativarModal pessoa={p} onClose={() => setReativar(false)} />}
+      {corrigir && p.encerramento && <CorrigirEncerramentoModal pessoa={p} onClose={() => setCorrigir(false)} />}
     </>
   )
 }
@@ -254,14 +270,23 @@ function EncerrarModal({ pessoaId, onClose }: { pessoaId: string; onClose: () =>
   const s = useStore()
   const [data, setData] = useState(hojeISO())
   const [motivo, setMotivo] = useState('')
+  const [iniciativa, setIniciativa] = useState<IniciativaEncerramento | ''>('')
   const [obs, setObs] = useState('')
   const [checklist, setChecklist] = useState(true)
   const [encerrarContratos, setEncerrarContratos] = useState(true)
   const [pend, setPend] = useState<PendenciasPessoa | null>(null)
   const [enviando, setEnviando] = useState(false)
+  // Pesquisa de desligamento aberta (modelo "desligamento" da Central de pesquisas): convite individual por e-mail.
+  const pqDesl = useApi<{ itens: { id: string; titulo: string; modeloChave: string | null; status: string; modo: string }[] }>(MODO_API && s.pode('pesq:gerenciar') ? 'pesquisas?status=aberta&por=50' : null)
+  const pesquisaSaida = pqDesl.dados?.itens.find((x) => x.modeloChave === 'desligamento')
+  const [convidarSaida, setConvidarSaida] = useState(true)
   useEffect(() => { if (MODO_API) void api.get<PendenciasPessoa>(`financeiro/pessoas/${encodeURIComponent(pessoaId)}/pendencias`).then(setPend).catch(() => setPend(null)) }, [pessoaId])
   const confirmar = async () => {
-    if (MODO_API && encerrarContratos && pend?.contratosAtivos.length) {
+    if (!motivo) { toast('Selecione um motivo.', 'danger'); return }
+    if (!iniciativa) { toast('Classifique a iniciativa do encerramento.', 'danger'); return }
+    if (!data) { toast('Informe a data efetiva.', 'danger'); return }
+    const futuro = data > hojeISO()
+    if (MODO_API && !futuro && encerrarContratos && pend?.contratosAtivos.length) {
       if (!motivo) { toast('Selecione um motivo.', 'danger'); return }
       setEnviando(true)
       const nomeMotivo = s.motivosEncerramento.find((m) => m.id === motivo)?.nome ?? 'Encerramento da parceria'
@@ -272,24 +297,38 @@ function EncerrarModal({ pessoaId, onClose }: { pessoaId: string; onClose: () =>
       }
       setEnviando(false)
     }
-    if (feedback(s.encerrarParceria(pessoaId, data, motivo, obs.trim() || undefined, checklist), 'Parceria encerrada.')) onClose()
+    const pesquisaAgendada = futuro && pesquisaSaida && convidarSaida ? pesquisaSaida.id : undefined
+    if (feedback(s.encerrarParceria(pessoaId, data, motivo, obs.trim() || undefined, checklist, iniciativa, pesquisaAgendada), futuro ? 'Encerramento agendado.' : 'Parceria encerrada.')) {
+      // Encerramento agendado: o convite sai no dia, pela rotina do servidor. Imediato: sai agora.
+      if (!futuro && pesquisaSaida && convidarSaida) {
+        try {
+          const r = await api.post<{ envio: { email: Record<string, number>; emailConfigurado: boolean } }>(`pesquisas/${pesquisaSaida.id}/convidar-pessoa`, { colaboradorId: pessoaId })
+          toast(r.envio?.email?.enviada ? 'Convite da pesquisa de desligamento enviado por e-mail.' : 'Convite da pesquisa de desligamento criado. O e-mail não foi enviado (provedor não configurado): reenvie pela Central de pesquisas.', r.envio?.email?.enviada ? 'success' : 'danger')
+        } catch (e) { toast(`Pesquisa de desligamento: ${e instanceof ErroApi ? e.message : 'não foi possível convidar.'}`, 'danger') }
+      }
+      onClose()
+    }
   }
   const temPend = !!pend && pend.notasEmAndamento + pend.contasAbertas + pend.reembolsosAbertos + pend.documentosPendentes > 0
   return (
     <Modal open onClose={onClose} title="Encerrar parceria" subtitle={s.nomeDe(pessoaId)}
-      footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button variant="danger" icon="UserMinus" disabled={enviando} onClick={confirmar}>{enviando ? 'Encerrando…' : 'Confirmar encerramento'}</Button></>}>
+      footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button variant="danger" icon="UserMinus" disabled={enviando} onClick={confirmar}>{enviando ? 'Encerrando…' : data > hojeISO() ? 'Agendar encerramento' : 'Confirmar encerramento'}</Button></>}>
       <Callout tone="warning" icon="AlertTriangle" className="mb-4">Encerramento da relação comercial (não é rescisão trabalhista). Períodos futuros de indisponibilidade são cancelados e o acesso à plataforma é desativado. Contratos, notas, pagamentos e documentos são mantidos para auditoria.</Callout>
       {MODO_API && pend && <Callout tone={temPend ? 'warning' : 'success'} icon={temPend ? 'ListChecks' : 'CheckCircle2'} className="mb-4">
         <b>Pendências financeiras e documentais:</b> {pend.contratosAtivos.length} contrato(s) não encerrado(s) · {pend.notasEmAndamento} nota(s) em análise · {pend.contasAbertas} pagamento(s) em aberto ({dinheiro(pend.valorAberto)}) · {pend.reembolsosAbertos} reembolso(s) em aberto · {pend.documentosPendentes} documento(s) a conferir.
         {temPend && <span className="block mt-1">Elas continuam no fluxo depois do encerramento; acompanhe em Gestão de prestadores.</span>}
       </Callout>}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-        <Field label="Data de encerramento" required htmlFor="enc-d"><input id="enc-d" type="date" className="input" value={data} onChange={(e) => setData(e.target.value)} /></Field>
-        <Field label="Motivo" required htmlFor="enc-m"><Dropdown id="enc-m" className="input" value={motivo} onChange={(e) => setMotivo(e.target.value)}><option value="">Selecione…</option>{s.motivosEncerramento.filter((m) => m.ativo).map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</Dropdown></Field>
+        <Field label="Data efetiva do encerramento" required htmlFor="enc-d" hint="O dia em que a parceria terminou de fato. Não muda ao editar o cadastro depois."><input id="enc-d" type="date" className="input" value={data} onChange={(e) => setData(e.target.value)} /></Field>
+        <Field label="Motivo" required htmlFor="enc-m"><Dropdown id="enc-m" className="input" value={motivo} onChange={(e) => { setMotivo(e.target.value); const m = s.motivosEncerramento.find((x) => x.id === e.target.value); if (m?.iniciativa) setIniciativa(m.iniciativa) }}><option value="">Selecione…</option>{s.motivosEncerramento.filter((m) => m.ativo).map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</Dropdown></Field>
       </div>
+      {data > hojeISO() && <Callout tone="brand" icon="CalendarClock" className="mb-4"><b>Encerramento agendado para {fmtDate(data)}.</b> Até lá, a parceria e o acesso continuam normalmente. No dia, o sistema encerra a parceria, bloqueia o acesso e abre o checklist (se marcado). Os contratos devem ser encerrados no módulo financeiro; você será avisado nos alertas.</Callout>}
+      <SeletorIniciativa id="enc-i" valor={iniciativa} onChange={setIniciativa} />
       <Field label="Observação (opcional)" htmlFor="enc-o" hint="Evite registrar dados pessoais sensíveis."><textarea id="enc-o" className="input !h-auto py-2.5" rows={2} value={obs} onChange={(e) => setObs(e.target.value)} /></Field>
       <div className="space-y-2">
         <Toggle checked={checklist} onChange={setChecklist} label="Iniciar o checklist de encerramento" />
+        {pesquisaSaida ? <Toggle checked={convidarSaida} onChange={setConvidarSaida} label={`Convidar para a pesquisa de desligamento (${pesquisaSaida.titulo}${pesquisaSaida.modo === 'anonima' ? ', anônima' : ', identificada'})${data > hojeISO() ? ' no dia do encerramento' : ''}`} />
+          : MODO_API && s.pode('pesq:gerenciar') && <p className="text-[12px] text-muted">Para coletar os motivos de quem sai, crie e abra uma pesquisa a partir do modelo <Link to="/pesquisas-rh/modelos" className="text-brand font-semibold">Pesquisa de desligamento</Link>; ela passa a aparecer aqui.</p>}
         {MODO_API && !!pend?.contratosAtivos.length && <Toggle checked={encerrarContratos} onChange={setEncerrarContratos} label={`Encerrar também ${pend.contratosAtivos.length} contrato(s) em vigor nesta data`} />}
       </div>
     </Modal>

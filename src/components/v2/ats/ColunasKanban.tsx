@@ -5,15 +5,20 @@ import { Dropdown } from '@/components/Dropdown'
 import { api, executar } from '@/data/v2/api'
 import { CORES_ETAPA, HEX_COR_ETAPA, ROTULO_COR_ETAPA, ROTULO_ETAPA, TIPOS_ETAPA, validarEtapas, type CorEtapa, type TipoEtapa } from '@/domain/v2/vagas'
 import { cn } from '@/lib/utils'
+import { nomePublicoEtapa } from '@/domain/v2/ats'
+import { DICA_NOME_PUBLICO } from '@/components/v2/vagas/EditorEtapas'
 
-export interface ColunaEtapa { id?: string; nome: string; tipo: string; cor?: string | null; ativas?: number }
+/** `nomePublico` ausente (undefined) = o servidor mantém o que já estava gravado. */
+export interface ColunaEtapa { id?: string; nome: string; tipo: string; cor?: string | null; ativas?: number; nomePublico?: string | null }
 
 /** Cor de destaque da coluna (cinza quando não definida). */
 export const hexColuna = (cor?: string | null) => HEX_COR_ETAPA[(cor as CorEtapa) ?? 'cinza'] ?? HEX_COR_ETAPA.cinza
 
 /** Grava a lista completa de colunas da vaga. `realocar` leva as candidaturas de colunas excluídas para outra coluna. */
 export function salvarColunas(vagaId: string, etapas: ColunaEtapa[], realocar: Record<string, string> = {}, ok = 'Colunas atualizadas.') {
-  return executar(() => api.put(`ats/vagas/${vagaId}/etapas`, { etapas: etapas.map(({ id, nome, tipo, cor }) => ({ id, nome: nome.trim(), tipo, cor: cor || null })), realocar }), ok)
+  return executar(() => api.put(`ats/vagas/${vagaId}/etapas`, {
+    etapas: etapas.map(({ id, nome, tipo, cor, nomePublico }) => ({ id, nome: nome.trim(), tipo, cor: cor || null, ...(nomePublico === undefined ? {} : { nomePublico: (nomePublico ?? '').trim() || null }) })), realocar,
+  }), ok)
 }
 
 /** Insere uma coluna nova antes da de contratação (a última é sempre a de contratados). */
@@ -106,6 +111,12 @@ export function EditarColunasModal({ vagaId, etapas, open, onClose, onFeito, foc
                 </>}
               </div>
               <div className="mt-2.5 pl-7"><SeletorCor rotulo={`Cor da coluna ${e.nome || i + 1}`} valor={e.cor} onChange={(c) => alterar(i, { cor: c })} /></div>
+              <div className="mt-2.5 pl-7">
+                <label className="block text-[11.5px] text-muted" htmlFor={`cnp-${e.id ?? i}`}>Nome para o candidato <span className="font-normal">(opcional)</span></label>
+                <input id={`cnp-${e.id ?? i}`} className="input mt-0.5" maxLength={80} placeholder={nomePublicoEtapa(e.tipo, null)} value={e.nomePublico ?? ''}
+                  aria-describedby={`cnp-d-${e.id ?? i}`} onChange={(ev) => alterar(i, { nomePublico: ev.target.value })} />
+                <p id={`cnp-d-${e.id ?? i}`} className="text-[11px] text-muted mt-0.5">{DICA_NOME_PUBLICO}</p>
+              </div>
             </li>
           )
         })}

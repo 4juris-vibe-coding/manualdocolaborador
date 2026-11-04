@@ -18,7 +18,7 @@ async function main() {
   await p.query(readFileSync(new URL('../db/schema.sql', import.meta.url), 'utf8'))
   console.log('✔ tabelas criadas/verificadas')
   // Módulos v2 (recrutamento, pesquisas, cargos…): migrações aditivas e idempotentes, em ordem.
-  for (const f of readdirSync(new URL('../db/v2/', import.meta.url)).filter((n) => n.endsWith('.sql')).sort()) {
+  for (const f of readdirSync(new URL('../db/v2/', import.meta.url)).filter((n) => n.endsWith('.sql')).sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))) {
     await p.query(readFileSync(new URL(`../db/v2/${f}`, import.meta.url), 'utf8'))
     console.log(`✔ db/v2/${f}`)
   }

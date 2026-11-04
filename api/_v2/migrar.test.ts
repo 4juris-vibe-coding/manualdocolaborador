@@ -7,7 +7,7 @@ import { dbPglite } from './teste/harness'
 
 describe('migração automática do schema v2', () => {
   it('schemaSql.ts está em sincronia com db/v2 (rode: node scripts/gerar-schema-v2.mjs)', () => {
-    const arquivos = readdirSync('db/v2').filter((n) => n.endsWith('.sql')).sort()
+    const arquivos = readdirSync('db/v2').filter((n) => n.endsWith('.sql')).sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
     expect(SCHEMA_V2.map((a) => a.nome)).toEqual(arquivos)
     for (const a of SCHEMA_V2) expect(a.sql).toBe(readFileSync(`db/v2/${a.nome}`, 'utf8').replace(/\r\n/g, '\n'))
   })

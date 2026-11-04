@@ -63,14 +63,27 @@ const ROTULO_STATUS_VAGA: Record<string, string> = {
    ============================================================ */
 interface DadosRec { vagas: any[]; cands: any[]; etapas: any[]; movs: any[]; propostas: any[] }
 
-async function carregarRec(c: Ctx, f: Filtros, p: Periodo): Promise<DadosRec> {
-  const w = ['not v.arquivada', 'v.data_abertura between $1::date and $2::date']
-  const params: unknown[] = [p.de, p.ate]
+/** Filtros de área/unidade/recrutador/gestor sobre rec_vagas (alias v), acrescentados a `w`/`params`. */
+function filtrosVaga(f: Filtros, w: string[], params: unknown[]) {
   const add = (sql: string, v: unknown) => { params.push(v); w.push(sql.split('$#').join(`$${params.length}`)) }
   if (f.setor) add('v.setor_id = $#', f.setor)
   if (f.unidade) add('v.unidade_id = $#', f.unidade)
   if (f.recrutador) add('v.recrutador_id = $#', f.recrutador)
   if (f.gestor) add('(v.gestor_solicitante_id = $# or v.gestor_responsavel_id = $# or v.gestor_imediato_id = $#)', f.gestor)
+}
+
+/** Vagas encerradas ou canceladas no período (pela data de encerramento), com os mesmos filtros. Inclui as já arquivadas. */
+async function contarEncerradas(c: Ctx, f: Filtros, p: Periodo): Promise<number> {
+  const w = ["v.status in ('encerrada','cancelada')", 'v.encerrada_em is not null', "(v.encerrada_em at time zone 'America/Sao_Paulo')::date between $1::date and $2::date"]
+  const params: unknown[] = [p.de, p.ate]
+  filtrosVaga(f, w, params)
+  return (await c.db.query(`select count(*)::int as n from rec_vagas v where ${w.join(' and ')}`, params)).rows[0].n
+}
+
+async function carregarRec(c: Ctx, f: Filtros, p: Periodo): Promise<DadosRec> {
+  const w = ['not v.arquivada', 'v.data_abertura between $1::date and $2::date']
+  const params: unknown[] = [p.de, p.ate]
+  filtrosVaga(f, w, params)
   const vagas = (await c.db.query(
     `select v.id, v.codigo, v.titulo, v.status, v.prioridade, v.qtd_posicoes, v.posicoes_preenchidas, v.publicada_em, v.primeira_candidatura_em,
        to_char(v.prazo_preenchimento,'YYYY-MM-DD') as prazo, v.encerrada_em, v.motivo_encerramento, v.setor_id, v.unidade_id, v.recrutador_id,
@@ -171,6 +184,10 @@ async function blocoRecrutamento(c: Ctx, f: Filtros, hoje: string) {
   const porRecrutador = grupo((v) => v.recrutador_id, (id) => org.pessoa.get(id) ?? 'Cadastro removido')
   const canais = Object.entries(d.cands.reduce<Record<string, number>>((m, x) => { m[x.origem] = (m[x.origem] ?? 0) + 1; return m }, {}))
     .map(([origem, qtd]) => ({ origem, rotulo: ROTULO_ORIGEM[origem] ?? origem, qtd })).sort((a, b) => b.qtd - a.qtd)
+  // Origem das contratações (agregado: só contagem por canal, nunca quem foi contratado)
+  const origensContratados = Object.entries(d.cands.filter((x) => x.status === 'contratado').reduce<Record<string, number>>((m, x) => { m[x.origem] = (m[x.origem] ?? 0) + 1; return m }, {}))
+    .map(([origem, qtd]) => ({ origem, rotulo: ROTULO_ORIGEM[origem] ?? origem, qtd })).sort((a, b) => b.qtd - a.qtd)
+  const vagasEncerradas = await contarEncerradas(c, f, p)
   const porVaga = d.vagas.map((v) => ({ vagaId: v.id as string, codigo: v.codigo as string, titulo: v.titulo as string, candidaturas: porVagaCand.get(v.id) ?? 0 })).filter((x) => x.candidaturas > 0).sort((a, b) => b.candidaturas - a.candidaturas).slice(0, 10)
 
   const motivoCat = (v: any) => {
@@ -195,6 +212,7 @@ async function blocoRecrutamento(c: Ctx, f: Filtros, hoje: string) {
       funil.map((x) => ({ etapa: x.rotulo, candidaturas: x.alcancaram, conversao: x.conversaoDaAnterior }))),
     tabela('tempo_etapas', 'Tempo médio por etapa', [['etapa', 'Etapa'], ['dias', 'Dias (média)'], ['n', 'Passagens']], tempoEtapas.map((x) => ({ etapa: x.etapa, dias: x.dias, n: x.n }))),
     tabela('canais', 'Candidaturas por canal', [['rotulo', 'Canal'], ['qtd', 'Candidaturas']], canais.map((x) => ({ rotulo: x.rotulo, qtd: x.qtd }))),
+    tabela('origens_contratados', 'Origem das contratações', [['rotulo', 'Canal'], ['qtd', 'Contratações']], origensContratados.map((x) => ({ rotulo: x.rotulo, qtd: x.qtd }))),
     tabela('por_setor', 'Por departamento', [['nome', 'Departamento'], ['vagas', 'Vagas'], ['abertas', 'Em andamento'], ['candidaturas', 'Candidaturas'], ['contratacoes', 'Contratações'], ['tempoMedioPreenchimento', 'Tempo médio de preenchimento (dias)']], porSetor.map((x) => ({ ...x }))),
     tabela('por_recrutador', 'Por recrutador', [['nome', 'Recrutador'], ['vagas', 'Vagas'], ['abertas', 'Em andamento'], ['candidaturas', 'Candidaturas'], ['contratacoes', 'Contratações'], ['tempoMedioPreenchimento', 'Tempo médio de preenchimento (dias)']], porRecrutador.map((x) => ({ ...x }))),
     tabela('motivos', 'Motivos de encerramento', [['motivo', 'Motivo'], ['qtd', 'Vagas']], motivos.map((x) => ({ ...x }))),
@@ -206,7 +224,7 @@ async function blocoRecrutamento(c: Ctx, f: Filtros, hoje: string) {
     periodo: per, periodoAnterior: rotuloPeriodo(ant), semDados: d.vagas.length === 0,
     filtrosAplicados: ['período (data de abertura da vaga)', ...(f.setor ? ['área'] : []), ...(f.unidade ? ['unidade'] : []), ...(f.recrutador ? ['recrutador'] : []), ...(f.gestor ? ['gestor'] : [])],
     filtrosIgnorados: [] as string[],
-    indicadores, funil, tempoPorEtapa: tempoEtapas, canais, porVaga, porSetor, porRecrutador, motivos, evolucao,
+    indicadores, funil, tempoPorEtapa: tempoEtapas, canais, origensContratados, vagasEncerradas, porVaga, porSetor, porRecrutador, motivos, evolucao,
     candidatosSemDados: d.cands.length === 0,
     tabelas,
   }
@@ -220,7 +238,7 @@ async function blocoRecrutamento(c: Ctx, f: Filtros, hoje: string) {
 interface PesqLinha {
   id: string; titulo: string; categoria: string; modelo: string | null; modo: string; status: string; inicio: string | null; fim: string | null
   convidados: number; respostas: number | null; taxa: number | null; comLink: boolean; suprimido: boolean; motivo?: string
-  enps: { valor: number; n: number } | null; dimensoes: { dimensao: string; media: number; n: number; assinatura: string }[]; enpsPergunta?: string; enpsAssinatura?: string
+  enps: { valor: number; n: number; promotores: number; neutros: number; detratores: number; pctPromotores: number; pctNeutros: number; pctDetratores: number } | null; dimensoes: { dimensao: string; media: number; n: number; assinatura: string }[]; enpsPergunta?: string; enpsAssinatura?: string
 }
 
 async function carregarPesquisas(c: Ctx, f: Filtros, p: Periodo): Promise<PesqLinha[]> {
@@ -272,7 +290,7 @@ async function carregarPesquisas(c: Ctx, f: Filtros, p: Periodo): Promise<PesqLi
     const ultima = [...versoes].sort((a, b) => b.versao - a.versao)[0]
     const perguntas: PerguntaPesquisa[] = ultima?.perguntas ?? []
     const penps = perguntas.find((q) => q.tipo === 'enps')
-    if (res.enps && res.enps.enps !== null && penps) { linha.enps = { valor: res.enps.enps, n: res.enps.n }; linha.enpsPergunta = penps.texto; linha.enpsAssinatura = assinaturaPergunta(penps) }
+    if (res.enps && res.enps.enps !== null && penps) { const e = res.enps; linha.enps = { valor: e.enps!, n: e.n, promotores: e.promotores, neutros: e.neutros, detratores: e.detratores, pctPromotores: e.pctPromotores, pctNeutros: e.pctNeutros, pctDetratores: e.pctDetratores }; linha.enpsPergunta = penps.texto; linha.enpsAssinatura = assinaturaPergunta(penps) }
     linha.dimensoes = res.dimensoes.map((dm) => ({
       dimensao: dm.dimensao, media: dm.media, n: dm.n,
       assinatura: perguntas.filter((q) => q.dimensao === dm.dimensao).map((q) => assinaturaPergunta(q)).sort().join('¦'),
@@ -314,10 +332,10 @@ async function blocoPesquisas(c: Ctx, f: Filtros) {
   ]
 
   // Evolução do eNPS: só pontos de perguntas idênticas (mesma redação, tipo e escala)
-  const porAssin = new Map<string, { pergunta: string; pontos: { pesquisaId: string; titulo: string; data: string; enps: number; n: number }[] }>()
+  const porAssin = new Map<string, { pergunta: string; pontos: { pesquisaId: string; titulo: string; data: string; enps: number; n: number; promotores: number; neutros: number; detratores: number; pctPromotores: number; pctNeutros: number; pctDetratores: number; convidados: number; taxa: number | null }[] }>()
   for (const x of atual) if (x.enps && x.enpsAssinatura) {
     const g = porAssin.get(x.enpsAssinatura) ?? { pergunta: x.enpsPergunta ?? '', pontos: [] }
-    g.pontos.push({ pesquisaId: x.id, titulo: x.titulo, data: x.fim ?? x.inicio ?? '', enps: x.enps.valor, n: x.enps.n }); porAssin.set(x.enpsAssinatura, g)
+    g.pontos.push({ pesquisaId: x.id, titulo: x.titulo, data: x.fim ?? x.inicio ?? '', enps: x.enps.valor, n: x.enps.n, promotores: x.enps.promotores, neutros: x.enps.neutros, detratores: x.enps.detratores, pctPromotores: x.enps.pctPromotores, pctNeutros: x.enps.pctNeutros, pctDetratores: x.enps.pctDetratores, convidados: x.convidados, taxa: x.taxa }); porAssin.set(x.enpsAssinatura, g)
   }
   const seriesEnps = [...porAssin.values()].sort((a, b) => b.pontos.length - a.pontos.length)
 

@@ -214,6 +214,8 @@ export const rotas: Rota[] = [
       if (!n.arquivo_id) throw naoEncontrado(n.legado ? 'Nota importada do controle anterior: não há arquivo anexado.' : 'Esta nota foi registrada sem arquivo anexado.')
       const out = await baixarArquivo(db, n.arquivo_id)
       if (!out?.binario) throw naoEncontrado('Arquivo não encontrado.')
+      // Acesso a documento financeiro: entra no relatório de acessos a dados sensíveis (auditoria/sensiveis).
+      await auditar(db, usuario.colaboradorId, 'nota_fiscal', n.id, 'arquivo_baixado')
       return { ...out, binario: { ...out.binario, inline: true } }
     },
   },

@@ -153,6 +153,8 @@ describe('pesquisas e anonimato', () => {
     expect(clima.taxa).toBe(100)
     // promotores: 10,9,9,10 (4 de 8); detratores: 6,3,4 (3 de 8) → (4−3)/8 = 12,5 → 13
     expect(clima.enps.valor).toBe(13)
+    // Composição do eNPS (contagens agregadas, para o painel de eNPS): 10,9,9,10 promotores · 8 neutro · 6,3,4 detratores.
+    expect(clima.enps).toMatchObject({ n: 8, promotores: 4, neutros: 1, detratores: 3 })
     const txt = JSON.stringify(r.json)
     expect(txt).not.toMatch(/"itens"|colaboradorId|colaborador_id|"respostas":\s*\[/)
   })

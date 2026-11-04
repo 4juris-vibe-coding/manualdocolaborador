@@ -8,6 +8,7 @@
    edição concorrente, a tela é recarregada com a versão do banco.
    ============================================================ */
 import { create } from 'zustand'
+import { useEffect } from 'react'
 import { CONFIG, MODO_API } from './config'
 import { useStore, DB_KEYS } from '@/lib/store'
 import { toast } from '@/components/toast'
@@ -24,7 +25,9 @@ async function chamar<T>(rota: string, init?: RequestInit): Promise<{ ok: boolea
 }
 
 export type SituacaoSessao = 'carregando' | 'anonimo' | 'ok' | 'erro'
-interface SyncState { sessao: SituacaoSessao; salvando: boolean; erro?: string }
+interface SyncState { sessao: SituacaoSessao; salvando: boolean; erro?: string
+  /** Mensagem cordial quando a parceria foi encerrada (login recusado ou sessão interrompida). */
+  avisoEncerrada?: string }
 export const useSync = create<SyncState>(() => ({ sessao: MODO_API ? 'carregando' : 'ok', salvando: false }))
 
 /* ---------- sincronização store → banco ----------
@@ -109,8 +112,11 @@ function ligarSync() {
 
 /* ---------- sessão ---------- */
 async function hidratar(): Promise<boolean> {
-  const r = await chamar<{ colaboradorId: string; estado: Record<string, unknown>; segredoAnonimo?: string }>('estado')
-  if (!r.ok) return false
+  const r = await chamar<{ colaboradorId: string; estado: Record<string, unknown>; segredoAnonimo?: string; codigo?: string }>('estado')
+  if (!r.ok) {
+    if (r.dados.codigo === 'parceria_encerrada') { ativo = false; useSync.setState({ sessao: 'anonimo', avisoEncerrada: r.dados.erro }); useStore.setState({ sessaoId: null }) }
+    return false
+  }
   const { estado, colaboradorId, segredoAnonimo } = r.dados
   definirSegredoAnonimo(segredoAnonimo ?? '')
   useStore.getState().setPreview(false)
@@ -140,7 +146,9 @@ export async function iniciarSessao(): Promise<void> {
 
 export async function entrarComSenha(email: string, senha: string): Promise<string | null> {
   try {
-    const r = await chamar('login', { method: 'POST', body: JSON.stringify({ email, senha }) })
+    const r = await chamar<{ codigo?: string }>('login', { method: 'POST', body: JSON.stringify({ email, senha }) })
+    if (!r.ok && r.dados.codigo === 'parceria_encerrada') { useSync.setState({ avisoEncerrada: r.dados.erro }); return r.dados.erro ?? 'Parceria encerrada.' }
+    useSync.setState({ avisoEncerrada: undefined })
     if (!r.ok) return r.dados.erro ?? 'Não foi possível entrar.'
     if (!(await hidratar())) return 'Login feito, mas não foi possível carregar os dados.'
     useSync.setState({ sessao: 'ok' })
@@ -259,4 +267,29 @@ export async function sairDoServidor(): Promise<void> {
 export async function sairCompleto(): Promise<void> {
   await sairDoServidor()
   useStore.getState().sair()
+}
+
+/* ---------- atualização automática (sem tempo real no servidor) ----------
+   Telas operacionais (Integração, Pessoas, Indicadores) relêem o estado do
+   servidor a cada 45 s com a aba visível e ao voltar para a aba, para refletir
+   o que outras pessoas concluíram (ex.: item de checklist marcado pela pessoa
+   ou pela liderança). Nunca relê com alterações locais pendentes de envio. */
+let ultimaLeitura = 0
+async function atualizarSeOcioso(): Promise<void> {
+  if (!MODO_API || !ativo || emVoo || sujo || document.visibilityState !== 'visible') return
+  if (Date.now() - ultimaLeitura < 15000) return
+  const atual = fotografar()
+  if (DB_KEYS.some((k) => atual[k] !== enviado[k])) return
+  ultimaLeitura = Date.now()
+  await hidratar().catch(() => undefined)
+}
+
+export function useAtualizacaoAutomatica(intervaloMs = 45000): void {
+  useEffect(() => {
+    if (!MODO_API) return
+    const t = setInterval(() => void atualizarSeOcioso(), intervaloMs)
+    const vis = () => { if (document.visibilityState === 'visible') void atualizarSeOcioso() }
+    document.addEventListener('visibilitychange', vis)
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', vis) }
+  }, [intervaloMs])
 }

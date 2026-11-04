@@ -32,6 +32,7 @@ export function PessoaForm({ pessoa, onClose, onSalvo }: { pessoa?: Colaborador;
   const toque = (k: string) => setTocado((t) => ({ ...t, [k]: true }))
   const cargos = s.cargos.filter((g) => g.setorId === f.setorId)
   const pj = f.regime !== 'autonomo'
+  const movimentacao = !!pessoa && (pessoa.setorId !== f.setorId || (pessoa.cargoId || '') !== (f.cargoId || '') || (pessoa.responsavelId || '') !== (f.responsavelId || ''))
 
   const erros: Record<string, string | undefined> = {
     nome: f.nome.trim().length < 3 ? 'Informe o nome completo.' : undefined,
@@ -111,6 +112,15 @@ export function PessoaForm({ pessoa, onClose, onSalvo }: { pessoa?: Colaborador;
           <Field label="Área" required htmlFor="pf-area"><Dropdown id="pf-area" className="input" value={f.setorId} onChange={(x) => set({ setorId: x.target.value, cargoId: '' })}>{s.setores.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</Dropdown></Field>
           <Field label="Função" htmlFor="pf-func" hint={cargos.length ? undefined : 'Cadastre funções da área em Estrutura.'}><Dropdown id="pf-func" className="input" value={f.cargoId} onChange={(x) => set({ cargoId: x.target.value })}><option value="">—</option>{cargos.map((g) => <option key={g.id} value={g.id}>{g.nome} · {g.nivel}</option>)}</Dropdown></Field>
           <Field label="Unidade" htmlFor="pf-un"><Dropdown id="pf-un" className="input" value={f.unidadeId} onChange={(x) => set({ unidadeId: x.target.value })}><option value="">—</option>{s.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}</Dropdown></Field>
+          {movimentacao && (
+            <div className="sm:col-span-2 rounded-xl border border-brand-200 bg-brand-50/50 p-4 mb-4">
+              <p className="text-[12.5px] text-ink-2 mb-3"><b className="text-ink">Movimentação organizacional:</b> {[pessoa!.setorId !== f.setorId && 'área', (pessoa!.cargoId || '') !== (f.cargoId || '') && 'função', (pessoa!.responsavelId || '') !== (f.responsavelId || '') && 'gestor'].filter(Boolean).join(', ')} {'alterado(s)'}. A data efetiva entra no histórico e nos indicadores por período.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-x-4">
+                <Field label="Data efetiva da mudança" required htmlFor="pf-dm"><input id="pf-dm" type="date" className="input" value={f.dataMudanca ?? hojeISO()} onChange={(x) => set({ dataMudanca: x.target.value })} /></Field>
+                <Field label="Motivo (opcional)" htmlFor="pf-mm"><input id="pf-mm" className="input" maxLength={300} value={f.motivoMudanca ?? ''} onChange={(x) => set({ motivoMudanca: x.target.value })} placeholder="Ex.: promoção, reorganização da área" /></Field>
+              </div>
+            </div>
+          )}
           {(s.config.produtos ?? []).length > 0 && (
             <div className="sm:col-span-2 mb-4">
               <span className="label" id="pf-prod">Produtos em que atua</span>

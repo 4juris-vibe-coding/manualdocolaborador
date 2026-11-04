@@ -76,8 +76,20 @@ export interface Colaborador {
   emergenciaTelefone?: string
   emergenciaParentesco?: string
   privacidade: PreferenciasPrivacidade
-  /** Preenchido quando a parceria é encerrada. */
-  encerramento?: { data: string; motivoId: string; observacao?: string }
+  /** Preenchido quando a parceria está encerrada (espelho do período mais recente em `vinculos`). */
+  encerramento?: EncerramentoParceria
+  /**
+   * Períodos de parceria (vínculos), com datas EFETIVAS informadas pelo RH.
+   * Ausente em cadastros antigos: o período é derivado de dataEntrada + encerramento (domain/vinculos.ts).
+   */
+  vinculos?: Vinculo[]
+  /** Histórico de movimentações do vínculo (só acrescenta; o servidor recusa alterações). */
+  movimentacoes?: MovimentacaoVinculo[]
+  /**
+   * Encerramento já decidido, com data efetiva FUTURA. A parceria segue ativa até lá; no dia, o servidor
+   * aplica o encerramento (rotina diária e, por segurança, também no login e na abertura do portal).
+   */
+  encerramentoAgendado?: EncerramentoAgendado
   // ---------- Ficha complementar (portada do sistema de RH; tudo opcional) ----------
   endereco?: Endereco
   celular?: string
@@ -96,6 +108,66 @@ export interface Colaborador {
   /** Perfil comportamental (DISC + traços), autodeclarado ou de assessment, com consentimento. */
   perfil?: PerfilComportamental
   codigoExterno?: string
+}
+
+/** Quem tomou a iniciativa do encerramento — classificação estruturada escolhida pelo RH. */
+export type IniciativaEncerramento = 'empresa' | 'prestador' | 'mutuo' | 'termino'
+
+export interface EncerramentoParceria {
+  /** Data EFETIVA do encerramento (não é a data do registro nem da última alteração). */
+  data: string
+  motivoId: string
+  observacao?: string
+  /** Iniciativa (involuntário = 'empresa'). Ausente em registros antigos: "não classificado". */
+  iniciativa?: IniciativaEncerramento
+  /** Quem registrou o encerramento. */
+  porId?: string
+  /** Instante em que o encerramento foi registrado no sistema. */
+  registradoEm?: string
+}
+
+export interface EncerramentoAgendado {
+  data: string
+  motivoId: string
+  iniciativa: IniciativaEncerramento
+  observacao?: string
+  /** Abrir o checklist de encerramento quando for aplicado. */
+  iniciarChecklist?: boolean
+  /** Pesquisa de desligamento (Central de pesquisas) para convidar a pessoa no dia do encerramento. */
+  pesquisaDesligamentoId?: string
+  porId: string
+  registradoEm: string
+}
+
+export interface Vinculo {
+  id: string
+  /** Início efetivo do período. */
+  inicio: string
+  /** Encerramento efetivo (ausente = período em aberto). */
+  fim?: string
+  motivoId?: string
+  iniciativa?: IniciativaEncerramento
+  observacao?: string
+  encerradoPorId?: string
+  encerradoEm?: string
+  /** Como o período começou. */
+  origem?: 'cadastro' | 'novo_vinculo' | 'contratacao'
+}
+
+export interface MovimentacaoVinculo {
+  id: string
+  tipo: 'inicio' | 'encerramento' | 'reativacao' | 'novo_vinculo' | 'correcao_encerramento' | 'correcao_inicio'
+  /** Instante do registro. */
+  em: string
+  porId?: string
+  vinculoId: string
+  /** Data efetiva a que a movimentação se refere. */
+  dataEfetiva: string
+  /** Valores anteriores (correções e reativações), para rastreabilidade. */
+  anterior?: { data?: string; motivoId?: string; iniciativa?: IniciativaEncerramento }
+  motivoId?: string
+  iniciativa?: IniciativaEncerramento
+  justificativa?: string
 }
 
 export interface Endereco {
@@ -148,6 +220,16 @@ export interface HistoricoFuncao {
   cargoNovoId?: string
   valorAnterior?: number
   valorNovo?: number
+  /** Mudança de área (departamento). */
+  setorAnteriorId?: string
+  setorNovoId?: string
+  /** Mudança de gestor imediato. */
+  gestorAnteriorId?: string
+  gestorNovoId?: string
+  /** Data EFETIVA da mudança, informada pelo RH (ausente em registros antigos = data do registro `em`). */
+  dataEfetiva?: string
+  /** Motivo/observação da movimentação (opcional). */
+  observacao?: string
 }
 
 export interface Dependente {
@@ -523,6 +605,8 @@ export interface ChecklistItemModelo {
   responsavel: ResponsavelItem
   /** Dias, a partir do início do processo, sugeridos para concluir. */
   prazoDias?: number
+  /** Obrigatório para concluir o processo (padrão: sim). Itens opcionais não travam a conclusão. */
+  obrigatorio?: boolean
 }
 
 export interface ChecklistModelo {
@@ -545,10 +629,19 @@ export interface ProcessoJornada {
   tipo: TipoJornada
   iniciadoEm: string
   concluidoEm?: string
+  /** Data efetiva do evento a que o processo se refere (início ou encerramento da parceria). */
+  referencia?: string
+  /** Processo cancelado (ex.: parceria reativada ou duplicidade corrigida). Não conta como concluído. */
+  canceladoEm?: string
+  motivoCancelamento?: string
   itens: ProcessoItem[]
 }
 
-export interface MotivoEncerramento { id: string; nome: string; ativo: boolean }
+export interface MotivoEncerramento {
+  id: string; nome: string; ativo: boolean
+  /** Iniciativa sugerida ao escolher o motivo (o RH confirma em cada encerramento). */
+  iniciativa?: IniciativaEncerramento
+}
 
 /* ---------- Registros administrativos (RH) ---------- */
 export interface TipoRegistro { id: string; nome: string; ativo: boolean }

@@ -39,7 +39,7 @@ export interface Mundo { pg: PGlite; db: Db }
 export async function criarMundo(): Promise<Mundo> {
   const pg = new PGlite()
   await pg.exec(readFileSync(raiz('db/schema.sql'), 'utf8'))
-  for (const f of readdirSync(raiz('db/v2')).filter((n) => n.endsWith('.sql')).sort()) await pg.exec(readFileSync(raiz(`db/v2/${f}`), 'utf8'))
+  for (const f of readdirSync(raiz('db/v2')).filter((n) => n.endsWith('.sql')).sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))) await pg.exec(readFileSync(raiz(`db/v2/${f}`), 'utf8'))
   return { pg, db: dbPglite(pg) }
 }
 

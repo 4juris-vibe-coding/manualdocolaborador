@@ -4,7 +4,8 @@ import { Avatar, Badge, Button, Callout, Card, CardHead, EmptyState, PageHeader,
 import { Modal } from '@/components/Modal'
 import { toast } from '@/components/toast'
 import { Aguardar, SoComBanco } from '@/components/v2/estados'
-import { EditorEtapas } from '@/components/v2/vagas/EditorEtapas'
+import { EditorEtapas, type EtapaEditavel } from '@/components/v2/vagas/EditorEtapas'
+import { AvaliacoesEtapa } from '@/components/v2/vagas/AvaliacoesEtapa'
 import { BadgePrazo, BadgePrioridade, BadgeStatus, ROTULO_ACAO, useAcaoVaga, useOpcoes, type AcaoMenu } from '@/components/v2/vagas/comum'
 import { api, executar, lerBase64, useApi } from '@/data/v2/api'
 import { ROTULO_ETAPA, ROTULO_MODALIDADE, ROTULO_MOTIVO, ROTULO_REMUNERACAO, ROTULO_TIPO } from '@/domain/v2/vagas'
@@ -45,7 +46,7 @@ export default function VagaDetalhe() {
   const { pedir, modal } = useAcaoVaga(() => r.recarregar())
   const [decisao, setDecisao] = useState<{ passoId: string; rotulo: string } | null>(null)
   const [reatribuir, setReatribuir] = useState<{ passoId: string; rotulo: string } | null>(null)
-  const [etapas, setEtapas] = useState<{ id?: string; nome: string; tipo: string; ativas?: number }[]>([])
+  const [etapas, setEtapas] = useState<EtapaEditavel[]>([])
   const [pdf, setPdf] = useState(false)
   useEffect(() => { if (r.dados) setEtapas(r.dados.etapas) }, [r.dados])
 
@@ -121,11 +122,12 @@ export default function VagaDetalhe() {
 
               {aba === 'etapas' && (
                 <Card className="p-5">
-                  <EditorEtapas etapas={etapas} onChange={setEtapas} desabilitado={!p.editar}
-                    onSalvar={async () => { const n = await executar(() => api.put(`vagas/${v.id}/etapas`, { etapas: etapas.map((e) => ({ id: e.id, nome: e.nome, tipo: e.tipo })) }), 'Etapas salvas.'); if (n) r.recarregar() }} />
+                  <EditorEtapas etapas={etapas} onChange={setEtapas} desabilitado={!p.editar} comNomePublico
+                    onSalvar={async () => { const n = await executar(() => api.put(`vagas/${v.id}/etapas`, { etapas: etapas.map((e) => ({ id: e.id, nome: e.nome, tipo: e.tipo, nomePublico: (e.nomePublico ?? '').trim() || null })) }), 'Etapas salvas.'); if (n) r.recarregar() }} />
                   {!p.editar && <p className="text-[12px] text-muted mt-3">As etapas só podem ser alteradas por quem edita a vaga.</p>}
                 </Card>
               )}
+              {aba === 'etapas' && <AvaliacoesEtapa vagaId={v.id} />}
 
               {aba === 'candidaturas' && (
                 <div className="space-y-5">

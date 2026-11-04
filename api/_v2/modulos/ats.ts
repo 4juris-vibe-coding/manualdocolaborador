@@ -12,13 +12,15 @@ import {
 } from '../nucleo.js'
 import { baixarArquivo, guardarArquivo, validarUpload } from '../arquivos.js'
 import {
-  concluirContratacao, criarCandidatura, garantirEtapas, garantirModeloAvaliacao, garantirTemplates, modeloPreenchido,
+  concluirContratacao, criarCandidatura, garantirEtapas, garantirModeloAvaliacao, garantirTemplates, lerNomePublico, modeloPreenchido,
   obterPrivacidade, registrarConsentimento, registrarEEnviar, variaveisCandidatura,
 } from '../atsLib.js'
 import {
   ORIGENS, STATUS_CANDIDATURA, analisarCsvCandidatos, diasNaEtapa, linhaCsv, mediaPonderada, somarMeses, validarMovimento, type Criterio,
 } from '../../../src/domain/v2/ats.js'
 import { CORES_ETAPA, STATUS_FINAIS, TIPOS_ETAPA, validarEtapas, type StatusVaga } from '../../../src/domain/v2/vagas.js'
+import { eventoDaEntrevista, gerarIcs, nomeArquivoIcs, ROTULO_MODALIDADE_ENTREVISTA } from '../../../src/domain/v2/agendaEntrevista.js'
+import type { AnexoEmail } from '../email.js'
 
 const VER: ('ats:ver' | 'ats:avaliar' | 'ats:gerenciar')[] = ['ats:ver', 'ats:avaliar', 'ats:gerenciar']
 
@@ -60,6 +62,38 @@ async function validarPessoas(ex: Executor, ids: string[]): Promise<string[]> {
     if (!p || p.status === 'encerrado') throw invalido('Participante não encontrado ou inativo.', { participantes: 'Pessoa inválida' })
   }
   return unicos
+}
+
+/* ---------- convite de entrevista (e-mail ao candidato com .ics) ---------- */
+const dataEntrevistaBR = (v: string | Date) => {
+  try { return new Date(v).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'full', timeStyle: 'short' }) + ' (horário de Brasília)' }
+  catch { return new Date(v).toISOString() }
+}
+
+/** Variáveis {{data_entrevista}}/{{local_entrevista}} e o anexo .ics do convite. O evento é o do CANDIDATO (sem notas internas). */
+async function conviteDaEntrevista(ex: Executor, entrevistaId: string, candidaturaId: string): Promise<{ vars: Record<string, string>; anexo: AnexoEmail } | null> {
+  if (!uuid(entrevistaId)) return null
+  const e = (await ex.query(
+    `select ent.id, ent.tipo, ent.inicio, ent.fim, ent.modalidade, ent.local_ou_link, ent.status, ent.reagendamentos, v.titulo as vaga_titulo
+     from rec_entrevistas ent join rec_candidaturas c on c.id = ent.candidatura_id join rec_vagas v on v.id = c.vaga_id where ent.id = $1 and ent.candidatura_id = $2`,
+    [entrevistaId, candidaturaId])).rows[0]
+  if (!e) return null
+  const ent = { id: e.id, tipo: e.tipo, inicio: e.inicio, fim: e.fim, modalidade: e.modalidade, localOuLink: e.local_ou_link, status: e.status, reagendamentos: e.reagendamentos }
+  const ics = gerarIcs(eventoDaEntrevista(ent, { vagaTitulo: e.vaga_titulo }, 'candidato'))
+  return {
+    vars: { data_entrevista: dataEntrevistaBR(e.inicio), local_entrevista: (e.local_ou_link ?? '').trim() || (ROTULO_MODALIDADE_ENTREVISTA[e.modalidade] ?? e.modalidade) },
+    anexo: { nome: nomeArquivoIcs(ent), conteudo: ics, tipo: 'text/calendar; charset=utf-8; method=PUBLISH' },
+  }
+}
+
+async function enviarConviteEntrevista(ex: Executor, entrevistaId: string, candidaturaId: string, quem: string) {
+  const conv = await conviteDaEntrevista(ex, entrevistaId, candidaturaId)
+  if (!conv) return undefined
+  const { vars, email, candidatoId } = await variaveisCandidatura(ex, candidaturaId)
+  const modelo = await modeloPreenchido(ex, 'convite_entrevista', { ...vars, ...conv.vars })
+  const r = await registrarEEnviar(ex, { candidaturaId, candidatoId, templateChave: 'convite_entrevista', ...modelo, para: email, criadoPor: quem, enviar: true, anexos: [conv.anexo] })
+  await auditar(ex, quem, 'candidatura', candidaturaId, 'comunicacao', { status: r.status, template: 'convite_entrevista', entrevistaId, anexo: 'ics' })
+  return r
 }
 
 /* ---------- cartões ---------- */
@@ -171,7 +205,7 @@ export const rotas: Rota[] = [
       for (const c of cards) if (c.status !== 'ativa') saidas[c.status] = (saidas[c.status] ?? 0) + 1
       return ok({
         vaga: camel(vaga),
-        etapas: etapas.map((et) => ({ id: et.id, nome: et.nome, tipo: et.tipo, ordem: et.ordem, cor: et.cor, candidaturas: cards.filter((c) => c.status === 'ativa' && c.etapaId === et.id) })),
+        etapas: etapas.map((et) => ({ id: et.id, nome: et.nome, tipo: et.tipo, ordem: et.ordem, cor: et.cor, nomePublico: et.nome_publico ?? null, candidaturas: cards.filter((c) => c.status === 'ativa' && c.etapaId === et.id) })),
         saidas, encerradas: req.query.saidas === '1' ? cards.filter((c) => c.status !== 'ativa') : undefined,
         total: cards.length,
       })
@@ -190,6 +224,7 @@ export const rotas: Rota[] = [
         nome: texto(e.nome, 'nome da coluna', { max: 80 }),
         tipo: enumerado(e.tipo, 'tipo da coluna', TIPOS_ETAPA, 'generica'),
         cor: e.cor ? enumerado(e.cor, 'cor da coluna', CORES_ETAPA) : null,
+        nomePublico: lerNomePublico(e.nomePublico),
       }))
       const erro = validarEtapas(novas)
       if (erro) throw invalido(erro, { etapas: erro })
@@ -206,8 +241,9 @@ export const rotas: Rota[] = [
         const mantidas = new Set(novas.map((n) => n.id).filter(Boolean) as string[])
         for (let i = 0; i < novas.length; i++) {
           const n = novas[i]
-          if (n.id) await t.query('update rec_vaga_etapas set ordem = $2, nome = $3, tipo = $4, cor = $5 where id = $1', [n.id, i + 1, n.nome, n.tipo, n.cor])
-          else n.id = (await t.query('insert into rec_vaga_etapas (vaga_id, ordem, nome, tipo, cor) values ($1,$2,$3,$4,$5) returning id', [v.id, i + 1, n.nome, n.tipo, n.cor])).rows[0].id
+          // nomePublico ausente no corpo = mantém o que já estava gravado (ex.: só renomear/criar coluna pelo kanban)
+          if (n.id) await t.query('update rec_vaga_etapas set ordem = $2, nome = $3, tipo = $4, cor = $5, nome_publico = case when $6 then $7 else nome_publico end where id = $1', [n.id, i + 1, n.nome, n.tipo, n.cor, n.nomePublico !== undefined, n.nomePublico ?? null])
+          else n.id = (await t.query('insert into rec_vaga_etapas (vaga_id, ordem, nome, tipo, cor, nome_publico) values ($1,$2,$3,$4,$5,$6) returning id', [v.id, i + 1, n.nome, n.tipo, n.cor, n.nomePublico ?? null])).rows[0].id
         }
         for (const a of atuais) {
           if (mantidas.has(a.id)) continue
@@ -228,7 +264,7 @@ export const rotas: Rota[] = [
         await auditar(t, usuario.colaboradorId, 'vaga', v.id, 'etapas', { codigo: v.codigo, origem: 'kanban' })
       })
       const etapas = await garantirEtapas(db, params.vagaId)
-      return ok({ etapas })
+      return ok({ etapas: etapas.map((e) => camel({ ...e })) })
     },
   },
 
@@ -355,6 +391,9 @@ export const rotas: Rota[] = [
       const notas = (await db.query('select * from rec_candidatura_notas where candidatura_id = $1 order by criado_em desc', [c.id])).rows
         .filter((n) => notasRh || n.visibilidade === 'banca' || n.autor_id === usuario.colaboradorId)
         .map((n) => ({ id: n.id, autorId: n.autor_id, autorNome: nome(n.autor_id), texto: n.texto, visibilidade: n.visibilidade, criadoEm: n.criado_em }))
+      // Leitura de notas restritas ao RH: registrada (relatório de acessos a dados sensíveis). Sem o texto na auditoria.
+      const nRh = notas.filter((n) => n.visibilidade === 'rh').length
+      if (nRh) await auditar(db, usuario.colaboradorId, 'candidatura', c.id, 'notas_rh_visualizadas', { quantidade: nRh })
       const propostas = gerenciar
         ? (await db.query('select * from rec_propostas where candidatura_id = $1 order by criado_em desc', [c.id])).rows.map((p) => propostaOut(p, rem))
         : []
@@ -417,16 +456,25 @@ export const rotas: Rota[] = [
         await t.query('insert into rec_candidatura_movs (candidatura_id, colaborador_id, de_etapa_id, para_etapa_id, de_status, para_status, motivo) values ($1,$2,$3,$4,$5,$6,$7)',
           [c.id, usuario.colaboradorId, c.etapa_id, v.etapaId, c.status, v.status, pedido.motivo])
         await auditar(t, usuario.colaboradorId, 'candidatura', c.id, 'movida', { deStatus: c.status, paraStatus: v.status, deEtapa: c.etapa_id, paraEtapa: v.etapaId })
-        return { status: v.status, etapaId: v.etapaId, vagaEncerrada: false }
+        // Etapa de destino configurada para avisar o candidato por e-mail (rec_etapa_config.avisar_candidato).
+        const avisoEtapa = mudouEtapa && v.status === 'ativa' && !!v.etapaId
+          && !!(await t.query('select 1 from rec_etapa_config where etapa_id = $1 and avisar_candidato', [v.etapaId])).rowCount
+        return { status: v.status, etapaId: v.etapaId, vagaEncerrada: false, avisoEtapa }
       })
-      // aviso opcional ao candidato (fora da transação: depende de serviço externo)
+      const { avisoEtapa, ...saida } = { avisoEtapa: false, ...res }
+      // Aviso ao candidato (fora da transação: depende de serviço externo). Pedido explícito (notificarCandidato: true)
+      // ou automático pela etapa; `notificarCandidato: false` explícito desliga o automático. Mesmo caminho nos dois casos.
       let comunicacao: unknown = undefined
-      if (b.notificarCandidato === true) {
+      const automatico = b.notificarCandidato !== true && b.notificarCandidato !== false && avisoEtapa
+      if (b.notificarCandidato === true || automatico) {
+        const chave = saida.status === 'reprovado' ? 'encerramento' : 'atualizacao_etapa'
         const { vars, email, candidatoId } = await variaveisCandidatura(db, params.id)
-        const modelo = await modeloPreenchido(db, res.status === 'reprovado' ? 'encerramento' : 'atualizacao_etapa', vars)
-        comunicacao = await registrarEEnviar(db, { candidaturaId: params.id, candidatoId, templateChave: res.status === 'reprovado' ? 'encerramento' : 'atualizacao_etapa', ...modelo, para: email, criadoPor: usuario.colaboradorId, enviar: true })
+        const modelo = await modeloPreenchido(db, chave, vars)
+        const r = await registrarEEnviar(db, { candidaturaId: params.id, candidatoId, templateChave: chave, ...modelo, para: email, criadoPor: usuario.colaboradorId, enviar: true })
+        if (automatico) await auditar(db, usuario.colaboradorId, 'candidatura', params.id, 'aviso_etapa_automatico', { status: r.status, etapaId: saida.etapaId })
+        comunicacao = { ...r, automatica: automatico }
       }
-      return ok({ ...res, comunicacao })
+      return ok({ ...saida, comunicacao })
     },
   },
 
@@ -549,7 +597,9 @@ export const rotas: Rota[] = [
         await auditar(t, usuario.colaboradorId, 'candidatura', c.id, 'entrevista_agendada', { entrevistaId: r.rows[0].id, tipo })
         return r.rows[0].id as string
       })
-      return ok({ id: out }, 201)
+      // Convite opcional ao candidato, com o .ics anexado (fora da transação: depende do provedor de e-mail).
+      const comunicacao = b.enviarConvite === true ? await enviarConviteEntrevista(db, out, c.id, usuario.colaboradorId) : undefined
+      return ok({ id: out, comunicacao }, 201)
     },
   },
   {
@@ -774,6 +824,42 @@ export const rotas: Rota[] = [
     },
   },
   {
+    // Adiciona uma pessoa do banco de talentos a uma vaga: cria a candidatura (origem banco_talentos) na primeira etapa.
+    // Exige autorização vigente para o banco de talentos (não revogada nem vencida) e vaga recebendo candidaturas.
+    metodo: 'POST', padrao: 'ats/talentos/:candidatoId/candidatar', cap: 'ats:gerenciar',
+    h: async ({ db, usuario, params, req, agora }) => {
+      if (!uuid(params.candidatoId)) throw naoEncontrado('Candidato não encontrado.')
+      const vagaId = texto(req.corpo?.vagaId, 'vaga', { max: 40 })
+      if (!uuid(vagaId)) throw invalido('Escolha a vaga.', { vagaId: 'Vaga inválida' })
+      const hoje = hojeISO(agora)
+      const out = await db.tx(async (t) => {
+        const e = escopoVagas(usuario, 'v', 2)
+        const v = (await t.query(`select v.id, v.codigo, v.titulo, v.status, v.arquivada from rec_vagas v where v.id = $1 and ${e.sql}`, [vagaId, ...e.params])).rows[0]
+        if (!v || v.arquivada) throw naoEncontrado('Vaga não encontrada.')
+        if (!['aprovada', 'publicada', 'pausada'].includes(v.status)) {
+          throw conflito(STATUS_FINAIS.includes(v.status as StatusVaga) ? 'Esta vaga está encerrada e não recebe novas candidaturas.' : 'Esta vaga ainda não foi aprovada para receber candidaturas.')
+        }
+        const k = (await t.query(
+          `select k.id, k.nome, k.email, k.telefone, k.cidade, k.uf, k.linkedin, to_char(tl.retencao_ate, 'YYYY-MM-DD') as retencao_ate
+           from rec_talentos tl join rec_candidatos k on k.id = tl.candidato_id where tl.candidato_id = $1 and k.anonimizado_em is null`, [params.candidatoId])).rows[0]
+        if (!k) throw naoEncontrado('Esta pessoa não está no banco de talentos.')
+        const autorizado = (await t.query(
+          `select 1 from rec_consentimentos where candidato_id = $1 and finalidade = 'banco_talentos' and concedido and revogado_em is null and (valido_ate is null or valido_ate >= $2::date)`,
+          [k.id, hoje])).rowCount
+        if (!autorizado || (k.retencao_ate && k.retencao_ate < hoje)) throw conflito('A autorização desta pessoa para o banco de talentos foi revogada ou venceu. Renove o consentimento antes de usá-la em um novo processo.')
+        const ja = await t.query('select 1 from rec_candidaturas where vaga_id = $1 and candidato_id = $2', [v.id, k.id])
+        if (ja.rowCount) throw conflito('Esta pessoa já tem uma candidatura nesta vaga.')
+        const c = await criarCandidatura(t, {
+          vagaId: v.id, candidato: { nome: k.nome, email: k.email, telefone: k.telefone ?? undefined, cidade: k.cidade ?? undefined, uf: k.uf ?? undefined, linkedin: k.linkedin ?? undefined },
+          origem: 'banco_talentos', origemDetalhe: 'Adicionada pelo RH a partir do banco de talentos', colaboradorId: usuario.colaboradorId,
+        })
+        await auditar(t, usuario.colaboradorId, 'candidatura', c.candidaturaId, 'talento_adicionado_vaga', { vagaId: v.id, candidatoId: k.id, origem: 'banco_talentos' })
+        return { id: c.candidaturaId, vagaId: v.id, vagaTitulo: v.titulo as string }
+      })
+      return ok(out, 201)
+    },
+  },
+  {
     metodo: 'DELETE', padrao: 'ats/talentos/:candidatoId', cap: 'ats:gerenciar',
     h: async ({ db, usuario, params }) => {
       if (!uuid(params.candidatoId)) throw naoEncontrado()
@@ -827,12 +913,16 @@ export const rotas: Rota[] = [
       const b = req.corpo ?? {}
       const c = await carregarCandidatura(db, params.id, usuario)
       const { vars, email, candidatoId } = await variaveisCandidatura(db, c.id)
+      // Convite de entrevista ligado a uma entrevista: preenche data/local e anexa o .ics.
+      const conv = typeof b.entrevistaId === 'string' && b.entrevistaId ? await conviteDaEntrevista(db, b.entrevistaId, c.id) : null
+      if (conv) Object.assign(vars, conv.vars)
       Object.assign(vars, Object.fromEntries(Object.entries((b.variaveis ?? {}) as Record<string, unknown>).slice(0, 20).map(([k, v]) => [k, String(v ?? '').slice(0, 500)])))
       let assunto: string, corpo: string
       const chave = typeof b.templateChave === 'string' && b.templateChave ? b.templateChave : null
       if (chave && !b.corpo) ({ assunto, corpo } = await modeloPreenchido(db, chave, vars))
       else { assunto = texto(b.assunto, 'assunto', { max: 200 }); corpo = texto(b.corpo, 'mensagem', { max: 5000 }) }
-      const r = await registrarEEnviar(db, { candidaturaId: c.id, candidatoId, templateChave: chave, assunto, corpo, para: email, criadoPor: usuario.colaboradorId, enviar: b.enviar !== false })
+      const anexos = conv && chave === 'convite_entrevista' ? [conv.anexo] : undefined
+      const r = await registrarEEnviar(db, { candidaturaId: c.id, candidatoId, templateChave: chave, assunto, corpo, para: email, criadoPor: usuario.colaboradorId, enviar: b.enviar !== false, anexos })
       await auditar(db, usuario.colaboradorId, 'candidatura', c.id, 'comunicacao', { status: r.status, template: chave })
       return ok(r, 201)
     },

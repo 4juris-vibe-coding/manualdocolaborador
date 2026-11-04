@@ -116,7 +116,9 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const sessao = useSync((s) => s.sessao)
-  const [erro, setErro] = useState('')
+  const avisoEncerrada = useSync((s) => s.avisoEncerrada)
+  // Sessão interrompida porque a parceria foi encerrada: a tela já abre explicando o motivo.
+  const [erro, setErro] = useState(() => useSync.getState().avisoEncerrada ?? '')
   const [loading, setLoading] = useState(false)
   const [verSenha, setVerSenha] = useState(false)
   const [modo, setModo] = useState<'entrar' | 'recuperar' | 'enviado'>('entrar')
@@ -194,7 +196,7 @@ export default function Login() {
     }
     const p = pessoas.find((c) => c.email.toLowerCase() === email.trim().toLowerCase())
     if (!p) { setErro('E-mail não encontrado.'); return }
-    if (p.status === 'encerrado') { setErro('Esta parceria foi encerrada — o acesso está desativado.'); return }
+    if (p.status === 'encerrado') { const msg = 'Sua parceria com a 4JURIS foi encerrada e, por isso, o acesso ao portal não está mais disponível. Se precisar de algum documento ou informação do período em que atuou conosco, fale com o RH da 4JURIS.'; useSync.setState({ avisoEncerrada: msg }); setErro(msg); return }
     acessar(p.id)
   }
 
@@ -313,7 +315,9 @@ export default function Login() {
                   </div>
                 </>
               )}
-              {erro && <p id="login-erro" role="alert" className="text-[12px] text-danger font-medium mt-1.5">{erro}</p>}
+              {avisoEncerrada && erro === avisoEncerrada
+                ? <div id="login-erro" role="alert" className="mt-4 rounded-xl border border-line bg-brand-50/60 p-4 text-[13px] text-ink-2 leading-relaxed"><b className="block text-ink mb-1">Parceria encerrada</b>{avisoEncerrada}</div>
+                : erro && <p id="login-erro" role="alert" className="text-[12px] text-danger font-medium mt-1.5">{erro}</p>}
 
               <button type="submit" disabled={loading} className="mt-5 w-full h-12 rounded-xl bg-brand text-white font-semibold text-[14.5px] hover:bg-brand-600 transition flex items-center justify-center gap-2 active:translate-y-px disabled:opacity-70">
                 {loading ? 'Entrando...' : <>Entrar <ArrowRight className="h-[18px] w-[18px]" /></>}

@@ -216,6 +216,9 @@ export async function montarUsuario(ex: Executor, uid: string, colaboradorId: st
   if (!vivo.rowCount) return null
   const p = await pessoaPorId(ex, colaboradorId)
   if (!p || p.status === 'encerrado') return null
+  // Encerramento agendado já vencido (antes de a rotina aplicar): mesmo efeito de encerrado. Data no fuso de Brasília.
+  const ag = (p as { encerramentoAgendado?: { data?: string } }).encerramentoAgendado
+  if (ag?.data && ag.data <= new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())) return null
   const funcoes = (await ex.query('select funcao from acl_funcoes where colaborador_id = $1', [colaboradorId])).rows.map((r) => r.funcao as FuncaoAdicional)
   const setoresLiderados = (await ex.query(
     "select id from app_setores where dados->>'gestorId' = $1 or dados->'liderancaIds' ? $1", [colaboradorId])).rows.map((r) => r.id as string)

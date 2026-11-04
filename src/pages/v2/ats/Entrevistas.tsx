@@ -11,6 +11,7 @@ import { ROTULO_STATUS_ENTREVISTA } from '@/domain/v2/ats'
 import { dataHoraBR } from '@/lib/fmt'
 import { Dropdown } from '@/components/Dropdown'
 import { Calendario, type EventoCal } from '@/components/calendario/Calendario'
+import { BotoesAgenda } from '@/components/v2/ats/BotoesAgenda'
 
 const COR_STATUS: Record<string, string> = { agendada: '#0032D2', realizada: '#0f9d6b', nao_compareceu: '#db2777', cancelada: '#8b98a2' }
 
@@ -59,10 +60,11 @@ export default function Entrevistas() {
                     {e.parecerPendente && <Badge tone="warning">Aguardando resultado</Badge>}
                   </div>
                 </div>
-                {e.status === 'agendada' && (gerenciar || e.ehParticipante) && (
+                {e.status === 'agendada' && (
                   <div className="flex gap-2 mt-3 flex-wrap">
-                    <Button size="sm" variant="soft" onClick={() => setReg(e)}>Registrar resultado</Button>
+                    {(gerenciar || e.ehParticipante) && <Button size="sm" variant="soft" onClick={() => setReg(e)}>Registrar resultado</Button>}
                     {gerenciar && <Button size="sm" variant="ghost" onClick={() => setReag(e)}>Reagendar</Button>}
+                    <BotoesAgenda e={e} />
                   </div>
                 )}
               </Card>
@@ -82,6 +84,7 @@ export default function Entrevistas() {
           <p className="text-[14px] font-semibold text-ink">{dataHoraBR(aberta.inicio)}{aberta.fim ? ` – ${new Date(aberta.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}</p>
           <p className="text-[13px] text-ink-2 mt-1">{aberta.modalidade}{aberta.localOuLink ? ` · ${aberta.localOuLink}` : ''}</p>
           <p className="text-[13px] text-muted mt-1">Com {aberta.participantes.map((p: any) => p.nome).join(', ')}</p>
+          {aberta.status === 'agendada' && <div className="flex flex-wrap gap-2 mt-4"><BotoesAgenda e={aberta} /></div>}
         </Modal>
       )}
       {reg && <Resultado e={reg} onClose={() => setReg(null)} onFeito={() => { setReg(null); r.recarregar() }} />}

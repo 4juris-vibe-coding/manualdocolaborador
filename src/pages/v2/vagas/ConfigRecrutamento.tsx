@@ -1,35 +1,42 @@
 import { useEffect, useState } from 'react'
 import { Badge, Button, Callout, Card, CardHead, Field, PageHeader, Tabs } from '@/components/ui'
+import { ConfirmModal } from '@/components/Modal'
 import { Aguardar, SoComBanco } from '@/components/v2/estados'
 import { EditorEtapas } from '@/components/v2/vagas/EditorEtapas'
 import { useOpcoes } from '@/components/v2/vagas/comum'
 import { api, executar, useApi } from '@/data/v2/api'
 import { useTem } from '@/data/v2/acesso'
+import { toast } from '@/components/toast'
 import { ROTULO_PRIORIDADE, ROTULO_TIPO, TIPOS_VAGA, type FluxoAprovacao, type PassoFluxo } from '@/domain/v2/vagas'
 import { Dropdown } from '@/components/Dropdown'
+import { EditorPortal } from '@/components/v2/vagas/EditorPortal'
+import type { PortalConfig } from '@/domain/v2/portal'
 
-interface Config { fluxos: FluxoAprovacao[]; etapas: { nome: string; tipo: string }[]; canais: { chave: string; nome: string }[]; tipos: { chave: string; nome: string }[] }
-const ABAS = [{ key: 'fluxos', label: 'Fluxos de aprovação' }, { key: 'etapas', label: 'Etapas padrão' }, { key: 'canais', label: 'Canais de divulgação' }, { key: 'tipos', label: 'Tipos de vaga' }]
+interface Privacidade { versao: string; texto: string; contato: string; retencaoMeses: number; aviso?: string }
+interface Config { fluxos: FluxoAprovacao[]; etapas: { nome: string; tipo: string }[]; canais: { chave: string; nome: string }[]; tipos: { chave: string; nome: string }[]; portal: PortalConfig; privacidade?: Privacidade }
+const ABAS = [{ key: 'portal', label: 'Portal de carreiras' }, { key: 'fluxos', label: 'Fluxos de aprovação' }, { key: 'etapas', label: 'Etapas padrão' }, { key: 'canais', label: 'Canais de divulgação' }, { key: 'tipos', label: 'Tipos de vaga' }, { key: 'privacidade', label: 'Privacidade (LGPD)' }]
 const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40)
 
 export default function ConfigRecrutamento() {
   const r = useApi<Config>('recrutamento/config')
   const opcoes = useOpcoes()
   const edita = useTem('vagas:config')
-  const [aba, setAba] = useState('fluxos')
+  const [aba, setAba] = useState('portal')
   return (
     <>
-      <PageHeader title="Configurar recrutamento" subtitle="Fluxos de aprovação, etapas padrão, canais e tipos de vaga. As mudanças valem para as próximas vagas." eyebrow={<Badge tone="brand">Recrutamento</Badge>} />
+      <PageHeader title="Configurar recrutamento" subtitle="Conteúdo do portal de carreiras, fluxos de aprovação, etapas padrão, canais e tipos de vaga. As mudanças valem para as próximas vagas." eyebrow={<Badge tone="brand">Recrutamento</Badge>} />
       <SoComBanco>
         {!edita && <Callout tone="neutral" icon="Lock" className="mb-5">Você pode consultar as configurações, mas só quem administra o recrutamento pode alterá-las.</Callout>}
         <Tabs tabs={ABAS} active={aba} onChange={setAba} />
         <Aguardar r={r}>
           {(c) => (
             <>
+              {aba === 'portal' && <EditorPortal inicial={c.portal} edita={edita} onSalvo={r.recarregar} />}
               {aba === 'fluxos' && <Fluxos inicial={c.fluxos} edita={edita} opcoes={opcoes.dados} onSalvo={r.recarregar} />}
               {aba === 'etapas' && <EtapasPadrao inicial={c.etapas} edita={edita} onSalvo={r.recarregar} />}
               {aba === 'canais' && <ListaNomeada chave="canais" titulo="Canais de divulgação" inicial={c.canais} edita={edita} onSalvo={r.recarregar} fixo="portal" />}
               {aba === 'tipos' && <ListaNomeada chave="tipos_vaga" titulo="Tipos de vaga" inicial={c.tipos} edita={edita} onSalvo={r.recarregar} fixaChaves />}
+              {aba === 'privacidade' && c.privacidade && <PrivacidadeLgpd inicial={c.privacidade} edita={edita} onSalvo={r.recarregar} />}
             </>
           )}
         </Aguardar>
@@ -128,5 +135,77 @@ function ListaNomeada({ chave, titulo, inicial, edita, onSalvo, fixo, fixaChaves
         </div>
       )}
     </Card>
+  )
+}
+
+/* ---------- Privacidade (LGPD): aviso do portal e retenção dos dados de candidatos ---------- */
+const TEXTAREA_PRIV = 'input h-auto min-h-[120px] py-2.5 leading-relaxed resize-y'
+
+function PrivacidadeLgpd({ inicial, edita, onSalvo }: { inicial: Privacidade; edita: boolean; onSalvo: () => void }) {
+  const [p, setP] = useState(inicial)
+  useEffect(() => setP(inicial), [inicial])
+  const aplica = useTem('admin:privacidade')
+  const [sim, setSim] = useState<{ elegiveis: number; retencaoMeses: number; limite: string } | null>(null)
+  const [confirmar, setConfirmar] = useState(false)
+  const [ocupado, setOcupado] = useState(false)
+  const meses = Number(p.retencaoMeses)
+  const mesesOk = Number.isInteger(meses) && meses >= 1 && meses <= 60
+
+  async function simular() {
+    setOcupado(true)
+    const r = await executar(() => api.post<{ elegiveis: number; retencaoMeses: number; limite: string }>('lgpd/candidatos/retencao', { simular: true }))
+    setOcupado(false)
+    if (r) setSim(r)
+  }
+  async function aplicar() {
+    setConfirmar(false); setOcupado(true)
+    const r = await executar(() => api.post<{ anonimizados: number }>('lgpd/candidatos/retencao', { simular: false, confirmar: true }))
+    setOcupado(false)
+    if (r) { setSim(null); toast(`${r.anonimizados} candidato(s) anonimizado(s).`) }
+  }
+
+  return (
+    <div className="space-y-5">
+      <Card>
+        <CardHead title="Aviso de privacidade e retenção" sub="Texto mostrado no formulário de candidatura e prazo de guarda dos dados depois do fim do processo." />
+        <div className="p-5">
+          {inicial.aviso && <Callout tone="warning" icon="Scale" className="mb-4">{inicial.aviso}</Callout>}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
+            <Field label="Prazo de retenção (meses)" htmlFor="pv-m" required hint="De 1 a 60. Conta a partir do encerramento da última candidatura." erro={mesesOk ? undefined : 'Entre 1 e 60'}>
+              <input id="pv-m" type="number" min={1} max={60} className="input" disabled={!edita} value={String(p.retencaoMeses)} onChange={(e) => setP({ ...p, retencaoMeses: e.target.value === '' ? ('' as unknown as number) : Number(e.target.value) })} />
+            </Field>
+            <Field label="Canal de contato do titular" htmlFor="pv-c" required><input id="pv-c" className="input" maxLength={200} disabled={!edita} value={p.contato} onChange={(e) => setP({ ...p, contato: e.target.value })} /></Field>
+            <Field label="Versão do texto" htmlFor="pv-v" required hint="Mude a versão ao alterar o texto: cada consentimento guarda a versão aceita."><input id="pv-v" className="input" maxLength={40} disabled={!edita} value={p.versao} onChange={(e) => setP({ ...p, versao: e.target.value })} /></Field>
+          </div>
+          <Field label="Texto do aviso" htmlFor="pv-t" required><textarea id="pv-t" className={TEXTAREA_PRIV} maxLength={4000} disabled={!edita} value={p.texto} onChange={(e) => setP({ ...p, texto: e.target.value })} /></Field>
+          {edita && <Button icon="Save" disabled={!mesesOk || !p.texto.trim() || !p.contato.trim() || !p.versao.trim()} onClick={async () => {
+            const x = await executar(() => api.put('recrutamento/config/privacidade', { dados: { retencaoMeses: meses, texto: p.texto, contato: p.contato, versao: p.versao } }), 'Privacidade salva.')
+            if (x) onSalvo()
+          }}>Salvar</Button>}
+        </div>
+      </Card>
+      <Card>
+        <CardHead title="Aplicar a retenção" sub="Anonimiza quem terminou o processo há mais tempo que o prazo e não está no banco de talentos com autorização vigente." />
+        <div className="p-5">
+          <ul className="text-[12.5px] text-ink-2 list-disc ml-5 space-y-1 mb-4">
+            <li>Ficam de fora: candidaturas em andamento, pessoas contratadas e quem está no banco de talentos com autorização válida.</li>
+            <li>Apaga currículos, documentos, respostas de triagem e de questionários; troca nome, e-mail e contatos por marcadores.</li>
+            <li>Mantém as candidaturas e as movimentações (sem dados pessoais) para os indicadores. A ação não pode ser desfeita.</li>
+            <li>Também roda automaticamente uma vez por dia.</li>
+          </ul>
+          {!aplica ? <p className="text-[12.5px] text-muted">Somente a administração (privacidade) simula e aplica a retenção.</p> : (
+            <>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="soft" icon="Search" disabled={ocupado} onClick={() => void simular()}>Simular</Button>
+                <Button variant="danger" icon="Eraser" disabled={ocupado} onClick={() => setConfirmar(true)}>Aplicar agora</Button>
+              </div>
+              {sim && <p role="status" className="text-[13px] text-ink mt-3"><b>{sim.elegiveis}</b> candidato(s) seriam anonimizados hoje (prazo de {sim.retencaoMeses} meses; processos encerrados antes de {new Date(sim.limite).toLocaleDateString('pt-BR')}).</p>}
+            </>
+          )}
+        </div>
+      </Card>
+      <ConfirmModal open={confirmar} onClose={() => setConfirmar(false)} titulo="Aplicar a retenção agora?" confirmar="Anonimizar"
+        texto="Os candidatos elegíveis serão anonimizados e os arquivos deles apagados. Não é possível desfazer." onConfirm={() => void aplicar()} />
+    </div>
   )
 }

@@ -9,23 +9,28 @@ import { auditar, conflito, enumerado, hojeISO, idsComPapel, invalido, listaText
 import { baixarArquivo, guardarArquivo, validarUpload } from '../arquivos.js'
 import { concluirContratacao as _nao, criarCandidatura, modeloPreenchido, obterPrivacidade, registrarConsentimento, registrarEEnviar, variaveisCandidatura } from '../atsLib.js'
 import { urlPortal } from '../../_lib.js'
-import { ORIGENS_PUBLICAS, statusPublico, somarMeses, vagaAceitaCandidaturas } from '../../../src/domain/v2/ats.js'
+import { portalEfetivo } from '../../../src/domain/v2/portal.js'
+import { nomePublicoEtapa, ORIGENS_PUBLICAS, statusPublico, somarMeses, vagaAceitaCandidaturas } from '../../../src/domain/v2/ats.js'
 
 void _nao
 
 const DIA = (c: string) => `to_char(${c}, 'YYYY-MM-DD')`
-const CAMPOS_PUBLICOS = `v.id, v.slug, v.titulo, v.resumo, v.tipo, v.regime_contratacao, v.modalidade, v.cidade, v.estado, v.pais, v.senioridade, v.setor_id, v.publicada_em, (v.imagem_arquivo_id is not null) as tem_imagem,
+const CAMPOS_PUBLICOS = `v.id, v.slug, v.titulo, v.resumo, v.tipo, v.regime_contratacao, v.modalidade, v.cidade, v.estado, v.pais, v.senioridade, v.setor_id, v.publicada_em, v.qtd_posicoes, v.jornada, (v.imagem_arquivo_id is not null) as tem_imagem,
   ${DIA('v.encerra_candidaturas_em')} as encerra_candidaturas_em, ${DIA('v.publicar_em')} as publicar_em`
 const FILTRO_PUBLICADA = `v.status = 'publicada' and not v.arquivada and (v.publicar_em is null or v.publicar_em <= $1::date) and (v.encerra_candidaturas_em is null or v.encerra_candidaturas_em >= $1::date)`
 
-const PORTAL_PADRAO = {
-  titulo: 'Trabalhe na 4JURIS',
-  apresentacao: 'Conheça as oportunidades abertas e envie a sua candidatura. Analisamos cada perfil com atenção e informamos você sobre os próximos passos.',
-}
 
 const TIPOS: Record<string, string> = { efetivo: 'Efetivo', temporario: 'Temporário', estagio: 'Estágio', aprendiz: 'Aprendiz', contrato: 'Contrato', outro: 'Outro' }
 
 export const rotas: Rota[] = [
+  {
+    // Conteúdo institucional do portal (topo, rodapé, "sobre"): só o que o RH publicou para o público.
+    metodo: 'GET', padrao: 'publico/portal', publica: true,
+    h: async ({ db }) => {
+      const cfg = (await db.query("select dados from rec_config where chave = 'portal'")).rows[0]?.dados ?? {}
+      return { status: 200, corpo: portalEfetivo(cfg), cabecalhos: { 'Cache-Control': 'public, max-age=120' } }
+    },
+  },
   {
     metodo: 'GET', padrao: 'publico/vagas', publica: true,
     h: async ({ db, req, agora }) => {
@@ -37,6 +42,8 @@ export const rotas: Rota[] = [
       if (q) { ps.push(`%${q}%`); where += ` and (v.titulo ilike $${ps.length} or v.resumo ilike $${ps.length} or v.texto_publico ilike $${ps.length})` }
       if (req.query.modalidade && ['presencial', 'hibrido', 'remoto'].includes(req.query.modalidade)) { ps.push(req.query.modalidade); where += ` and v.modalidade = $${ps.length}` }
       if (req.query.tipo && TIPOS[req.query.tipo]) { ps.push(req.query.tipo); where += ` and v.tipo = $${ps.length}` }
+      if (req.query.senioridade) { ps.push(String(req.query.senioridade).slice(0, 40)); where += ` and v.senioridade = $${ps.length}` }
+      if (req.query.regime) { ps.push(String(req.query.regime).slice(0, 40)); where += ` and v.regime_contratacao = $${ps.length}` }
       if (req.query.cidade) { ps.push(`%${req.query.cidade.slice(0, 60)}%`); where += ` and (v.cidade ilike $${ps.length} or v.estado ilike $${ps.length})` }
       const mapa = new Map((await setores(db)).map((s) => [s.id, s.nome]))
       if (req.query.area) {
@@ -45,10 +52,17 @@ export const rotas: Rota[] = [
       }
       const total = (await db.query(`select count(*)::int as n from rec_vagas v where ${where}`, ps)).rows[0].n
       const r = await db.query(`select ${CAMPOS_PUBLICOS} from rec_vagas v where ${where} order by v.publicada_em desc nulls last, v.criado_em desc limit ${por} offset ${offset}`, ps)
-      const todas = (await db.query(`select v.setor_id, v.cidade, v.estado, v.modalidade, v.tipo from rec_vagas v where ${FILTRO_PUBLICADA}`, [hoje])).rows
+      const todas = (await db.query(`select v.setor_id, v.cidade, v.estado, v.modalidade, v.tipo, v.senioridade, v.regime_contratacao from rec_vagas v where ${FILTRO_PUBLICADA}`, [hoje])).rows
       const cfg = (await db.query("select dados from rec_config where chave = 'portal'")).rows[0]?.dados ?? {}
+      // Encerradas recentemente: só título, área e data, para o candidato saber que a vaga fechou (nunca como oportunidade).
+      const encerradas = (await db.query(
+        `select v.titulo, v.setor_id, ${DIA('v.atualizado_em')} as encerrada_em from rec_vagas v
+          where not v.arquivada and v.publicada_em is not null and (v.status = 'encerrada' or (v.status = 'publicada' and v.encerra_candidaturas_em < $1::date))
+            and v.atualizado_em >= ($1::date - interval '90 days')
+          order by v.atualizado_em desc limit 6`, [hoje])).rows
       return ok({
-        portal: { ...PORTAL_PADRAO, ...cfg },
+        portal: portalEfetivo(cfg),
+        encerradas: encerradas.map((x) => ({ titulo: x.titulo, area: mapa.get(x.setor_id) ?? null, encerradaEm: x.encerrada_em })),
         itens: r.rows.map((v) => itemPublico(v, mapa)),
         total, pagina, por,
         filtros: {
@@ -56,6 +70,8 @@ export const rotas: Rota[] = [
           cidades: [...new Set(todas.map((x) => (x.cidade ? `${x.cidade}${x.estado ? '/' + x.estado : ''}` : '')).filter(Boolean))].sort(),
           modalidades: [...new Set(todas.map((x) => x.modalidade))],
           tipos: [...new Set(todas.map((x) => x.tipo))].map((t) => ({ valor: t, rotulo: TIPOS[t] ?? t })),
+          senioridades: [...new Set(todas.map((x) => x.senioridade).filter(Boolean))].sort(),
+          regimes: [...new Set(todas.map((x) => x.regime_contratacao).filter((x) => x && x !== 'nao_informado'))],
         },
       })
     },
@@ -205,11 +221,28 @@ export const rotas: Rota[] = [
       const token = typeof req.corpo?.token === 'string' ? req.corpo.token.trim() : ''
       if (!token || token.length > 200) throw invalido('Informe o código de acompanhamento.', { token: 'Obrigatório' })
       const r = (await db.query(
-        `select c.status, c.criado_em, c.atualizado_em, e.tipo as etapa_tipo, v.titulo
+        `select c.id, c.vaga_id, c.etapa_id, c.status, c.criado_em, c.atualizado_em, c.etapa_desde, e.tipo as etapa_tipo, e.ordem as etapa_ordem, v.titulo, v.slug
          from rec_candidaturas c join rec_vagas v on v.id = c.vaga_id left join rec_vaga_etapas e on e.id = c.etapa_id where c.token_hash = $1`, [hashToken(token)])).rows[0]
       if (!r) throw naoEncontrado('Código não encontrado. Confira se copiou o código completo.')
       const s = statusPublico(r.status, r.etapa_tipo)
-      return ok({ vaga: r.titulo, situacao: s.rotulo, descricao: s.descricao, recebidaEm: r.criado_em, atualizadoEm: r.atualizado_em, podeDesistir: r.status === 'ativa' })
+      // Etapas configuradas pelo RH para a vaga, na ordem. Só nome e posição: sem notas, avaliações ou responsáveis.
+      const etapas = (await db.query('select id, tipo, ordem, nome_publico from rec_vaga_etapas where vaga_id = $1 order by ordem', [r.vaga_id])).rows
+      // Datas em que a candidatura chegou a cada etapa (só as movimentações de etapa; motivos internos não saem).
+      const chegadas = new Map<string, string>()
+      for (const m of (await db.query('select para_etapa_id, em from rec_candidatura_movs where candidatura_id = $1 and para_etapa_id is not null order by em', [r.id])).rows) {
+        if (!chegadas.has(m.para_etapa_id)) chegadas.set(m.para_etapa_id, m.em)
+      }
+      const atual = etapas.findIndex((e) => e.id === r.etapa_id)
+      const encerrada = r.status !== 'ativa'
+      const linhaDoTempo = etapas.filter((e) => e.tipo !== 'contratado' || r.status === 'contratado').map((e, i) => ({
+        nome: nomePublicoEtapa(e.tipo, e.nome_publico),
+        situacao: r.status === 'contratado' ? 'concluida' : i < atual ? 'concluida' : i === atual ? (encerrada ? 'encerrada' : 'atual') : (encerrada ? 'nao_realizada' : 'futura'),
+        desde: i <= atual ? (chegadas.get(e.id) ?? (i === atual ? r.etapa_desde : null)) : null,
+      }))
+      return ok({
+        vaga: r.titulo, slug: r.slug, situacao: s.rotulo, descricao: s.descricao, recebidaEm: r.criado_em, atualizadoEm: r.atualizado_em,
+        podeDesistir: r.status === 'ativa', encerrada, etapaAtual: atual >= 0 && !encerrada ? nomePublicoEtapa(etapas[atual].tipo, etapas[atual].nome_publico) : null, linhaDoTempo,
+      })
     },
   },
 
@@ -235,7 +268,7 @@ function itemPublico(v: any, mapa: Map<string, string>) {
   return {
     slug: v.slug, titulo: v.titulo, resumo: v.resumo, area: mapa.get(v.setor_id) ?? null, tipo: v.tipo, tipoRotulo: TIPOS[v.tipo] ?? v.tipo,
     regimeContratacao: v.regime_contratacao, modalidade: v.modalidade, cidade: v.cidade, estado: v.estado, pais: v.pais, senioridade: v.senioridade,
-    publicadaEm: v.publicada_em, encerraEm: v.encerra_candidaturas_em,
+    publicadaEm: v.publicada_em, encerraEm: v.encerra_candidaturas_em, posicoes: v.qtd_posicoes ?? 1, jornada: v.jornada ?? null,
     imagemUrl: v.tem_imagem ? `/api/v2/publico/vagas/${encodeURIComponent(v.slug)}/imagem` : null,
   }
 }

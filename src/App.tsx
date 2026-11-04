@@ -51,10 +51,14 @@ const RHBeneficios = lazy(() => import('@/pages/rh/Beneficios'))
 const RHCultura = lazy(() => import('@/pages/rh/Cultura'))
 const RHMetricas = lazy(() => import('@/pages/rh/Metricas'))
 const RHRotatividade = lazy(() => import('@/pages/rh/Rotatividade'))
+const RHMovimentacao = lazy(() => import('@/pages/rh/PeopleAnalytics'))
+const RHEnps = lazy(() => import('@/pages/rh/Enps'))
+const RHAlertas = lazy(() => import('@/pages/rh/Alertas'))
 const RHEncerramentos = lazy(() => import('@/pages/rh/Encerramentos'))
 const RHFaturamento = lazy(() => import('@/pages/rh/Faturamento'))
 const RHRelatorios = lazy(() => import('@/pages/rh/Relatorios'))
 const AdminConfig = lazy(() => import('@/pages/admin/Configuracoes'))
+const AdminAcessosSensiveis = lazy(() => import('@/pages/admin/AcessosSensiveis'))
 const MinhasAvaliacoes = lazy(() => import('@/pages/Avaliacoes'))
 const Cultura = lazy(() => import('@/pages/Cultura'))
 const Sugestoes = lazy(() => import('@/pages/Sugestoes'))
@@ -200,6 +204,9 @@ export function App() {
             <Route path="/rh/cultura" element={<RHCultura />} />
             <Route path="/rh/metricas" element={<RHMetricas />} />
             <Route path="/rh/rotatividade" element={<RHRotatividade />} />
+            <Route path="/rh/movimentacao" element={<RHMovimentacao />} />
+            <Route path="/rh/enps" element={<RHEnps />} />
+            <Route path="/rh/alertas" element={<RHAlertas />} />
             <Route path="/rh/encerramentos" element={<RHEncerramentos />} />
             <Route path="/rh/faturamento" element={<RHFaturamento />} />
             <Route path="/rh/relatorios" element={<RHRelatorios />} />
@@ -212,6 +219,7 @@ export function App() {
             <Route path="/cultura" element={<Cultura />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/configuracoes" element={<AdminConfig />} />
+            <Route path="/admin/acessos-sensiveis" element={<AdminAcessosSensiveis />} />
             <Route path="/seguranca" element={<Seguranca />} />
             {/* v2 · Recrutamento */}
             <Route path="/recrutamento" element={<PainelVagas />} />

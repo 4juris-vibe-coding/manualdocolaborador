@@ -18,6 +18,7 @@ export default function Talentos() {
   const r = useApi<{ itens: any[]; total: number; por: number }>(`ats/talentos${qs({ q, tag, pagina })}`)
   const [contato, setContato] = useState<any | null>(null)
   const [remover, setRemover] = useState<any | null>(null)
+  const [adicionar, setAdicionar] = useState<any | null>(null)
 
   return (
     <SoComBanco>
@@ -47,6 +48,7 @@ export default function Talentos() {
                       <div>Guardar até {dataBR(t.retencaoAte)} {t.retencaoVencida && <Badge tone="danger">Prazo vencido</Badge>}</div>
                       <div>Último contato: {t.ultimoContatoEm ? dataHoraBR(t.ultimoContatoEm) : 'nunca'}</div>
                       <div className="flex gap-2 justify-end mt-2">
+                        <Button size="sm" icon="UserPlus" onClick={() => setAdicionar(t)}>Adicionar a uma vaga</Button>
                         <Button size="sm" variant="soft" onClick={() => setContato(t)}>Registrar contato</Button>
                         <Button size="sm" variant="ghost" onClick={() => setRemover(t)}>Remover</Button>
                       </div>
@@ -62,6 +64,7 @@ export default function Talentos() {
       </Aguardar>
       <p className="text-[12px] text-muted mt-4">Precisa incluir alguém? <Link className="text-brand" to="/recrutamento/candidatos">Abra o candidato no pipeline</Link> e use a aba Privacidade.</p>
       {contato && <Contato t={contato} onClose={() => setContato(null)} onFeito={() => { setContato(null); r.recarregar() }} />}
+      {adicionar && <AdicionarAVaga t={adicionar} onClose={() => setAdicionar(null)} />}
       <ConfirmModal open={!!remover} onClose={() => setRemover(null)} titulo="Remover do banco de talentos?" confirmar="Remover" texto="A autorização para uso futuro será marcada como revogada. As candidaturas anteriores permanecem."
         onConfirm={async () => { const t = remover; setRemover(null); await executar(() => api.del(`ats/talentos/${t.candidatoId}`), 'Removido do banco de talentos.'); r.recarregar() }} />
     </SoComBanco>
@@ -75,6 +78,53 @@ function Contato({ t, onClose, onFeito }: { t: any; onClose: () => void; onFeito
       footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={async () => { if (await executar(() => api.post(`ats/talentos/${t.candidatoId}/contatos`, f), 'Contato registrado.')) onFeito() }}>Salvar</Button></>}>
       <Field label="Canal" htmlFor="ct-c"><Dropdown id="ct-c" className="input" value={f.canal} onChange={(e) => setF({ ...f, canal: e.target.value })}><option>e-mail</option><option>telefone</option><option>WhatsApp</option><option>LinkedIn</option><option>presencial</option></Dropdown></Field>
       <Field label="Anotação" htmlFor="ct-n"><input id="ct-n" className="input" value={f.nota} onChange={(e) => setF({ ...f, nota: e.target.value })} /></Field>
+    </Modal>
+  )
+}
+
+/** Vagas que recebem candidaturas pelo RH (a vaga encerrada ou ainda em aprovação não aparece). */
+const STATUS_RECEBE = ['aprovada', 'publicada', 'pausada']
+
+function AdicionarAVaga({ t, onClose }: { t: any; onClose: () => void }) {
+  const vagas = useApi<{ itens: { id: string; codigo: string; titulo: string; status: string }[] }>('ats/vagas')
+  const [vagaId, setVagaId] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [feito, setFeito] = useState<{ id: string; vagaId: string; vagaTitulo: string } | null>(null)
+  const abertas = (vagas.dados?.itens ?? []).filter((v) => STATUS_RECEBE.includes(v.status))
+  const autorizacaoVencida = !!t.retencaoVencida || (!!t.consentimentoAte && String(t.consentimentoAte) < new Date().toISOString().slice(0, 10))
+  async function confirmar() {
+    setEnviando(true)
+    const r = await executar(() => api.post<{ id: string; vagaId: string; vagaTitulo: string }>(`ats/talentos/${t.candidatoId}/candidatar`, { vagaId }), 'Candidatura criada.')
+    setEnviando(false)
+    if (r) setFeito(r)
+  }
+  return (
+    <Modal open onClose={onClose} title="Adicionar a uma vaga" subtitle={t.nome}
+      footer={feito ? <Button onClick={onClose}>Fechar</Button> : <>
+        <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+        <Button icon="UserPlus" disabled={!vagaId || enviando} onClick={() => void confirmar()}>{enviando ? 'Adicionando…' : 'Adicionar'}</Button>
+      </>}>
+      {feito ? (
+        <Callout tone="success" icon="CheckCircle2">
+          {t.nome} entrou na primeira etapa de <b>{feito.vagaTitulo}</b>.{' '}
+          <Link className="text-brand font-semibold" to={`/recrutamento/candidatos?vaga=${feito.vagaId}`}>Abrir o pipeline</Link>{' · '}
+          <Link className="text-brand font-semibold" to={`/recrutamento/candidatos/${feito.id}`}>Ver candidatura</Link>
+        </Callout>
+      ) : (
+        <>
+          {autorizacaoVencida && <Callout tone="warning" icon="AlertTriangle" className="mb-3">A autorização desta pessoa parece vencida. O servidor só aceita com consentimento vigente para o banco de talentos.</Callout>}
+          <Aguardar r={vagas}>
+            {() => abertas.length === 0 ? <p className="text-[13px] text-muted">Nenhuma vaga aprovada, publicada ou pausada que você possa gerenciar.</p> : (
+              <Field label="Vaga" htmlFor="tv-v" required hint="A candidatura entra na primeira etapa, com origem “Banco de talentos”.">
+                <Dropdown id="tv-v" className="input" value={vagaId} onChange={(e) => setVagaId(e.target.value)}>
+                  <option value="">Escolha a vaga…</option>
+                  {abertas.map((v) => <option key={v.id} value={v.id}>{v.codigo} · {v.titulo}{v.status !== 'publicada' ? ` (${v.status})` : ''}</option>)}
+                </Dropdown>
+              </Field>
+            )}
+          </Aguardar>
+        </>
+      )}
     </Modal>
   )
 }

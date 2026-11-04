@@ -18,7 +18,7 @@ import { persist } from 'zustand/middleware'
 import type {
   DB, Colaborador, Reembolso, NotaFiscal, Comunicado, Evento, Notificacao, Setor, Cargo, Unidade,
   Contrato, Documento, PeriodoIndisponibilidade, PoliticaDisponibilidade, RegraPontuacao, ConfigGamificacao,
-  Desafio, Iniciativa, ValorCultural, ChecklistModelo, MotivoEncerramento, TipoRegistro, RegistroAdministrativo,
+  Desafio, Iniciativa, ValorCultural, ChecklistModelo, MotivoEncerramento, IniciativaEncerramento, MovimentacaoVinculo, TipoRegistro, RegistroAdministrativo,
   Objetivo, Pesquisa, Papel, AcaoPontuavel, Badge, Treinamento,
   Dependente, Exigencia, GrupoCompetencia, Competencia, CicloAvaliativo, Feedback, CulturaOrganizacional, ConfigGeral,
   ConfigAvaliacaoInicio, PerfilComportamental, Diversidade, Endereco, Escolaridade, Beneficio,
@@ -28,10 +28,11 @@ import { seed, seedProducao } from './mock'
 import { MODO_API } from '@/data/config'
 import { uid } from './utils'
 import { can, definirVisaoColaborador, type Capacidade } from '@/domain/permissions'
-import { hojeISO, agoraISO } from '@/domain/datas'
+import { hojeISO, agoraISO, somarDias } from '@/domain/datas'
 import { avaliarPontuacao, conquistasNovas, MOTIVO_NAO_PONTUOU, progressoDesafio, saldo, validarNiveis, type EntradaPontuacao } from '@/domain/gamificacao'
 import { validarPeriodo, sobreposicoesNaArea, type EntradaPeriodo } from '@/domain/disponibilidade'
-import { criarProcesso } from '@/domain/jornada'
+import { criarProcesso, processoAberto, concluiu } from '@/domain/jornada'
+import { vinculosDe, validarVinculos, ultimo as ultimoDe, aplicarEncerramento, agendamentoVencido } from '@/domain/vinculos'
 import { validarRespostas, pesquisaAbertaPara } from '@/domain/pesquisas'
 import { cnpjValido, cpfValido, emailValido, soDigitos } from '@/domain/validacao'
 import { areasLideradas, podeAlinharPeriodo, podeGerenciarEvento } from '@/domain/visibilidade'
@@ -68,6 +69,10 @@ function draftOf(s: DB): Draft {
 }
 
 export interface PessoaInput {
+  /** Data EFETIVA da mudança de área/função/gestor (não é gravada no cadastro; vai para o histórico). Padrão: hoje. */
+  dataMudanca?: string
+  /** Motivo da movimentação (opcional, vai para o histórico). */
+  motivoMudanca?: string
   nome: string
   nomeSocial?: string
   email: string
@@ -178,8 +183,18 @@ interface AppState extends DB {
   salvarConfigGeral: (g: ConfigGeral) => Resultado
   salvarProdutos: (p: Produto[]) => Resultado
   atualizarPrivacidade: (patch: Partial<Colaborador['privacidade']>) => Resultado
-  encerrarParceria: (id: string, data: string, motivoId: string, observacao?: string, iniciarChecklist?: boolean) => Resultado
-  reativarParceria: (id: string) => Resultado
+  /** Encerra o vínculo aberto com a data EFETIVA informada (nunca a data do registro). */
+  encerrarParceria: (id: string, data: string, motivoId: string, observacao?: string, iniciarChecklist?: boolean, iniciativa?: IniciativaEncerramento, pesquisaDesligamentoId?: string) => Resultado
+  /**
+   * 'reativar': desfaz o encerramento do MESMO vínculo (o período continua).
+   * 'novo_vinculo': a pessoa volta depois de um encerramento definitivo — novo período a partir de `inicio`.
+   * Em ambos o cadastro é o mesmo (sem duplicar a pessoa) e tudo fica no histórico de movimentações.
+   */
+  reativarParceria: (id: string, modo?: 'reativar' | 'novo_vinculo', inicio?: string, justificativa?: string) => Resultado
+  /** Cancela um encerramento agendado (data futura) que ainda não foi aplicado. */
+  cancelarEncerramentoAgendado: (id: string) => Resultado
+  /** Corrige data, motivo ou iniciativa de um encerramento já registrado, guardando os valores anteriores. */
+  corrigirEncerramento: (id: string, patch: { data?: string; motivoId?: string; iniciativa?: IniciativaEncerramento; observacao?: string }, justificativa: string) => Resultado
   importarPessoas: (linhas: PessoaInput[]) => { criadas: number; erros: { linha: number; erro: string }[] }
   anonimizarPessoa: (id: string) => Resultado
   // ----- contratos e documentos
@@ -364,7 +379,22 @@ export const useStore = create<AppState>()(
         pode: (cap) => pode(cap),
 
         /* ---------- sessão ---------- */
-        entrar: (id) => { definirVisaoColaborador(false); set({ sessaoId: id, previewColaborador: false }) },
+        entrar: (id) => {
+          definirVisaoColaborador(false)
+          // Modo demonstração: aplica os encerramentos agendados vencidos (com banco, quem aplica é o servidor).
+          if (!MODO_API) {
+            const hoje = hojeISO(), agora = agoraISO()
+            const venc = get().colaboradores.filter((c) => agendamentoVencido(c, hoje))
+            if (venc.length) set({ colaboradores: get().colaboradores.map((c) => {
+              if (!agendamentoVencido(c, hoje)) return c
+              const ag = c.encerramentoAgendado!
+              return aplicarEncerramento(c, ag, ag.porId, agora, uid('mv')) ?? (({ encerramentoAgendado: _a, ...r }) => r)(c)
+            }) })
+          }
+          // Agendamento vencido também bloqueia o acesso de quem está sendo encerrado.
+          if (!MODO_API && get().colaboradores.find((c) => c.id === id)?.status === 'encerrado') return
+          set({ sessaoId: id, previewColaborador: false })
+        },
         sair: () => { definirVisaoColaborador(false); set({ sessaoId: null, previewColaborador: false }) },
         toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
         setPreview: (v) => { definirVisaoColaborador(v); set({ previewColaborador: v }) },
@@ -376,8 +406,9 @@ export const useStore = create<AppState>()(
           if (!pode('pessoas:gerenciar') && !liderDaArea) return SEM_PERMISSAO
           const erro = validarPessoa(d, input, id)
           if (erro) return ERRO(erro)
+          const { dataMudanca, motivoMudanca, ...entrada } = input
           const dados = {
-            ...input, nome: input.nome.trim(), email: input.email.trim().toLowerCase(),
+            ...entrada, nome: input.nome.trim(), email: input.email.trim().toLowerCase(),
             telefone: input.telefone ?? '', cargoId: input.cargoId ?? '', cidade: input.cidade ?? '', uf: input.uf ?? '',
             razaoSocial: input.razaoSocial ?? '', cnpj: input.cnpj ?? '',
           }
@@ -393,11 +424,42 @@ export const useStore = create<AppState>()(
               const v = validarMudancaGestor(d.colaboradores, id, dados.responsavelId || null)
               if (v.erros.length) return ERRO(v.erros[0])
             }
-            d.colaboradores = d.colaboradores.map((c) => (c.id === id ? { ...c, ...dados, papel } : c))
-            if ((atual.cargoId || '') !== (dados.cargoId || '')) {
-              d.historicoFuncao = [{ id: uid('hf'), colaboradorId: id, em: hojeISO(), porId: get().realUser().id, cargoAnteriorId: atual.cargoId || undefined, cargoNovoId: dados.cargoId || undefined }, ...d.historicoFuncao]
+            // A situação "encerrada" só muda pelas ações próprias (encerrar, reativar, novo período), que registram o histórico.
+            // Assim, editar o cadastro depois do encerramento nunca altera a data efetiva nem a situação.
+            const status = atual.status === 'encerrado' || dados.status === 'encerrado' ? atual.status : dados.status
+            let vinculoPatch: Partial<Colaborador> = {}
+            if (dados.dataEntrada !== atual.dataEntrada) {
+              const vs = vinculosDe(atual)
+              const ultimo = ultimoDe(vs)
+              if (ultimo) {
+                const vinculos = [...vs.slice(0, -1), { ...ultimo, inicio: dados.dataEntrada }]
+                const mov: MovimentacaoVinculo = { id: uid('mv'), tipo: 'correcao_inicio', em: agoraISO(), porId: get().realUser().id, vinculoId: ultimo.id, dataEfetiva: dados.dataEntrada, anterior: { data: ultimo.inicio } }
+                vinculoPatch = { vinculos, movimentacoes: [...(atual.movimentacoes ?? []), mov] }
+                const e = validarVinculos({ status, encerramento: atual.encerramento, vinculos })
+                if (e) return ERRO(e)
+              }
             }
-            audit(d, 'pessoa.atualizar', 'pessoa', id, `Cadastro de ${dados.nome} atualizado`)
+            const alterados = (Object.keys(dados) as (keyof typeof dados)[]).filter((k) => k !== 'status' && JSON.stringify(atual[k as keyof Colaborador] ?? '') !== JSON.stringify(dados[k] ?? ''))
+            d.colaboradores = d.colaboradores.map((c) => (c.id === id ? { ...c, ...dados, ...vinculoPatch, status, papel } : c))
+            // Movimentação organizacional (área, função, gestor): um lançamento com a data EFETIVA, base dos indicadores históricos.
+            const mudouCargo = (atual.cargoId || '') !== (dados.cargoId || '')
+            const mudouSetor = (atual.setorId || '') !== (dados.setorId || '')
+            if (mudouCargo || mudouSetor || gestorMudou) {
+              const efetiva = dataMudanca || hojeISO()
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(efetiva)) return ERRO('Data da mudança inválida.')
+              const inicioAtual = ultimoDe(vinculosDe(atual))?.inicio ?? atual.dataEntrada
+              if (efetiva < inicioAtual) return ERRO('A data da mudança não pode ser anterior ao início da parceria.')
+              if (efetiva > somarDias(hojeISO(), 90)) return ERRO('A data da mudança pode ser no máximo 90 dias à frente.')
+              d.historicoFuncao = [{
+                id: uid('hf'), colaboradorId: id, em: agoraISO(), porId: get().realUser().id, dataEfetiva: efetiva,
+                ...(mudouCargo ? { cargoAnteriorId: atual.cargoId || undefined, cargoNovoId: dados.cargoId || undefined } : {}),
+                ...(mudouSetor ? { setorAnteriorId: atual.setorId || undefined, setorNovoId: dados.setorId || undefined } : {}),
+                ...(gestorMudou ? { gestorAnteriorId: atual.responsavelId || undefined, gestorNovoId: dados.responsavelId || undefined } : {}),
+                ...(motivoMudanca?.trim() ? { observacao: motivoMudanca.trim().slice(0, 300) } : {}),
+              }, ...d.historicoFuncao]
+            }
+            // Só os NOMES dos campos alterados (sem valores: a trilha não deve guardar dados pessoais).
+            audit(d, 'pessoa.atualizar', 'pessoa', id, `Cadastro de ${dados.nome} atualizado${alterados.length ? ` (${alterados.join(', ')})` : ''}${atual.status === 'encerrado' ? ' — após o encerramento' : ''}`)
             if (gestorMudou) {
               const nomeDe = (gid?: string) => (gid ? d.colaboradores.find((c) => c.id === gid)?.nome ?? 'cadastro removido' : 'sem gestor')
               audit(d, 'pessoa.gestor', 'pessoa', id, `Gestor imediato de ${dados.nome}: ${nomeDe(atual.responsavelId)} → ${nomeDe(dados.responsavelId)}`)
@@ -433,14 +495,32 @@ export const useStore = create<AppState>()(
           audit(d, 'privacidade.atualizar', 'pessoa', me.id, 'Preferências de privacidade atualizadas')
         }),
 
-        encerrarParceria: (id, data, motivoId, observacao, iniciarChecklist) => tx((d) => {
+        encerrarParceria: (id, data, motivoId, observacao, iniciarChecklist, iniciativa, pesquisaDesligamentoId) => tx((d) => {
           if (!pode('pessoas:gerenciar')) return SEM_PERMISSAO
           const c = d.colaboradores.find((x) => x.id === id)
           if (!c) return ERRO('Pessoa não encontrada.')
-          if (!data) return ERRO('Informe a data de encerramento.')
-          if (data < c.dataEntrada) return ERRO('O encerramento não pode ser anterior ao início da parceria.')
-          if (!d.motivosEncerramento.some((m) => m.id === motivoId && m.ativo)) return ERRO('Selecione um motivo.')
-          d.colaboradores = d.colaboradores.map((x) => (x.id === id ? { ...x, status: 'encerrado', encerramento: { data, motivoId, observacao } } : x))
+          if (c.status === 'encerrado') return ERRO('A parceria já está encerrada. Para mudar a data ou o motivo, use "Corrigir encerramento".')
+          if (!data) return ERRO('Informe a data efetiva do encerramento.')
+          const vs = vinculosDe(c)
+          const atual = ultimoDe(vs)
+          if (!atual || atual.fim) return ERRO('Não há período de parceria em aberto.')
+          if (data < atual.inicio) return ERRO('O encerramento não pode ser anterior ao início da parceria.')
+          const motivo = d.motivosEncerramento.find((m) => m.id === motivoId && m.ativo)
+          if (!motivo) return ERRO('Selecione um motivo.')
+          const ini = iniciativa ?? motivo.iniciativa
+          if (!ini) return ERRO('Classifique a iniciativa do encerramento (involuntário, voluntário, acordo ou término).')
+          const me = get().realUser().id
+          const agora = agoraISO()
+          if (data > hojeISO()) {
+            // Data futura: fica AGENDADO. A parceria e o acesso continuam até a data; no dia, o servidor aplica.
+            if (data > somarDias(hojeISO(), 365)) return ERRO('Agende o encerramento para no máximo 1 ano à frente.')
+            d.colaboradores = d.colaboradores.map((x) => (x.id === id ? { ...x, encerramentoAgendado: { data, motivoId, iniciativa: ini, observacao, iniciarChecklist: !!iniciarChecklist, ...(pesquisaDesligamentoId ? { pesquisaDesligamentoId } : {}), porId: me, registradoEm: agora } } : x))
+            audit(d, 'parceria.agendar_encerramento', 'pessoa', id, `Encerramento de ${c.nome} agendado para ${data}`)
+            return OK({ info: `Encerramento agendado para ${data.split('-').reverse().join('/')}. Até lá, a parceria e o acesso continuam ativos.` })
+          }
+          const encerrado = aplicarEncerramento(c, { data, motivoId, iniciativa: ini, observacao }, me, agora, uid('mv'))
+          if (!encerrado) return ERRO('Não há período de parceria em aberto.')
+          d.colaboradores = d.colaboradores.map((x) => (x.id === id ? encerrado : x))
           // Com banco, os contratos são encerrados no módulo financeiro (com conferência de pendências).
           if (!MODO_API) d.contratos = d.contratos.map((k) => (k.colaboradorId === id && k.status !== 'encerrado' ? { ...k, status: 'encerrado', fim: k.fim && k.fim < data ? k.fim : data, atualizadoEm: hojeISO() } : k))
           d.periodos = d.periodos.map((p) => (p.colaboradorId === id && p.inicio > data && p.status !== 'cancelado' ? { ...p, status: 'cancelado' } : p))
@@ -450,19 +530,91 @@ export const useStore = create<AppState>()(
             d.setores = d.setores.map((s) => (s.gestorId === id || s.liderancaIds.includes(id)
               ? { ...s, gestorId: s.gestorId === id ? null : s.gestorId, liderancaIds: s.liderancaIds.filter((x) => x !== id) } : s))
           }
+          // Integração em andamento deixa de fazer sentido.
+          d.processos = d.processos.map((p) => (p.colaboradorId === id && p.tipo === 'integracao' && processoAberto(p) ? { ...p, canceladoEm: hojeISO(), motivoCancelamento: 'Parceria encerrada' } : p))
           if (iniciarChecklist) {
             const modelo = d.checklists.find((m) => m.tipo === 'encerramento')
-            if (modelo) d.processos = [...d.processos, criarProcesso(modelo, id, hojeISO(), uid('pj'))]
+            // Um único processo de encerramento em aberto por pessoa (reencerrar não duplica o checklist).
+            const existente = d.processos.find((p) => p.colaboradorId === id && p.tipo === 'encerramento' && processoAberto(p))
+            if (existente) d.processos = d.processos.map((p) => (p.id === existente.id ? { ...p, referencia: data } : p))
+            else if (modelo) d.processos = [...d.processos, { ...criarProcesso(modelo, id, hojeISO(), uid('pj')), referencia: data }]
           }
           audit(d, 'parceria.encerrar', 'pessoa', id, `Parceria de ${c.nome} encerrada em ${data}`)
         }),
 
-        reativarParceria: (id) => tx((d) => {
+        cancelarEncerramentoAgendado: (id) => tx((d) => {
+          if (!pode('pessoas:gerenciar')) return SEM_PERMISSAO
+          const c = d.colaboradores.find((x) => x.id === id)
+          if (!c?.encerramentoAgendado) return ERRO('Não há encerramento agendado para esta pessoa.')
+          const { encerramentoAgendado, ...resto } = c
+          d.colaboradores = d.colaboradores.map((x) => (x.id === id ? resto : x))
+          audit(d, 'parceria.cancelar_agendamento', 'pessoa', id, `Encerramento agendado de ${c.nome} (${encerramentoAgendado.data}) cancelado`)
+        }),
+
+        reativarParceria: (id, modo = 'reativar', inicio, justificativa) => tx((d) => {
           if (!pode('pessoas:gerenciar')) return SEM_PERMISSAO
           const c = d.colaboradores.find((x) => x.id === id)
           if (!c) return ERRO('Pessoa não encontrada.')
-          d.colaboradores = d.colaboradores.map((x) => (x.id === id ? { ...x, status: 'ativo', encerramento: undefined } : x))
-          audit(d, 'parceria.reativar', 'pessoa', id, `Parceria de ${c.nome} reativada`)
+          if (c.status !== 'encerrado') return ERRO('A parceria não está encerrada.')
+          const vs = vinculosDe(c)
+          const ultimo = ultimoDe(vs)
+          if (!ultimo?.fim) return ERRO('Não há encerramento registrado para esta pessoa.')
+          const me = get().realUser().id
+          const agora = agoraISO()
+          let vinculos = vs
+          let mov: MovimentacaoVinculo
+          let dataEntrada = c.dataEntrada
+          if (modo === 'reativar') {
+            // O período continua: o encerramento é desfeito, mas fica registrado no histórico.
+            const { fim, motivoId, iniciativa, observacao: _o, encerradoPorId: _p, encerradoEm: _e, ...aberto } = ultimo
+            vinculos = [...vs.slice(0, -1), aberto]
+            mov = { id: uid('mv'), tipo: 'reativacao', em: agora, porId: me, vinculoId: ultimo.id, dataEfetiva: hojeISO(), anterior: { data: fim, motivoId, iniciativa }, justificativa: justificativa?.trim() || undefined }
+          } else {
+            if (!inicio) return ERRO('Informe a data de início do novo período.')
+            if (inicio < ultimo.fim) return ERRO(`O novo período deve começar a partir do encerramento anterior (${ultimo.fim.split('-').reverse().join('/')}).`)
+            const novo = { id: uid('vn'), inicio, origem: 'novo_vinculo' as const }
+            vinculos = [...vs, novo]
+            dataEntrada = inicio
+            mov = { id: uid('mv'), tipo: 'novo_vinculo', em: agora, porId: me, vinculoId: novo.id, dataEfetiva: inicio, justificativa: justificativa?.trim() || undefined }
+          }
+          const atualizado = { ...c, status: 'ativo' as const, encerramento: undefined, vinculos, dataEntrada, movimentacoes: [...(c.movimentacoes ?? []), mov] }
+          const erro = validarVinculos(atualizado)
+          if (erro) return ERRO(erro)
+          d.colaboradores = d.colaboradores.map((x) => (x.id === id ? atualizado : x))
+          // O checklist de encerramento em aberto deixa de valer; ele fica no histórico como cancelado.
+          d.processos = d.processos.map((p) => (p.colaboradorId === id && p.tipo === 'encerramento' && processoAberto(p) ? { ...p, canceladoEm: hojeISO(), motivoCancelamento: modo === 'reativar' ? 'Parceria reativada' : 'Novo período de parceria' } : p))
+          audit(d, modo === 'reativar' ? 'parceria.reativar' : 'parceria.novo_vinculo', 'pessoa', id,
+            modo === 'reativar' ? `Parceria de ${c.nome} reativada (encerramento de ${ultimo.fim} desfeito)` : `Novo período de parceria de ${c.nome} a partir de ${inicio}`)
+          return OK({ id })
+        }),
+
+        corrigirEncerramento: (id, patch, justificativa) => tx((d) => {
+          if (!pode('pessoas:gerenciar')) return SEM_PERMISSAO
+          const c = d.colaboradores.find((x) => x.id === id)
+          if (!c || c.status !== 'encerrado' || !c.encerramento) return ERRO('Esta pessoa não tem encerramento registrado.')
+          if (!justificativa.trim()) return ERRO('Informe o motivo da correção (fica no histórico).')
+          const vs = vinculosDe(c)
+          const ultimo = ultimoDe(vs)!
+          const data = patch.data ?? c.encerramento.data
+          if (data > hojeISO()) return ERRO('A data de encerramento não pode ser futura.')
+          if (data < ultimo.inicio) return ERRO('O encerramento não pode ser anterior ao início da parceria.')
+          const motivoId = patch.motivoId ?? c.encerramento.motivoId
+          if (!d.motivosEncerramento.some((m) => m.id === motivoId)) return ERRO('Motivo inválido.')
+          const iniciativa = patch.iniciativa ?? c.encerramento.iniciativa
+          const observacao = patch.observacao !== undefined ? (patch.observacao.trim() || undefined) : c.encerramento.observacao
+          const me = get().realUser().id
+          const anterior = { data: c.encerramento.data, motivoId: c.encerramento.motivoId, iniciativa: c.encerramento.iniciativa }
+          const mov: MovimentacaoVinculo = { id: uid('mv'), tipo: 'correcao_encerramento', em: agoraISO(), porId: me, vinculoId: ultimo.id, dataEfetiva: data, motivoId, iniciativa, anterior, justificativa: justificativa.trim() }
+          const atualizado = {
+            ...c, encerramento: { ...c.encerramento, data, motivoId, iniciativa, observacao },
+            vinculos: [...vs.slice(0, -1), { ...ultimo, fim: data, motivoId, iniciativa, observacao }],
+            movimentacoes: [...(c.movimentacoes ?? []), mov],
+          }
+          const erro = validarVinculos(atualizado)
+          if (erro) return ERRO(erro)
+          d.colaboradores = d.colaboradores.map((x) => (x.id === id ? atualizado : x))
+          d.processos = d.processos.map((p) => (p.colaboradorId === id && p.tipo === 'encerramento' && processoAberto(p) ? { ...p, referencia: data } : p))
+          audit(d, 'parceria.corrigir_encerramento', 'pessoa', id, `Encerramento de ${c.nome} corrigido${data !== anterior.data ? ` (${anterior.data} → ${data})` : ''}`)
         }),
 
         importarPessoas: (linhas) => {
@@ -637,8 +789,11 @@ export const useStore = create<AppState>()(
           if (!pode('onboarding:gerenciar')) return SEM_PERMISSAO
           const modelo = d.checklists.find((m) => m.id === modeloId)
           if (!modelo) return ERRO('Checklist não encontrado.')
-          if (d.processos.some((p) => p.colaboradorId === pessoaId && p.tipo === modelo.tipo && !p.concluidoEm)) return ERRO('Já existe um processo deste tipo em andamento para esta pessoa.')
-          const p = criarProcesso(modelo, pessoaId, hojeISO(), uid('pj'))
+          if (d.processos.some((p) => p.colaboradorId === pessoaId && p.tipo === modelo.tipo && processoAberto(p))) return ERRO('Já existe um processo deste tipo em andamento para esta pessoa.')
+          const pessoa = d.colaboradores.find((c) => c.id === pessoaId)
+          if (!pessoa) return ERRO('Pessoa não encontrada.')
+          if (modelo.tipo === 'integracao' && pessoa.status === 'encerrado') return ERRO('A parceria desta pessoa está encerrada.')
+          const p = { ...criarProcesso(modelo, pessoaId, hojeISO(), uid('pj')), referencia: modelo.tipo === 'integracao' ? pessoa.dataEntrada : pessoa.encerramento?.data }
           d.processos = [...d.processos, p]
           if (modelo.tipo === 'integracao') notificar(d, { colaboradorId: pessoaId, tipo: 'pendencia', titulo: 'Sua integração começou', texto: 'Confira os próximos passos na sua integração.', href: '/onboarding' })
           audit(d, 'jornada.iniciar', 'jornada', p.id, `${modelo.tipo === 'integracao' ? 'Integração' : 'Encerramento'} iniciado para ${get().nomeDe(pessoaId)}`)
@@ -648,6 +803,7 @@ export const useStore = create<AppState>()(
           const me = get().currentUser()
           const p = d.processos.find((x) => x.id === processoId)
           if (!p) return ERRO('Processo não encontrado.')
+          if (p.canceladoEm) return ERRO('Este processo foi cancelado.')
           const item = p.itens.find((i) => i.id === itemId)
           if (!item) return ERRO('Item não encontrado.')
           const setor = setorDe(d, p.colaboradorId)
@@ -656,7 +812,7 @@ export const useStore = create<AppState>()(
             (item.responsavel === 'lideranca' && areasLideradas(me, d.setores).some((s) => s.id === setor))
           if (!permitido) return SEM_PERMISSAO
           const itens = p.itens.map((i) => (i.id === itemId ? { ...i, feito, feitoEm: feito ? hojeISO() : undefined, feitoPorId: feito ? me.id : undefined } : i))
-          const completo = itens.every((i) => i.feito)
+          const completo = concluiu(itens)
           const atualizado = { ...p, itens, concluidoEm: completo ? (p.concluidoEm ?? hojeISO()) : undefined }
           d.processos = d.processos.map((x) => (x.id === processoId ? atualizado : x))
           let info: string | undefined

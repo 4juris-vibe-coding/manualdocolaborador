@@ -2,21 +2,31 @@
    API v2 · ATS · operações compartilhadas entre o painel interno
    (modulos/ats.ts) e o portal público (modulos/publico.ts).
    ============================================================ */
-import { conflito, naoEncontrado, type Executor, invalido } from './nucleo.js'
-import { enviarEmail, preencherModelo } from './email.js'
-import { ETAPAS_PADRAO, PRIVACIDADE_PADRAO, TEMPLATES_PADRAO, MODELO_AVALIACAO_PADRAO } from '../../src/domain/v2/ats.js'
+import { conflito, naoEncontrado, texto, type Executor, invalido } from './nucleo.js'
+import { enviarEmail, preencherModelo, type AnexoEmail } from './email.js'
+import { ETAPAS_PADRAO, PRIVACIDADE_PADRAO, TEMPLATES_PADRAO, MODELO_AVALIACAO_PADRAO, nomePublicoEtapa } from '../../src/domain/v2/ats.js'
 
-export interface EtapaVaga { id: string; nome: string; tipo: string; ordem: number; cor: string | null }
+export interface EtapaVaga { id: string; nome: string; tipo: string; ordem: number; cor: string | null; nome_publico: string | null }
 
 export async function garantirEtapas(ex: Executor, vagaId: string): Promise<EtapaVaga[]> {
-  let r = await ex.query('select id, nome, tipo, ordem, cor from rec_vaga_etapas where vaga_id = $1 order by ordem', [vagaId])
+  let r = await ex.query('select id, nome, tipo, ordem, cor, nome_publico from rec_vaga_etapas where vaga_id = $1 order by ordem', [vagaId])
   if (!r.rowCount) {
     for (let i = 0; i < ETAPAS_PADRAO.length; i++) {
       await ex.query('insert into rec_vaga_etapas (vaga_id, ordem, nome, tipo) values ($1,$2,$3,$4)', [vagaId, i + 1, ETAPAS_PADRAO[i].nome, ETAPAS_PADRAO[i].tipo])
     }
-    r = await ex.query('select id, nome, tipo, ordem, cor from rec_vaga_etapas where vaga_id = $1 order by ordem', [vagaId])
+    r = await ex.query('select id, nome, tipo, ordem, cor, nome_publico from rec_vaga_etapas where vaga_id = $1 order by ordem', [vagaId])
   }
   return r.rows as EtapaVaga[]
+}
+
+/**
+ * "Nome para o candidato" de uma etapa, vindo dos editores. `undefined` = o campo não veio (mantém o atual);
+ * vazio/null = sem nome público (o candidato vê o rótulo genérico do tipo). Máx. 80 caracteres, aparado.
+ */
+export function lerNomePublico(v: unknown): string | null | undefined {
+  if (v === undefined) return undefined
+  if (v === null) return null
+  return texto(v, 'nome para o candidato', { max: 80, obrigatorio: false }) || null
 }
 
 export async function garantirTemplates(ex: Executor) {
@@ -134,16 +144,20 @@ export async function concluirContratacao(ex: Executor, candidaturaId: string, q
 /* ---------- comunicação ---------- */
 export async function variaveisCandidatura(ex: Executor, candidaturaId: string): Promise<{ vars: Record<string, string>; email: string; candidatoId: string }> {
   const r = await ex.query(
-    `select k.id as candidato_id, k.nome, k.email, v.titulo, e.nome as etapa from rec_candidaturas c
+    `select k.id as candidato_id, k.nome, k.email, v.titulo, e.tipo as etapa_tipo, e.nome_publico as etapa_publica from rec_candidaturas c
      join rec_candidatos k on k.id = c.candidato_id join rec_vagas v on v.id = c.vaga_id left join rec_vaga_etapas e on e.id = c.etapa_id where c.id = $1`, [candidaturaId])
   const x = r.rows[0]
   if (!x) throw naoEncontrado('Candidatura não encontrada.')
-  return { vars: { nome: String(x.nome).split(' ')[0], vaga: x.titulo, etapa: x.etapa ?? '', empresa: '4JURIS' }, email: x.email, candidatoId: x.candidato_id }
+  // {{etapa}} vai para o candidato: sempre o nome PÚBLICO (ou o rótulo genérico do tipo), nunca o nome interno.
+  const etapa = x.etapa_tipo ? nomePublicoEtapa(x.etapa_tipo, x.etapa_publica) : ''
+  return { vars: { nome: String(x.nome).split(' ')[0], vaga: x.titulo, etapa, empresa: '4JURIS' }, email: x.email, candidatoId: x.candidato_id }
 }
 
 export interface ComunicacaoNova {
   candidaturaId: string | null; candidatoId: string | null; templateChave?: string | null
   assunto: string; corpo: string; corpoPersistido?: string; para: string; criadoPor: string | null; enviar: boolean
+  /** Anexos do e-mail (ex.: convite .ics). Não são guardados em rec_comunicacoes. */
+  anexos?: AnexoEmail[]
 }
 /** Registra a mensagem como pendente e, se pedido, tenta enviar. O status só vira "enviada" com a confirmação do provedor. */
 export async function registrarEEnviar(ex: Executor, m: ComunicacaoNova): Promise<{ id: string; status: string; erro?: string }> {
@@ -152,7 +166,7 @@ export async function registrarEEnviar(ex: Executor, m: ComunicacaoNova): Promis
     [m.candidaturaId, m.candidatoId, m.templateChave ?? null, m.assunto, m.corpoPersistido ?? m.corpo, m.criadoPor])
   const id = ins.rows[0].id as string
   if (!m.enviar) return { id, status: 'pendente' }
-  const res = await enviarEmail(m.para, m.assunto, m.corpo)
+  const res = await enviarEmail(m.para, m.assunto, m.corpo, m.anexos?.length ? { anexos: m.anexos } : {})
   await ex.query('update rec_comunicacoes set status = $2, erro = $3, enviada_em = case when $2 = $4 then now() else null end where id = $1', [id, res.status, res.erro ?? null, 'enviada'])
   return { id, status: res.status, erro: res.erro }
 }

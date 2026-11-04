@@ -1,10 +1,18 @@
 import { Badge, Button } from '@/components/ui'
 import { ROTULO_ETAPA, TIPOS_ETAPA } from '@/domain/v2/vagas'
 import { Dropdown } from '@/components/Dropdown'
+import { nomePublicoEtapa } from '@/domain/v2/ats'
+
+export interface EtapaEditavel { id?: string; nome: string; tipo: string; ativas?: number; nomePublico?: string | null }
+
+/** Texto de ajuda do "nome para o candidato" (editor de etapas e editor de colunas do kanban). */
+export const DICA_NOME_PUBLICO = 'Vazio = rótulo genérico; o nome interno nunca aparece para o candidato'
 
 /* ---------- editor de etapas (compartilhado com o detalhe) ---------- */
-export function EditorEtapas({ etapas, onChange, onSalvar, desabilitado, erro }: {
-  etapas: { id?: string; nome: string; tipo: string; ativas?: number }[]; onChange: (e: { id?: string; nome: string; tipo: string; ativas?: number }[]) => void; onSalvar: () => void; desabilitado: boolean; erro?: string
+export function EditorEtapas({ etapas, onChange, onSalvar, desabilitado, erro, comNomePublico = false }: {
+  etapas: EtapaEditavel[]; onChange: (e: EtapaEditavel[]) => void; onSalvar: () => void; desabilitado: boolean; erro?: string
+  /** Mostra o campo "Nome para o candidato" (etapas de uma vaga; as etapas padrão não têm). */
+  comNomePublico?: boolean
 }) {
   const mover = (i: number, d: number) => { const n = [...etapas]; const j = i + d; if (j < 1 || j >= n.length - 1 || i < 1 || i >= n.length - 1) return;[n[i], n[j]] = [n[j], n[i]]; onChange(n) }
   return (
@@ -15,7 +23,8 @@ export function EditorEtapas({ etapas, onChange, onSalvar, desabilitado, erro }:
         {etapas.map((e, i) => {
           const fixa = i === 0 || i === etapas.length - 1
           return (
-            <li key={e.id ?? `n${i}`} className="flex items-center gap-2 flex-wrap">
+            <li key={e.id ?? `n${i}`}>
+              <div className="flex items-center gap-2 flex-wrap">
               <span className="w-6 text-center text-[12px] font-bold text-muted">{i + 1}</span>
               <input aria-label={`Nome da etapa ${i + 1}`} className="input flex-1 min-w-[180px]" maxLength={80} value={e.nome} disabled={desabilitado} onChange={(ev) => onChange(etapas.map((x, j) => (j === i ? { ...x, nome: ev.target.value } : x)))} />
               {fixa ? <Badge>{ROTULO_ETAPA[e.tipo as keyof typeof ROTULO_ETAPA] ?? e.tipo}</Badge> : (
@@ -29,6 +38,15 @@ export function EditorEtapas({ etapas, onChange, onSalvar, desabilitado, erro }:
                 <Button size="icon-sm" variant="ghost" icon="ChevronDown" aria-label="Descer etapa" disabled={desabilitado || i === etapas.length - 2} onClick={() => mover(i, 1)} />
                 <Button size="icon-sm" variant="danger" icon="Trash2" aria-label={`Remover etapa ${e.nome || i + 1}`} disabled={desabilitado} onClick={() => onChange(etapas.filter((_, j) => j !== i))} />
               </>}
+              </div>
+              {comNomePublico && (
+                <div className="pl-8 mt-1.5">
+                  <label className="block text-[11.5px] text-muted" htmlFor={`np-${e.id ?? i}`}>Nome para o candidato <span className="font-normal">(opcional)</span></label>
+                  <input id={`np-${e.id ?? i}`} className="input mt-0.5" maxLength={80} placeholder={nomePublicoEtapa(e.tipo, null)} value={e.nomePublico ?? ''} disabled={desabilitado}
+                    aria-describedby={`np-d-${e.id ?? i}`} onChange={(ev) => onChange(etapas.map((x, j) => (j === i ? { ...x, nomePublico: ev.target.value } : x)))} />
+                  <p id={`np-d-${e.id ?? i}`} className="text-[11px] text-muted mt-0.5">{DICA_NOME_PUBLICO}</p>
+                </div>
+              )}
             </li>
           )
         })}

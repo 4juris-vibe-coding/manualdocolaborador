@@ -80,6 +80,25 @@ export function statusPublico(status: string, etapaTipo?: string | null): { rotu
   }
 }
 
+/**
+ * Nome da etapa mostrado ao candidato na linha do tempo. O nome INTERNO nunca sai:
+ * usa o "nome para o candidato" definido pelo RH ou um rótulo genérico pelo tipo da etapa.
+ */
+export function nomePublicoEtapa(tipo: string | null | undefined, nomePublico?: string | null): string {
+  const n = (nomePublico ?? '').trim()
+  if (n) return n.slice(0, 80)
+  switch (tipo) {
+    case 'nova': return 'Inscrição recebida'
+    case 'triagem': case 'curricular': return 'Análise do perfil'
+    case 'tecnica': return 'Etapa técnica'
+    case 'entrevista_rh': case 'entrevista_gestor': return 'Entrevista'
+    case 'entrevista_final': return 'Entrevista final'
+    case 'proposta': return 'Proposta'
+    case 'contratado': return 'Resultado'
+    default: return 'Etapa do processo'
+  }
+}
+
 /* ---------- movimentação ---------- */
 export interface EtapaMin { id: string; tipo: string; ordem: number }
 export type PedidoMovimento = { etapaId?: string | null; status?: string | null; motivo?: string | null }

@@ -8,7 +8,7 @@ import { randomBytes } from 'node:crypto'
 import {
   auditar, camel, conflito, dataISO, enumerado, ErroHttp, hashToken, hojeISO, inteiro, invalido, naoEncontrado, notificar, novoToken, ok, paginacao,
   pessoaPorId, pessoas, setores, sha256, texto, unidades, proibido,
-  type Ctx, type Executor, type PessoaOrg, type Rota,
+  type Ctx, type Db, type Executor, type PessoaOrg, type Rota,
 } from '../nucleo.js'
 import { enviarEmail, emailConfigurado, type StatusEnvio } from '../email.js'
 import { urlPortal } from '../../_lib.js'
@@ -149,6 +149,23 @@ async function criarConvites(ex: Executor, pesquisaId: string, ids: string[], fi
     if (r.rowCount) tokens.set(colaboradorId, token)
   }
   return tokens
+}
+
+/**
+ * Convite individual para a pesquisa de desligamento (usado pela rota e pela rotina que aplica
+ * encerramentos agendados). Devolve null se a pesquisa não está aberta, não é do modelo ou a pessoa já foi convidada.
+ */
+export async function convidarParaDesligamento(db: Db, pesquisaId: string, colaboradorId: string, quem: string | null, agora = new Date()): Promise<ResumoEnvio | null> {
+  const p = (await db.query(`select ${COLS} from pq_pesquisas p where p.id = $1`, [pesquisaId])).rows[0]
+  if (!p || p.status !== 'aberta' || p.modelo_chave !== 'desligamento') return null
+  const tokens = await db.tx(async (t) => {
+    const tk = await criarConvites(t, p.id, [colaboradorId], p.fim)
+    await evento(t, p.id, quem, 'convite_desligamento', { quantidade: tk.size })
+    await auditar(t, quem, 'pesquisa', p.id, 'convite_desligamento', { colaboradorId })
+    return tk
+  })
+  if (!tokens.size) return null
+  return avisarConvidados({ db, agora } as Ctx, p, tokens)
 }
 
 interface ResumoEnvio { internas: number; email: Record<StatusEnvio, number>; emailConfigurado: boolean }
@@ -621,6 +638,28 @@ export const rotas: Rota[] = [
         return tk
       })
       const envio = tokens.size ? await avisarConvidados(ctx, p, tokens) : null
+      return ok({ convitesCriados: tokens.size, envio })
+    },
+  },
+  {
+    // Pesquisa de desligamento: convida UMA pessoa no encerramento da parceria (o link chega por e-mail e funciona sem login).
+    metodo: 'POST', padrao: 'pesquisas/:id/convidar-pessoa', cap: ['pesq:gerenciar', 'pessoas:gerenciar'],
+    h: async (ctx) => {
+      const { db, params, usuario, req } = ctx
+      const p = await carregar(db, params.id)
+      if (p.status !== 'aberta') throw conflito('A pesquisa precisa estar aberta para receber convites.')
+      if (p.modelo_chave !== 'desligamento') throw invalido('Só pesquisas criadas a partir do modelo "Pesquisa de desligamento" podem ser enviadas individualmente por aqui.')
+      const colaboradorId = texto(req.corpo?.colaboradorId, 'pessoa', { max: 80 })
+      const pessoa = (await pessoas(db)).find((g) => g.id === colaboradorId)
+      if (!pessoa) throw naoEncontrado('Pessoa não encontrada.')
+      const tokens = await db.tx(async (t) => {
+        const tk = await criarConvites(t, p.id, [colaboradorId], p.fim)
+        await evento(t, p.id, usuario.colaboradorId, 'convite_desligamento', { quantidade: tk.size })
+        await auditar(t, usuario.colaboradorId, 'pesquisa', p.id, 'convite_desligamento', { colaboradorId })
+        return tk
+      })
+      if (!tokens.size) throw conflito('Esta pessoa já foi convidada para esta pesquisa.')
+      const envio = await avisarConvidados(ctx, p, tokens)
       return ok({ convitesCriados: tokens.size, envio })
     },
   },

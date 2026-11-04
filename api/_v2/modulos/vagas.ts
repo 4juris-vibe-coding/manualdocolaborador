@@ -10,6 +10,7 @@ import {
   type Ctx, type Executor, type Res, type Rota, type Usuario,
 } from '../nucleo.js'
 import { baixarArquivo, guardarArquivo, validarUpload } from '../arquivos.js'
+import { lerNomePublico, obterPrivacidade } from '../atsLib.js'
 import { lerVagaDoPdf } from '../vagaPdf.js'
 import { FUNCAO_LABEL, PAPEL_LABEL } from '../../../src/domain/permissions.js'
 import type { Papel } from '../../../src/lib/types.js'
@@ -19,6 +20,7 @@ import {
   situacaoPrazo, slugificar, somarDias, STATUS_ATIVOS, STATUS_FINAIS, STATUS_VAGA, TIPOS_ETAPA, TIPOS_REMUNERACAO, TIPOS_VAGA, REGIMES_CONTRATACAO, validarEtapas,
   type AcaoVaga, type EtapaModelo, type FluxoAprovacao, type PassoFluxo, type StatusVaga, type TipoEtapa,
 } from '../../../src/domain/v2/vagas.js'
+import { validarPortal, portalEfetivo, type PortalConfig } from '../../../src/domain/v2/portal.js'
 import {
   DEFINICOES, funilPorTipo, media, taxaConversao, tempoAtePrimeiraCandidaturaDias, tempoPorEtapa, tempoPreenchimentoDias, vagaNoPrazo,
   type ContratacaoIndicador, type VagaIndicador,
@@ -280,8 +282,8 @@ async function gerarCodigoESlug(ex: Executor, titulo: string, agora: Date) {
   return { codigo, slug: `${slugificar(titulo)}-${randomBytes(6).toString('hex')}` }
 }
 
-async function criarEtapas(ex: Executor, vagaId: string, etapas: { nome: string; tipo: string }[]) {
-  for (let i = 0; i < etapas.length; i++) await ex.query('insert into rec_vaga_etapas (vaga_id, ordem, nome, tipo) values ($1,$2,$3,$4)', [vagaId, i + 1, etapas[i].nome, etapas[i].tipo])
+async function criarEtapas(ex: Executor, vagaId: string, etapas: { nome: string; tipo: string; nome_publico?: string | null }[]) {
+  for (let i = 0; i < etapas.length; i++) await ex.query('insert into rec_vaga_etapas (vaga_id, ordem, nome, tipo, nome_publico) values ($1,$2,$3,$4,$5)', [vagaId, i + 1, etapas[i].nome, etapas[i].tipo, etapas[i].nome_publico ?? null])
 }
 
 async function inserirVaga(ex: Executor, valores: Record<string, unknown>, ids: { codigo: string; slug: string; criadoPor: string }): Promise<string> {
@@ -446,7 +448,7 @@ async function montarDetalhe(ex: Executor, u: Usuario, id: string): Promise<Reco
   const row = await carregar(ex, u, id)
   const org = await carregarOrg(ex)
   const [etapas, aprov, evs, coms, anex, cont] = await Promise.all([
-    ex.query('select e.id, e.ordem, e.nome, e.tipo, (select count(*)::int from rec_candidaturas c where c.etapa_id = e.id and c.status = $2) as ativas from rec_vaga_etapas e where e.vaga_id = $1 order by e.ordem', [id, 'ativa']),
+    ex.query('select e.id, e.ordem, e.nome, e.tipo, e.nome_publico, (select count(*)::int from rec_candidaturas c where c.etapa_id = e.id and c.status = $2) as ativas from rec_vaga_etapas e where e.vaga_id = $1 order by e.ordem', [id, 'ativa']),
     ex.query('select * from rec_vaga_aprovacoes where vaga_id = $1 order by rodada, ordem', [id]),
     ex.query('select id, em, colaborador_id, tipo, de_status, para_status, detalhes from rec_vaga_eventos where vaga_id = $1 order by em desc, id desc limit 200', [id]),
     ex.query('select id, autor_id, texto, criado_em from rec_vaga_comentarios where vaga_id = $1 order by criado_em', [id]),
@@ -467,7 +469,7 @@ async function montarDetalhe(ex: Executor, u: Usuario, id: string): Promise<Reco
   })
   return {
     vaga: serializar({ ...row, n_cand: cont.rows[0].total, n_ativas: cont.rows[0].ativas, n_contr: cont.rows[0].contratadas }, u, org),
-    etapas: etapas.rows.map((e) => ({ id: e.id, ordem: e.ordem, nome: e.nome, tipo: e.tipo, ativas: e.ativas })),
+    etapas: etapas.rows.map((e) => ({ id: e.id, ordem: e.ordem, nome: e.nome, tipo: e.tipo, nomePublico: e.nome_publico ?? null, ativas: e.ativas })),
     aprovacoes: passos,
     eventos,
     comentarios: coms.rows.map((c) => ({ id: c.id, autorId: c.autor_id, autorNome: nomeDe(org.pessoa, c.autor_id), texto: c.texto, criadoEm: c.criado_em })),
@@ -663,15 +665,29 @@ export const rotas: Rota[] = [
   },
   {
     metodo: 'GET', padrao: 'recrutamento/config', cap: ['vagas:config', 'vagas:gerenciar'],
-    h: async ({ db }) => ok(await lerConfig(db)),
+    h: async ({ db }) => ok({ ...(await lerConfig(db)), portal: portalEfetivo(await config<Partial<PortalConfig>>(db, 'portal', {})), privacidade: await obterPrivacidade(db) }),
   },
   {
     metodo: 'PUT', padrao: 'recrutamento/config/:chave', cap: 'vagas:config',
     h: async ({ db, usuario: u, params, req }) => {
-      const chave = enumerado(params.chave, 'configuração', ['fluxos_aprovacao', 'etapas_padrao', 'canais', 'tipos_vaga'] as const)
+      const chave = enumerado(params.chave, 'configuração', ['fluxos_aprovacao', 'etapas_padrao', 'canais', 'tipos_vaga', 'portal', 'privacidade'] as const)
       let dados: unknown
       const corpo = req.corpo?.dados
-      if (chave === 'etapas_padrao') {
+      if (chave === 'privacidade') {
+        // Aviso de privacidade do portal e prazo de retenção (LGPD). Finalidade e base legal não mudam por aqui.
+        const atual = await obterPrivacidade(db)
+        const c = (corpo && typeof corpo === 'object' ? corpo : {}) as Record<string, unknown>
+        dados = {
+          ...atual,
+          retencaoMeses: inteiro(c.retencaoMeses, 'prazo de retenção (meses)', { min: 1, max: 60 }),
+          texto: texto(c.texto, 'texto do aviso de privacidade', { min: 20, max: 4000 }),
+          contato: texto(c.contato, 'canal de contato', { max: 200 }),
+          versao: texto(c.versao, 'versão do texto', { max: 40 }),
+        }
+      } else if (chave === 'portal') {
+        // Conteúdo institucional do portal de carreiras (público): validado e sem HTML.
+        try { dados = validarPortal(corpo) } catch (e) { throw invalido((e as Error).message) }
+      } else if (chave === 'etapas_padrao') {
         const et = lista<Record<string, unknown>>(corpo, 20).map((e) => ({ nome: texto(e.nome, 'nome da etapa', { max: 80 }), tipo: enumerado(e.tipo, 'tipo da etapa', TIPOS_ETAPA) }))
         const erro = validarEtapas(et)
         if (erro) throw invalido(erro)
@@ -913,7 +929,7 @@ export const rotas: Rota[] = [
         else valores.recrutador_id = v.recrutador_id
         const { codigo, slug } = await gerarCodigoESlug(t, String(valores.titulo), agora)
         const vid = await inserirVaga(t, valores, { codigo, slug, criadoPor: u.colaboradorId })
-        const et = (await t.query('select nome, tipo from rec_vaga_etapas where vaga_id = $1 order by ordem', [v.id])).rows
+        const et = (await t.query('select nome, tipo, nome_publico from rec_vaga_etapas where vaga_id = $1 order by ordem', [v.id])).rows
         await criarEtapas(t, vid, et)
         await evento(t, vid, u.colaboradorId, 'criada', { para: 'rascunho', detalhes: { duplicadaDe: v.codigo } })
         await auditar(t, u.colaboradorId, 'vaga', vid, 'duplicar', { codigo, origem: v.codigo })
@@ -930,6 +946,7 @@ export const rotas: Rota[] = [
       const { db, usuario: u, req } = c
       const novas = lista<Record<string, unknown>>(req.corpo?.etapas, 20).map((e) => ({
         id: typeof e.id === 'string' && uuid(e.id) ? e.id : null, nome: texto(e.nome, 'nome da etapa', { max: 80 }), tipo: enumerado(e.tipo, 'tipo da etapa', TIPOS_ETAPA, 'generica'),
+        nomePublico: lerNomePublico(e.nomePublico),
       }))
       const erro = validarEtapas(novas)
       if (erro) throw invalido(erro, { etapas: erro })
@@ -946,8 +963,9 @@ export const rotas: Rota[] = [
         }
         for (let i = 0; i < novas.length; i++) {
           const n = novas[i]
-          if (n.id && atuais.some((a) => a.id === n.id)) await t.query('update rec_vaga_etapas set ordem = $2, nome = $3, tipo = $4 where id = $1', [n.id, i + 1, n.nome, n.tipo])
-          else await t.query('insert into rec_vaga_etapas (vaga_id, ordem, nome, tipo) values ($1,$2,$3,$4)', [v.id, i + 1, n.nome, n.tipo])
+          // nomePublico ausente no corpo = mantém o que já estava gravado
+          if (n.id && atuais.some((a) => a.id === n.id)) await t.query('update rec_vaga_etapas set ordem = $2, nome = $3, tipo = $4, nome_publico = case when $5 then $6 else nome_publico end where id = $1', [n.id, i + 1, n.nome, n.tipo, n.nomePublico !== undefined, n.nomePublico ?? null])
+          else await t.query('insert into rec_vaga_etapas (vaga_id, ordem, nome, tipo, nome_publico) values ($1,$2,$3,$4,$5)', [v.id, i + 1, n.nome, n.tipo, n.nomePublico ?? null])
         }
         await t.query('update rec_vagas set versao = versao + 1, atualizado_em = now(), atualizado_por = $2 where id = $1', [v.id, u.colaboradorId])
         if (v.status !== 'rascunho') { await evento(t, v.id, u.colaboradorId, 'etapas_alteradas'); await auditar(t, u.colaboradorId, 'vaga', v.id, 'etapas', { codigo: v.codigo }) }

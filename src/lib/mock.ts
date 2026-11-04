@@ -298,11 +298,11 @@ export function seed(hoje = hojeISO()): DB {
   ]
 
   const motivosEncerramento: DB['motivosEncerramento'] = [
-    { id: 'me1', nome: 'Conclusão do projeto / escopo', ativo: true },
-    { id: 'me2', nome: 'Não renovação do contrato', ativo: true },
-    { id: 'me3', nome: 'Rescisão por iniciativa da prestadora', ativo: true },
-    { id: 'me4', nome: 'Rescisão por iniciativa da contratante', ativo: true },
-    { id: 'me5', nome: 'Acordo entre as partes (distrato)', ativo: true },
+    { id: 'me1', nome: 'Conclusão do projeto / escopo', ativo: true, iniciativa: 'termino' },
+    { id: 'me2', nome: 'Não renovação do contrato', ativo: true, iniciativa: 'empresa' },
+    { id: 'me3', nome: 'Rescisão por iniciativa da prestadora', ativo: true, iniciativa: 'prestador' },
+    { id: 'me4', nome: 'Rescisão por iniciativa da contratante', ativo: true, iniciativa: 'empresa' },
+    { id: 'me5', nome: 'Acordo entre as partes (distrato)', ativo: true, iniciativa: 'mutuo' },
     { id: 'me6', nome: 'Outro', ativo: true },
   ]
 

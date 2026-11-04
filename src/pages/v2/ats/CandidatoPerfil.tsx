@@ -7,6 +7,9 @@ import { Aguardar, SoComBanco } from '@/components/v2/estados'
 import { StatusBadge } from '@/components/v2/StatusBadge'
 import { MotivoModal } from '@/components/v2/ats/ModaisCandidato'
 import { ContratarModal } from '@/components/v2/ats/ContratarModal'
+import { AvaliacoesCandidato } from '@/components/v2/ats/AvaliacoesCandidato'
+import { DocumentosPorEtapa } from '@/components/v2/ats/DocumentosPorEtapa'
+import { BotoesAgenda } from '@/components/v2/ats/BotoesAgenda'
 import { Linha, Secao, TEXTAREA, camposDoErro, useTitulo } from '@/components/v2/ats/comuns'
 import { api, executar, useApi } from '@/data/v2/api'
 import { useStore } from '@/lib/store'
@@ -52,6 +55,7 @@ export default function CandidatoPerfil() {
             <Tabs active={aba} onChange={setAba} tabs={[
               { key: 'resumo', label: 'Resumo' }, { key: 'historico', label: 'Histórico' }, { key: 'entrevistas', label: `Entrevistas (${x.entrevistas.length})` },
               { key: 'avaliacoes', label: `Avaliações (${x.avaliacoes.length})` }, { key: 'notas', label: `Notas (${x.notas.length})` },
+              { key: 'questionarios', label: 'Questionários' }, { key: 'documentos', label: 'Documentos' },
               ...(p.gerenciar ? [{ key: 'proposta', label: 'Proposta' }, { key: 'comunicacao', label: 'Comunicação' }, { key: 'privacidade', label: 'Privacidade' }] : []),
             ]} />
             {aba === 'resumo' && <Resumo x={x} recarregar={r.recarregar} />}
@@ -59,6 +63,8 @@ export default function CandidatoPerfil() {
             {aba === 'entrevistas' && <Entrevistas x={x} recarregar={r.recarregar} />}
             {aba === 'avaliacoes' && <Avaliacoes x={x} recarregar={r.recarregar} />}
             {aba === 'notas' && <Notas x={x} recarregar={r.recarregar} />}
+            {aba === 'questionarios' && <AvaliacoesCandidato candidaturaId={x.candidatura.id} />}
+            {aba === 'documentos' && <DocumentosPorEtapa candidaturaId={x.candidatura.id} />}
             {aba === 'proposta' && p.gerenciar && <Proposta x={x} recarregar={r.recarregar} />}
             {aba === 'comunicacao' && p.gerenciar && <Comunicacao x={x} recarregar={r.recarregar} />}
             {aba === 'privacidade' && p.gerenciar && <Privacidade x={x} recarregar={r.recarregar} />}
@@ -180,10 +186,11 @@ function Entrevistas({ x, recarregar }: { x: any; recarregar: () => void }) {
             </div>
             {e.resultado && <p className="text-[13px] mt-3"><b>Resultado:</b> {e.resultado}{e.parecer ? ` — ${e.parecer}` : ''}</p>}
             {e.reagendamentos?.length > 0 && <p className="text-[12px] text-muted mt-2">{e.reagendamentos.length} alteração(ões) de agenda registrada(s).</p>}
-            {e.status === 'agendada' && (x.permissoes.gerenciar || e.ehParticipante) && (
+            {e.status === 'agendada' && (
               <div className="flex gap-2 mt-3 flex-wrap">
-                <Button size="sm" variant="soft" onClick={() => setReg(e)}>Registrar resultado</Button>
+                {(x.permissoes.gerenciar || e.ehParticipante) && <Button size="sm" variant="soft" onClick={() => setReg(e)}>Registrar resultado</Button>}
                 {x.permissoes.gerenciar && <Button size="sm" variant="ghost" onClick={() => setCanc(e)}>Cancelar</Button>}
+                <BotoesAgenda e={e} vagaTitulo={x.vaga.titulo} candidatoNome={x.candidato.nome} />
               </div>
             )}
           </Card>
@@ -199,12 +206,15 @@ function Entrevistas({ x, recarregar }: { x: any; recarregar: () => void }) {
 function AgendarModal({ candidaturaId, onClose, onFeito }: { candidaturaId: string; onClose: () => void; onFeito: () => void }) {
   const pessoas = useStore((s) => s.colaboradores).filter((c) => c.status !== 'encerrado')
   const [f, setF] = useState({ tipo: 'rh', inicio: '', fim: '', modalidade: 'online', localOuLink: '' })
+  const [enviarConvite, setEnviarConvite] = useState(false)
   const [part, setPart] = useState<string[]>([])
   const [erros, setErros] = useState<Record<string, string>>({})
   const salvar = async () => {
     try {
-      await api.post(`ats/candidaturas/${candidaturaId}/entrevistas`, { ...f, inicio: f.inicio ? new Date(f.inicio).toISOString() : '', fim: f.fim ? new Date(f.fim).toISOString() : undefined, participantes: part })
-      toast('Entrevista agendada.'); onFeito()
+      const r = await api.post<{ comunicacao?: { status: string } }>(`ats/candidaturas/${candidaturaId}/entrevistas`, { ...f, inicio: f.inicio ? new Date(f.inicio).toISOString() : '', fim: f.fim ? new Date(f.fim).toISOString() : undefined, participantes: part, enviarConvite })
+      const st = r.comunicacao?.status
+      toast(!enviarConvite ? 'Entrevista agendada.' : st === 'enviada' ? 'Entrevista agendada e convite enviado ao candidato.' : 'Entrevista agendada. O convite não foi enviado (veja a aba Comunicação).', !enviarConvite || st === 'enviada' ? 'success' : 'info')
+      onFeito()
     } catch (e) { setErros(camposDoErro(e)); toast(e instanceof Error ? e.message : 'Erro', 'danger') }
   }
   return (
@@ -217,6 +227,10 @@ function AgendarModal({ candidaturaId, onClose, onFeito }: { candidaturaId: stri
         <Field label="Local ou link" htmlFor="ag-l" className="sm:col-span-2"><input id="ag-l" className="input" value={f.localOuLink} onChange={(e) => setF({ ...f, localOuLink: e.target.value })} /></Field>
       </div>
       <Field label="Entrevistadores" required erro={erros.participantes}><SeletorPessoas pessoas={pessoas} selecionadas={part} onChange={setPart} altura="max-h-48" /></Field>
+      <label className="inline-flex items-start gap-2 text-[13px] text-ink-2 mt-1">
+        <input type="checkbox" className="mt-0.5" checked={enviarConvite} onChange={(e) => setEnviarConvite(e.target.checked)} />
+        <span>Enviar convite por e-mail ao candidato, com o arquivo de agenda (.ics). <span className="text-muted">Usa o modelo “Convite para entrevista”; não inclui notas internas.</span></span>
+      </label>
     </Modal>
   )
 }

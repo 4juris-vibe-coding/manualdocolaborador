@@ -8,8 +8,12 @@ import { Recusa } from './_v2/guarda.js'
 import { aplicarLote, estadoPara, type Lote } from './_v2/estadoLegado.js'
 import { garantirSchemaV2 } from './_v2/migrar.js'
 import { dbDoPool } from './_v2/nucleo.js'
+import { aplicarEncerramentosAgendados, hojeBR } from './_v2/modulos/rhCiclo.js'
 import { capacidadesDe } from '../src/domain/permissions.js'
 import type { Papel } from '../src/lib/types.js'
+
+/** Mensagem a quem teve a parceria encerrada: clara, cordial e sem motivos ou dados internos. */
+export const MSG_PARCERIA_ENCERRADA = 'Sua parceria com a 4JURIS foi encerrada e, por isso, o acesso ao portal não está mais disponível. Se precisar de algum documento ou informação do período em que atuou conosco, fale com o RH da 4JURIS.'
 
 type Req = IncomingMessage & { query?: Record<string, string | string[] | undefined>; body?: unknown }
 
@@ -53,8 +57,10 @@ export default async function handler(req: Req, res: ServerResponse) {
       if (f && f.n >= 5 && f.ate > Date.now()) return json(res, 429, { erro: 'Muitas tentativas. Aguarde alguns minutos.' })
       const { email, senha } = await corpoJSON(req) as { email?: string; senha?: string }
       if (typeof email !== 'string' || typeof senha !== 'string' || !email || !senha) return json(res, 400, { erro: 'Informe e-mail e senha.' })
-      const r = await db().query(`select u.id, u.senha_hash, u.colaborador_id, c.dados->>'status' as status from usuarios u
-        left join app_colaboradores c on c.id = u.colaborador_id where lower(u.email) = lower($1) and u.ativo`, [email.trim()])
+      // Encerramento agendado que venceu: aplica agora (a rotina diária pode não ter rodado). Falha aqui não libera o acesso: o status abaixo já considera a data.
+      await aplicarEncerramentosAgendados(dbDoPool(db())).catch((e) => console.error('[encerramentos agendados]', e))
+      const r = await db().query(`select u.id, u.senha_hash, u.colaborador_id, case when c.dados ? 'encerramentoAgendado' and c.dados->'encerramentoAgendado'->>'data' <= $2 then 'encerrado' else c.dados->>'status' end as status from usuarios u
+        left join app_colaboradores c on c.id = u.colaborador_id where lower(u.email) = lower($1) and u.ativo`, [email.trim(), hojeBR()])
       const u = r.rows[0]
       // Mesmo custo de cálculo com ou sem usuário, para não revelar se o e-mail existe.
       const ok = confereSenha(senha, u?.senha_hash ?? 'scrypt$00$00') && !!u
@@ -72,7 +78,8 @@ export default async function handler(req: Req, res: ServerResponse) {
       }
       falhas.delete(ip)
       // Mesma regra da API v2 (montarUsuario): parceria encerrada não entra, mesmo com o login ainda ativo.
-      if (u.status === 'encerrado') return json(res, 403, { erro: 'Parceria encerrada — o acesso ao portal foi encerrado. Fale com o RH da 4JURIS.' })
+      // A mensagem só aparece depois da senha correta (não revela a situação de terceiros) e não expõe o motivo.
+      if (u.status === 'encerrado') return json(res, 403, { erro: MSG_PARCERIA_ENCERRADA, codigo: 'parceria_encerrada' })
       await db().query('update usuarios set ultimo_acesso = now() where id = $1', [u.id])
       return json(res, 200, { colaboradorId: u.colaborador_id }, { 'Set-Cookie': emitirCookie({ uid: u.id, colaboradorId: u.colaborador_id }, seguro) })
     }
@@ -132,9 +139,10 @@ export default async function handler(req: Req, res: ServerResponse) {
     const sessao = lerSessao(req.headers.cookie)
     if (!sessao) return json(res, 401, { erro: 'Sessão ausente ou expirada.' })
     // O usuário precisa continuar ativo no banco e a parceria não pode estar encerrada (mesma regra de montarUsuario na API v2).
-    const vivo = await db().query(`select 1 from usuarios u left join app_colaboradores c on c.id = u.colaborador_id
-      where u.id = $1 and u.ativo and c.dados->>'status' is distinct from 'encerrado'`, [sessao.uid])
-    if (!vivo.rowCount) return json(res, 401, { erro: 'Acesso desativado.' }, { 'Set-Cookie': cookieLimpo(seguro) })
+    const vivo = (await db().query(`select u.ativo, case when c.dados ? 'encerramentoAgendado' and c.dados->'encerramentoAgendado'->>'data' <= $2 then 'encerrado' else c.dados->>'status' end as status from usuarios u left join app_colaboradores c on c.id = u.colaborador_id
+      where u.id = $1`, [sessao.uid, hojeBR()])).rows[0]
+    if (vivo?.ativo && vivo.status === 'encerrado') return json(res, 401, { erro: MSG_PARCERIA_ENCERRADA, codigo: 'parceria_encerrada' }, { 'Set-Cookie': cookieLimpo(seguro) })
+    if (!vivo?.ativo) return json(res, 401, { erro: 'Acesso desativado.' }, { 'Set-Cookie': cookieLimpo(seguro) })
 
     // Mutações autenticadas exigem o cabeçalho da aplicação (defesa contra CSRF, além do SameSite=Lax).
     if (req.method !== 'GET' && req.headers['x-requested-with'] !== '4juris') return json(res, 403, { erro: 'Requisição não reconhecida.' })
@@ -280,7 +288,11 @@ export default async function handler(req: Req, res: ServerResponse) {
     }
 
     // As regras de /api/estado consultam tabelas do schema v2 (funções adicionais, histórico financeiro).
-    if (acao === 'estado') await garantirSchemaV2(dbDoPool(db()))
+    if (acao === 'estado') {
+      await garantirSchemaV2(dbDoPool(db()))
+      // Abertura do portal: encerramentos agendados vencidos já aparecem aplicados nas telas.
+      if (req.method === 'GET') await aplicarEncerramentosAgendados(dbDoPool(db())).catch((e) => console.error('[encerramentos agendados]', e))
+    }
 
     // Cada pessoa recebe só o que pode ver (api/_v2/guarda.ts), mais o segredo da caixa de sugestões.
     if (acao === 'estado' && req.method === 'GET') {

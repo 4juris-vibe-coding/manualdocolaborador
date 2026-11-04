@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '@/lib/store'
-import type { Senioridade, Setor, Unidade } from '@/lib/types'
+import type { MotivoEncerramento, Senioridade, Setor, Unidade } from '@/lib/types'
+import { INICIATIVAS, INICIATIVA_CURTA } from '@/domain/vinculos'
 import { PageHeader, Card, CardHead, Button, Field, Tabs, Badge, Icon, Toggle, EmptyState } from '@/components/ui'
 import { Modal, ConfirmModal } from '@/components/Modal'
 import { feedback } from '@/components/toast'
@@ -214,7 +215,12 @@ function Listas() {
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <Card>
         <CardHead title="Motivos de encerramento" sub="Usados ao encerrar uma parceria" />
-        <ul className="divide-y divide-line">{s.motivosEncerramento.map((m) => <li key={m.id} className="flex items-center justify-between px-5 py-2.5"><span className={cn('text-[13.5px]', !m.ativo && 'text-muted line-through')}>{m.nome}</span><span className="flex items-center gap-2"><Toggle checked={m.ativo} onChange={(v) => feedback(s.salvarMotivo({ nome: m.nome, ativo: v }, m.id), 'Lista atualizada.')} /><Button size="icon-sm" variant="subtle" icon="Trash2" aria-label={`Remover ${m.nome}`} onClick={() => feedback(s.removerMotivo(m.id), 'Motivo removido.')} /></span></li>)}</ul>
+        <p className="text-[11.5px] text-muted px-5 pt-3">A iniciativa é sugerida ao escolher o motivo e confirmada pelo RH em cada encerramento. Ela define o turnover involuntário (iniciativa da 4JURIS).</p>
+        <ul className="divide-y divide-line">{s.motivosEncerramento.map((m) => <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5"><span className={cn('text-[13.5px] flex-1 min-w-[160px]', !m.ativo && 'text-muted line-through')}>{m.nome}</span><span className="flex items-center gap-2">
+          <Dropdown aria-label={`Iniciativa de ${m.nome}`} className="input !h-8 !py-0 text-[12.5px] w-auto" value={m.iniciativa ?? ''} onChange={(e) => feedback(s.salvarMotivo({ nome: m.nome, ativo: m.ativo, iniciativa: (e.target.value || undefined) as MotivoEncerramento['iniciativa'] }, m.id), 'Classificação atualizada.')}>
+            <option value="">Iniciativa: não definida</option>{INICIATIVAS.map((i) => <option key={i} value={i}>{INICIATIVA_CURTA[i]}</option>)}
+          </Dropdown>
+          <Toggle checked={m.ativo} onChange={(v) => feedback(s.salvarMotivo({ nome: m.nome, ativo: v, iniciativa: m.iniciativa }, m.id), 'Lista atualizada.')} /><Button size="icon-sm" variant="subtle" icon="Trash2" aria-label={`Remover ${m.nome}`} onClick={() => feedback(s.removerMotivo(m.id), 'Motivo removido.')} /></span></li>)}</ul>
         <form className="flex gap-2 p-4 border-t border-line" onSubmit={(e) => { e.preventDefault(); if (feedback(s.salvarMotivo({ nome: motivo.trim(), ativo: true }), 'Motivo adicionado.')) setMotivo('') }}>
           <input aria-label="Novo motivo" className="input flex-1" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Novo motivo" /><Button type="submit" size="icon" icon="Plus" aria-label="Adicionar motivo" />
         </form>

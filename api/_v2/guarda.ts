@@ -19,6 +19,7 @@ import { avaliarPontuacao } from '../../src/domain/gamificacao.js'
 import { pesquisaAbertaPara } from '../../src/domain/pesquisas.js'
 import { chaveApoio, chaveAutor } from '../../src/domain/anonimato.js'
 import { canonico, chaveRegistro } from '../../src/domain/sincronia.js'
+import { historicoSoAcrescenta, validarVinculos } from '../../src/domain/vinculos.js'
 import type { Papel } from '../../src/lib/types.js'
 
 type Obj = Record<string, any>
@@ -150,7 +151,9 @@ const colaboradores: Politica = {
     if (c.diretoria) {
       // Indicadores executivos: idade média, escolaridade e encerramentos (sem a observação).
       Object.assign(o, pick(r, ['nascimento', 'escolaridade', 'curso']))
-      if (r.encerramento) o.encerramento = pick(r.encerramento, ['data', 'motivoId'])
+      if (r.encerramento) o.encerramento = pick(r.encerramento, ['data', 'motivoId', 'iniciativa'])
+      // Indicadores de movimentação (turnover) precisam dos períodos; só datas e classificação, sem observações.
+      if (Array.isArray(r.vinculos)) o.vinculos = r.vinculos.map((v: Obj) => pick(v, ['id', 'inicio', 'fim', 'motivoId', 'iniciativa']))
     } else if (r.nascimento) {
       // Celebrações mostram o dia e o mês de todos; o ano nunca sai do servidor.
       o.nascimento = `2000${String(r.nascimento).slice(4, 10)}`
@@ -184,6 +187,22 @@ const colaboradores: Politica = {
       return null
     }
     if (antes.id !== novo.id) recusa('Identificador não pode mudar.')
+    // Ciclo de vida: períodos coerentes e histórico de movimentações só de acréscimo (vale também para o RH).
+    if (!historicoSoAcrescenta(antes.movimentacoes, novo.movimentacoes)) recusa('O histórico de movimentações não pode ser alterado nem apagado.', 409)
+    const soConcluiuIntegracao = antes.status === 'integracao' && novo.status === 'ativo' && igual(antes.vinculos, novo.vinculos) && igual(antes.encerramento, novo.encerramento)
+    if (!igual(antes.encerramentoAgendado, novo.encerramentoAgendado)) {
+      exigirCap(c, 'pessoas:gerenciar', 'Apenas o RH agenda ou cancela encerramentos.')
+      const ag = novo.encerramentoAgendado as Obj | undefined
+      if (ag) exigir(/^\d{4}-\d{2}-\d{2}$/.test(ag.data ?? '') && !!ag.motivoId && ['empresa', 'prestador', 'mutuo', 'termino'].includes(ag.iniciativa), 'Agendamento de encerramento inválido.')
+    }
+    if (!soConcluiuIntegracao && (!igual(antes.vinculos, novo.vinculos) || !igual(antes.status, novo.status) || !igual(antes.encerramento, novo.encerramento))) {
+      exigirCap(c, 'pessoas:gerenciar', 'Apenas o RH altera a situação e os períodos de parceria.')
+      const erroVinculo = validarVinculos(novo as never)
+      if (erroVinculo) recusa(erroVinculo, 400)
+      // Saída de "encerrado" exige registro no histórico (reativação ou novo período) quando a pessoa já usa períodos.
+      if (antes.status === 'encerrado' && novo.status !== 'encerrado' && Array.isArray(novo.vinculos)
+        && ((novo.movimentacoes as Obj[] | undefined)?.length ?? 0) <= ((antes.movimentacoes as Obj[] | undefined)?.length ?? 0)) recusa('Reative a parceria pela ação própria, que registra o histórico.', 400)
+    }
     if (c.priv) {
       if (antes.papel !== novo.papel && !c.admin) recusa('Apenas a administração altera papéis.')
       return novo
@@ -417,8 +436,19 @@ const iniciativas: Politica = {
 const processos: Politica = {
   ver: (r, c) => c.priv || r.colaboradorId === meuId(c) || c.lidera.has(setorDe(c, r.colaboradorId) ?? ''),
   escrever: (antes, novo, c) => {
-    if (tem(c, 'onboarding:gerenciar')) return novo
+    if (tem(c, 'onboarding:gerenciar')) {
+      // Um único processo em andamento por pessoa e tipo (evita a pessoa aparecer duas vezes na integração).
+      if (novo && !novo.concluidoEm && !novo.canceladoEm && (!antes || antes.concluidoEm || antes.canceladoEm)) {
+        const outros = new Map<string, Obj>()
+        for (const r of (c.estado.processos as Obj[] | undefined) ?? []) outros.set(r.id, r)
+        for (const [k, r] of c.lote.processos ?? []) { if (r) outros.set(k, r); else outros.delete(k) }
+        const dup = [...outros.values()].some((r) => r.id !== novo.id && r.colaboradorId === novo.colaboradorId && r.tipo === novo.tipo && !r.concluidoEm && !r.canceladoEm)
+        if (dup) recusa('Já existe um processo deste tipo em andamento para esta pessoa.', 409)
+      }
+      return novo
+    }
     exigir(!!antes && !!novo && soMudou(antes, novo, ['itens', 'concluidoEm']), 'Apenas o RH inicia ou remove processos.')
+    exigir(!antes!.canceladoEm, 'Este processo foi cancelado.')
     const me = meuId(c)
     const a = antes!.itens as Obj[], d = novo!.itens as Obj[]
     exigir(Array.isArray(d) && a.length === d.length, 'Itens do processo não podem ser alterados.')
@@ -613,7 +643,21 @@ export const POLITICAS: Record<string, Politica> = {
       return novo
     },
   },
-  historicoFuncao: { ver: proprioOuPriv(), escrever: (_a, n, c) => { exigirPriv(c); return n } },
+  historicoFuncao: {
+    // Diretoria lê para os indicadores por período (área/função na data), sem valores de contrato.
+    ver: (r, c) => c.priv || c.diretoria || r.colaboradorId === meuId(c),
+    redigir: (r, c) => (c.priv || r.colaboradorId === meuId(c) ? r : pick(r, ['id', 'colaboradorId', 'em', 'dataEfetiva', 'cargoAnteriorId', 'cargoNovoId', 'setorAnteriorId', 'setorNovoId'])),
+    escrever: (antes, n, c) => {
+      exigirPriv(c)
+      // Histórico de movimentação só acrescenta. Remoção apenas junto com a exclusão/anonimização do cadastro (administração).
+      if (antes && n) recusa('O histórico de movimentações não pode ser alterado.', 409)
+      if (antes && !n) {
+        const pessoaSai = c.lote.colaboradores?.has(antes.colaboradorId) && c.lote.colaboradores.get(antes.colaboradorId) === null
+        exigir(c.admin && !!pessoaSai, 'O histórico de movimentações não pode ser apagado.')
+      }
+      return n
+    },
+  },
   dependentes: {
     ver: proprioOuPriv('colaboradorId', true),
     redigir: (r, c) => (c.priv || r.colaboradorId === meuId(c) ? r : pick(r, ['id', 'colaboradorId', 'parentesco'])),

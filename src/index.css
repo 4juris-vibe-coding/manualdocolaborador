@@ -16,6 +16,8 @@
   --c-warning: 146 95 0; --c-warning-soft: 251 241 220; --c-warning-line: 236 217 168; --c-warning-ink: 122 91 18;
   --c-danger: 192 46 38; --c-danger-soft: 251 230 229; --c-danger-line: 240 192 189; --c-danger-ink: 155 44 38; --c-danger-hover: 248 213 211;
   --c-shadow: 18 32 41;
+  /* Séries de gráficos (validadas: faixa de luminosidade, daltonismo e contraste ≥ 3:1). */
+  --viz-1: #0032D2; --viz-2: #c8740f;
   color-scheme: light;
 }
 .dark {
@@ -31,6 +33,7 @@
   --c-warning: 224 168 58; --c-warning-soft: 51 39 13; --c-warning-line: 92 70 24; --c-warning-ink: 240 200 120;
   --c-danger: 196 52 44; --c-danger-soft: 58 23 21; --c-danger-line: 100 40 36; --c-danger-ink: 255 170 164; --c-danger-hover: 80 30 28;
   --c-shadow: 0 0 0;
+  --viz-1: #5b7cf0; --viz-2: #c97a1c;
   color-scheme: dark;
 }
 

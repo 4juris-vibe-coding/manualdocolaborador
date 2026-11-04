@@ -113,6 +113,9 @@ export const NAV: NavGroup[] = [
     title: 'Visão geral', area: 'rh',
     items: [
       { to: '/rh', label: 'Indicadores', icon: 'BarChart3', desc: 'Indicadores com definição, fonte e período.', cap: 'rh:painel' },
+      { to: '/rh/alertas', label: 'Alertas & pendências', icon: 'BellRing', desc: 'Vencimentos, marcos, checklists atrasados e encerramentos.', cap: 'pessoas:gerenciar' },
+      { to: '/rh/enps', label: 'eNPS', icon: 'Smile', desc: 'Promotores, neutros, detratores e evolução do eNPS.', cap: 'analytics:ver', soApi: true },
+      { to: '/rh/movimentacao', label: 'Turnover & movimentação', icon: 'ArrowLeftRight', desc: 'Headcount, admissões, desligamentos e turnover mês a mês.', cap: 'rh:painel' },
       { to: '/rh/analytics', label: 'People Analytics', icon: 'LineChart', desc: 'Recrutamento, pesquisas e estrutura em um só painel.', cap: 'analytics:ver' },
       { to: '/rh/relatorios', label: 'Relatórios', icon: 'PieChart', desc: 'Perfil da comunidade, rotatividade e encerramentos.', cap: 'rh:painel' },
     ],
@@ -188,6 +191,7 @@ export const NAV: NavGroup[] = [
     items: [
       { to: '/admin', label: 'Usuários & acessos', icon: 'ShieldCheck', desc: 'Papéis, permissões e dados de demonstração.', cap: 'admin:usuarios' },
       { to: '/admin/funcoes', label: 'Funções adicionais', icon: 'UserCheck', desc: 'Recrutadores, analistas de RH e responsáveis por pesquisas.', cap: 'admin:usuarios' },
+      { to: '/admin/acessos-sensiveis', label: 'Acessos a dados sensíveis', icon: 'ShieldAlert', desc: 'Quem baixou currículos, documentos e notas, e quando (LGPD).', cap: 'admin:auditoria', soApi: true },
       { to: '/admin/configuracoes', label: 'Configurações gerais', icon: 'Settings2', desc: 'Empresa, tomador das notas e contatos.', cap: 'config:geral' },
       { to: '/seguranca', label: 'Privacidade & auditoria', icon: 'ScrollText', desc: 'Histórico de ações e direitos do titular (LGPD).', cap: 'admin:auditoria' },
     ],

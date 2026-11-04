@@ -15,12 +15,19 @@ export interface Contratado { nome: string; email: string; telefone?: string | n
 
 /**
  * Cria (ou reaproveita, pelo e-mail) o cadastro da pessoa e envia o acesso ao portal.
+ * Cadastro encerrado ganha um novo período de parceria (histórico preservado).
  * O cadastro nasce "pendente": razão social e CNPJ são completados depois pelo RH.
  */
 export async function cadastrarEEnviarAcesso(p: Contratado, setorId: string, dataEntrada: string): Promise<void> {
   const s = useStore.getState()
   const email = p.email.trim().toLowerCase()
-  let id = s.colaboradores.find((c) => c.email.toLowerCase() === email)?.id
+  const existente = s.colaboradores.find((c) => c.email.toLowerCase() === email)
+  let id = existente?.id
+  // Quem já trabalhou conosco volta no MESMO cadastro, com um novo período de parceria (sem duplicar a pessoa).
+  if (existente?.status === 'encerrado') {
+    const r = s.reativarParceria(existente.id, 'novo_vinculo', dataEntrada, 'Recontratação pelo recrutamento')
+    if (!r.ok) { toast(`Contratação concluída, mas o novo período não foi registrado: ${r.erro}`, 'danger'); return }
+  }
   if (!id) {
     const r = s.salvarPessoa({ nome: p.nome.trim(), email, telefone: p.telefone ?? '', papel: 'colaborador', setorId, status: 'pendente', dataEntrada, regime: 'PJ', cidade: p.cidade ?? '', uf: p.uf ?? '' })
     if (!r.ok) { toast(`Contratação concluída, mas o cadastro não foi criado: ${r.erro}`, 'danger'); return }

@@ -15,7 +15,10 @@ export const emailConfigurado = () => !!process.env.RESEND_API_KEY
 export const textoParaHtml = (t: string, assunto = '4JURIS') =>
   emailDeTexto({ assunto, texto: t, portal: (process.env.PORTAL_URL || 'https://portaldocolaborador.somos4juris.com.br').replace(/\/$/, '') })
 
-export async function enviarEmail(para: string, assunto: string, corpoTexto: string, opts: { fetchImpl?: typeof fetch } = {}): Promise<ResultadoEnvio> {
+/** Anexo de e-mail (ex.: convite de calendário .ics). `conteudo` em texto ou bytes; vai em base64 para o Resend. */
+export interface AnexoEmail { nome: string; conteudo: string | Buffer; tipo?: string }
+
+export async function enviarEmail(para: string, assunto: string, corpoTexto: string, opts: { fetchImpl?: typeof fetch; anexos?: AnexoEmail[] } = {}): Promise<ResultadoEnvio> {
   const chave = process.env.RESEND_API_KEY
   if (!chave) return { status: 'nao_configurado', erro: 'RESEND_API_KEY não configurada no servidor.' }
   try {
@@ -28,6 +31,13 @@ export async function enviarEmail(para: string, assunto: string, corpoTexto: str
         subject: assunto,
         html: textoParaHtml(corpoTexto, assunto),
         text: corpoTexto,
+        // Só inclui a chave quando há anexos: sem anexos, a chamada é idêntica à anterior.
+        ...(opts.anexos?.length ? {
+          attachments: opts.anexos.slice(0, 5).map((a) => ({
+            filename: a.nome, content: (typeof a.conteudo === 'string' ? Buffer.from(a.conteudo, 'utf8') : a.conteudo).toString('base64'),
+            ...(a.tipo ? { content_type: a.tipo } : {}),
+          })),
+        } : {}),
       }),
     })
     if (!r.ok) {
