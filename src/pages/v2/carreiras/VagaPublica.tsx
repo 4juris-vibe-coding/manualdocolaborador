@@ -12,6 +12,9 @@ import { dataBR, moeda } from '@/lib/fmt'
 import { CartaoVaga, Chip, localDe, rotuloRegime, ROTULO_MODALIDADE, type VagaCard } from './Carreiras'
 import { documentoDaVagaPublica, ImpressaoVaga } from '@/components/v2/vagas/DocumentoVaga'
 
+/* Endereço da sede, usado no mapa quando a vaga não informa outro. */
+const ENDERECO_4JURIS = 'ITC Central Park - R. Ary Barroso, 70 - Papicu, Fortaleza - CE'
+
 /* Funções (e não componentes) para que um campo vazio resulte em null e a seção suma junto com o título. */
 const lista = (itens?: string[] | null) => (itens?.length ? <ul className="space-y-2">{itens.map((i) => <li key={i} className="flex gap-2.5 text-[14.5px] text-[#3d4b56] leading-relaxed"><Icon name="Check" className="h-4 w-4 text-brand mt-1 shrink-0" />{i}</li>)}</ul> : null)
 const texto = (t?: string | null) => (t && t.trim() ? <p className="text-[14.5px] text-[#3d4b56] whitespace-pre-wrap leading-[1.75]">{t}</p> : null)
@@ -72,7 +75,8 @@ export default function VagaPublica() {
     ? `${v.salario.min ? moeda(v.salario.min, v.salario.moeda) : ''}${v.salario.min && v.salario.max ? ' a ' : ''}${v.salario.max ? moeda(v.salario.max, v.salario.moeda) : ''}${v.salario.tipo ? ` (${v.salario.tipo})` : ''}` : null
   const etapas: { titulo: string; descricao?: string }[] = v.etapasProcesso?.length ? (v.etapasProcesso as string[]).map((t) => ({ titulo: t })) : (portal.processoSeletivo ?? [])
   const sobre = v.sobreEmpresa || portal.quemSomos
-  const outrasVagas = (outras.dados?.itens ?? []).filter((x) => x.slug !== v.slug).slice(0, 4)
+  const enderecoMapa = v.endereco?.trim() || ENDERECO_4JURIS
+  const outrasVagas =(outras.dados?.itens ?? []).filter((x) => x.slug !== v.slug).slice(0, 4)
 
   return (
     <PortalLayout>
@@ -114,7 +118,7 @@ export default function VagaPublica() {
             <Secao titulo="Formação e experiência" icone="GraduationCap">{(v.formacao || v.experiencia) ? <div className="space-y-3">{texto(v.formacao)}{texto(v.experiencia)}</div> : null}</Secao>
             <Secao titulo="Idiomas" icone="Languages">{lista(v.idiomas)}</Secao>
             <Secao titulo="Certificações" icone="Award">{lista(v.certificacoes)}</Secao>
-            <Secao titulo="Benefícios e vantagens" icone="Gift">{v.beneficios?.length ? <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">{(v.beneficios as string[]).map((b) => <li key={b} className="flex items-center gap-2.5 rounded-xl border border-[#e4e8ed] bg-[#fafbfd] px-3.5 py-2.5 text-[13.5px] font-semibold text-[#122029]"><Icon name="Sparkle" className="h-4 w-4 text-brand shrink-0" />{b}</li>)}</ul> : null}</Secao>
+            <Secao titulo="O que oferecemos" icone="Gift">{v.beneficios?.length ? <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">{(v.beneficios as string[]).map((b) => <li key={b} className="flex items-center gap-2.5 rounded-xl border border-[#e4e8ed] bg-[#fafbfd] px-3.5 py-2.5 text-[13.5px] font-semibold text-[#122029]"><Icon name="Sparkle" className="h-4 w-4 text-brand shrink-0" />{b}</li>)}</ul> : null}</Secao>
             <Secao titulo="Jornada" icone="Clock">{v.jornada && v.jornada.length > 40 ? texto(v.jornada) : null}</Secao>
             <Secao titulo="Viagens" icone="Plane">{texto(v.viagens)}</Secao>
             <Secao titulo="Documentos que poderemos pedir" icone="FolderOpen">{lista(v.documentosNecessarios)}</Secao>
@@ -162,6 +166,24 @@ export default function VagaPublica() {
                 {!!portal.redes?.length && <div className="mt-6 flex flex-wrap items-center gap-3"><span className="text-[13px] font-semibold text-[#58636e]">Acompanhe a 4JURIS:</span><RedesSociais redes={portal.redes} /></div>}
               </section>
             )}
+
+            {/* Como chegar */}
+            <section className="py-8 border-t border-[#eef1f4]">
+              <span className="text-[11.5px] font-bold uppercase tracking-[0.14em] text-brand">Onde estamos</span>
+              <h2 className="text-[24px] font-extrabold tracking-tight text-[#122029] mt-1 mb-2">Como chegar</h2>
+              <p className="text-[14.5px] text-[#3d4b56] flex items-start gap-2 mb-4"><Icon name="MapPin" className="h-4 w-4 text-brand mt-1 shrink-0" />{enderecoMapa}</p>
+              <div className="overflow-hidden rounded-2xl border border-[#e4e8ed] bg-[#e9ecec]">
+                <iframe
+                  title="Mapa da 4JURIS"
+                  src={`https://www.google.com/maps?q=${encodeURIComponent(enderecoMapa)}&output=embed`}
+                  className="block w-full h-[280px] sm:h-[360px] border-0"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
+                />
+              </div>
+              <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(enderecoMapa)}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-[13.5px] font-bold text-brand hover:underline"><Icon name="Navigation" className="h-4 w-4" />Traçar rota no Google Maps</a>
+            </section>
           </article>
 
           {/* Resumo fixo */}
