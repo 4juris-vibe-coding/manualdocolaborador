@@ -3,8 +3,8 @@
    (modulos/ats.ts) e o portal público (modulos/publico.ts).
    ============================================================ */
 import { conflito, naoEncontrado, texto, type Executor, invalido } from './nucleo.js'
-import { enviarEmail, preencherModelo, type AnexoEmail } from './email.js'
-import { ETAPAS_PADRAO, PRIVACIDADE_PADRAO, TEMPLATES_PADRAO, MODELO_AVALIACAO_PADRAO, nomePublicoEtapa } from '../../src/domain/v2/ats.js'
+import { enviarEmail, preencherModelo, urlPortal, type AnexoEmail } from './email.js'
+import { ETAPAS_PADRAO, PRIVACIDADE_PADRAO, TEMPLATES_PADRAO, TEMPLATES_SUBSTITUIDOS, MODELO_AVALIACAO_PADRAO, nomePublicoEtapa } from '../../src/domain/v2/ats.js'
 
 export interface EtapaVaga { id: string; nome: string; tipo: string; ordem: number; cor: string | null; nome_publico: string | null }
 
@@ -32,6 +32,10 @@ export function lerNomePublico(v: unknown): string | null | undefined {
 export async function garantirTemplates(ex: Executor) {
   for (const t of TEMPLATES_PADRAO) {
     await ex.query('insert into rec_templates_msg (chave, nome, assunto, corpo) values ($1,$2,$3,$4) on conflict (chave) do nothing', [t.chave, t.nome, t.assunto, t.corpo])
+  }
+  for (const v of TEMPLATES_SUBSTITUIDOS) {
+    const atual = TEMPLATES_PADRAO.find((t) => t.chave === v.chave)
+    if (atual) await ex.query('update rec_templates_msg set corpo = $3 where chave = $1 and corpo = $2', [v.chave, v.corpo, atual.corpo])
   }
 }
 
@@ -150,7 +154,8 @@ export async function variaveisCandidatura(ex: Executor, candidaturaId: string):
   if (!x) throw naoEncontrado('Candidatura não encontrada.')
   // {{etapa}} vai para o candidato: sempre o nome PÚBLICO (ou o rótulo genérico do tipo), nunca o nome interno.
   const etapa = x.etapa_tipo ? nomePublicoEtapa(x.etapa_tipo, x.etapa_publica) : ''
-  return { vars: { nome: String(x.nome).split(' ')[0], vaga: x.titulo, etapa, empresa: '4JURIS' }, email: x.email, candidatoId: x.candidato_id }
+  // {{link_acompanhamento}}: na confirmação vai o link com o código; nos demais e-mails, a página onde o candidato cola o código.
+  return { vars: { nome: String(x.nome).split(' ')[0], vaga: x.titulo, etapa, empresa: '4JURIS', link_acompanhamento: `${urlPortal()}/carreiras/acompanhar` }, email: x.email, candidatoId: x.candidato_id }
 }
 
 export interface ComunicacaoNova {
@@ -166,7 +171,7 @@ export async function registrarEEnviar(ex: Executor, m: ComunicacaoNova): Promis
     [m.candidaturaId, m.candidatoId, m.templateChave ?? null, m.assunto, m.corpoPersistido ?? m.corpo, m.criadoPor])
   const id = ins.rows[0].id as string
   if (!m.enviar) return { id, status: 'pendente' }
-  const res = await enviarEmail(m.para, m.assunto, m.corpo, m.anexos?.length ? { anexos: m.anexos } : {})
+  const res = await enviarEmail(m.para, m.assunto, m.corpo, { contexto: 'carreiras', ...(m.anexos?.length ? { anexos: m.anexos } : {}) })
   await ex.query('update rec_comunicacoes set status = $2, erro = $3, enviada_em = case when $2 = $4 then now() else null end where id = $1', [id, res.status, res.erro ?? null, 'enviada'])
   return { id, status: res.status, erro: res.erro }
 }

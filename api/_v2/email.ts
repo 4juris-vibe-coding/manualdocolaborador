@@ -4,7 +4,7 @@
    - sem RESEND_API_KEY → 'nao_configurado' (nada foi enviado)
    - provedor recusou / rede falhou → 'falhou' (com o motivo)
    ============================================================ */
-import { emailDeTexto } from '../_emailsPortal.js'
+import { emailDeTexto, emailRH } from '../_emailsPortal.js'
 
 export type StatusEnvio = 'enviada' | 'falhou' | 'nao_configurado'
 export interface ResultadoEnvio { status: StatusEnvio; erro?: string }
@@ -12,13 +12,21 @@ export interface ResultadoEnvio { status: StatusEnvio; erro?: string }
 export const emailConfigurado = () => !!process.env.RESEND_API_KEY
 
 /** Converte texto simples em e-mail HTML no layout da marca 4JURIS (o texto continua indo como alternativa). */
-export const textoParaHtml = (t: string, assunto = '4JURIS') =>
-  emailDeTexto({ assunto, texto: t, portal: (process.env.PORTAL_URL || 'https://portaldocolaborador.somos4juris.com.br').replace(/\/$/, '') })
+export const urlPortal = () => (process.env.PORTAL_URL || 'https://portaldocolaborador.somos4juris.com.br').replace(/\/$/, '')
+
+/** 'carreiras': e-mails para candidatos (cabeçalho "Carreiras", etiqueta do processo seletivo e resposta indo para o RH). */
+export type ContextoEmail = 'portal' | 'carreiras'
+
+export const textoParaHtml = (t: string, assunto = '4JURIS', contexto: ContextoEmail = 'portal') =>
+  emailDeTexto({
+    assunto, texto: t, portal: urlPortal(),
+    ...(contexto === 'carreiras' ? { marca: 'Carreiras · Trabalhe conosco', etiqueta: 'Processo seletivo', aceitaResposta: true } : {}),
+  })
 
 /** Anexo de e-mail (ex.: convite de calendário .ics). `conteudo` em texto ou bytes; vai em base64 para o Resend. */
 export interface AnexoEmail { nome: string; conteudo: string | Buffer; tipo?: string }
 
-export async function enviarEmail(para: string, assunto: string, corpoTexto: string, opts: { fetchImpl?: typeof fetch; anexos?: AnexoEmail[] } = {}): Promise<ResultadoEnvio> {
+export async function enviarEmail(para: string, assunto: string, corpoTexto: string, opts: { fetchImpl?: typeof fetch; anexos?: AnexoEmail[]; contexto?: ContextoEmail } = {}): Promise<ResultadoEnvio> {
   const chave = process.env.RESEND_API_KEY
   if (!chave) return { status: 'nao_configurado', erro: 'RESEND_API_KEY não configurada no servidor.' }
   try {
@@ -29,7 +37,9 @@ export async function enviarEmail(para: string, assunto: string, corpoTexto: str
         from: process.env.RESEND_FROM || '4JURIS <nao-responda@4jurismarketing.com.br>',
         to: [para],
         subject: assunto,
-        html: textoParaHtml(corpoTexto, assunto),
+        html: textoParaHtml(corpoTexto, assunto, opts.contexto),
+        // Candidatos podem responder (ex.: confirmar presença na entrevista): a resposta vai para o RH, não para o "nao-responda".
+        ...(opts.contexto === 'carreiras' ? { reply_to: emailRH() } : {}),
         text: corpoTexto,
         // Só inclui a chave quando há anexos: sem anexos, a chamada é idêntica à anterior.
         ...(opts.anexos?.length ? {

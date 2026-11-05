@@ -48,7 +48,7 @@ export function CartaoVaga({ v, compacto = false }: { v: VagaCard; compacto?: bo
         </div>
         <div className="text-right shrink-0">
           {recente(v.publicadaEm) && <span className="inline-flex items-center h-6 px-2 rounded-full bg-[#e8f7f0] text-[#0b7a52] text-[11px] font-bold mb-1">Nova</span>}
-          {v.publicadaEm && <div className="text-[11.5px] text-[#7a8590]">Publicada em {dataBR(v.publicadaEm)}</div>}
+          {v.publicadaEm && <div className="text-[11.5px] text-[#5f6b76]">Publicada em {dataBR(v.publicadaEm)}</div>}
         </div>
       </div>
       <div className="flex flex-wrap gap-1.5 mt-3">
@@ -58,7 +58,7 @@ export function CartaoVaga({ v, compacto = false }: { v: VagaCard; compacto?: bo
         {v.jornada && v.jornada.length <= 24 && <Chip icone="Clock">{v.jornada}</Chip>}
       </div>
       {!compacto && v.resumo && <p className="text-[13.5px] text-[#3d4b56] mt-3 leading-relaxed line-clamp-2">{v.resumo}</p>}
-      <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#f0f2f5] text-[12px] text-[#7a8590]">
+      <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#f0f2f5] text-[12px] text-[#5f6b76]">
         <span>{v.encerraEm ? `Inscrições até ${dataBR(v.encerraEm)}` : 'Inscrições abertas'}</span>
         <span className="inline-flex items-center gap-1 text-brand font-bold text-[13px]">Ver vaga <Icon name="ArrowRight" className="h-4 w-4 transition group-hover:translate-x-0.5" /></span>
       </div>
@@ -131,7 +131,7 @@ export default function Carreiras() {
               <div className="sm:col-span-2 lg:col-span-1">
                 <label htmlFor="cv-busca" className="block text-[12px] font-bold text-[#3d4b56] mb-1">Buscar</label>
                 <div className="flex gap-2">
-                  <div className="relative flex-1 min-w-0"><Icon name="Search" className="h-4 w-4 text-[#7a8590] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <div className="relative flex-1 min-w-0"><Icon name="Search" className="h-4 w-4 text-[#5f6b76] absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input id="cv-busca" type="search" className="input pl-10 w-full" placeholder="Cargo, área ou palavra-chave" value={busca} onChange={(e) => set(setBusca)(e.target.value)} /></div>
                   {/* Celular: os filtros ficam recolhidos para a lista de vagas aparecer logo. */}
                   <button type="button" onClick={() => setAbrirFiltros((x) => !x)} aria-expanded={abrirFiltros} aria-controls="cv-filtros"
@@ -158,7 +158,7 @@ export default function Carreiras() {
           <section id="vagas" className="mt-6" aria-labelledby="vagas-titulo">
             <div className="flex items-end justify-between gap-3 mb-3">
               <h2 id="vagas-titulo" className="text-[13.5px] text-[#58636e]" aria-live="polite">{r.dados ? `${total} ${total === 1 ? 'vaga encontrada' : 'vagas encontradas'}${temFiltro ? ' com os filtros' : ''}` : 'Carregando vagas…'}</h2>
-              <span className="text-[12px] text-[#7a8590]">Mais recentes primeiro</span>
+              <span className="text-[12px] text-[#5f6b76]">Mais recentes primeiro</span>
             </div>
             {r.erro && !r.dados ? <ErroBloco mensagem="Não conseguimos carregar as vagas agora. Tente novamente em instantes." onTentar={r.recarregar} /> :
               r.carregando && !r.dados ? <CarregandoBloco linhas={4} /> :
@@ -176,9 +176,9 @@ export default function Carreiras() {
               )}
             {!!r.dados?.encerradas?.length && (
               <div className="mt-8">
-                <h3 className="text-[12px] font-bold uppercase tracking-wider text-[#7a8590] mb-2">Encerradas recentemente</h3>
+                <h3 className="text-[12px] font-bold uppercase tracking-wider text-[#5f6b76] mb-2">Encerradas recentemente</h3>
                 <ul className="rounded-2xl border border-[#e4e8ed] divide-y divide-[#f0f2f5] bg-white">
-                  {r.dados.encerradas.map((v: any, i: number) => <li key={i} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-[13.5px]"><span className="text-[#58636e]">{v.titulo}{v.area ? ` · ${v.area}` : ''}</span><span className="text-[12px] text-[#7a8590]">Inscrições encerradas</span></li>)}
+                  {r.dados.encerradas.map((v: any, i: number) => <li key={i} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-[13.5px]"><span className="text-[#58636e]">{v.titulo}{v.area ? ` · ${v.area}` : ''}</span><span className="text-[12px] text-[#5f6b76]">Inscrições encerradas</span></li>)}
                 </ul>
               </div>
             )}

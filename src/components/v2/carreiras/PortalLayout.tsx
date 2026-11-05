@@ -1,11 +1,12 @@
 /* Layout do portal público de carreiras: independente da área administrativa (sem menu, sem login).
    Cabeçalho enxuto (vagas + acompanhar candidatura). O conteúdo institucional vive na própria página da vaga. */
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button, Field, Icon, Logo } from '@/components/ui'
 import { Modal } from '@/components/Modal'
 import { CONFIG, MODO_API } from '@/data/config'
 import { useApi } from '@/data/v2/api'
+import { aplicarTema, useTema } from '@/lib/tema'
 import { PORTAL_PADRAO, ROTULO_REDE, type PortalConfig, type RedeSocial } from '@/domain/v2/portal'
 
 export function useMeta(titulo: string, descricao?: string) {
@@ -79,6 +80,12 @@ export function PortalLayout({ children, largura = 'max-w-6xl' }: { children: Re
   const [codigo, setCodigo] = useState(false)
   const { pathname } = useLocation()
   const naCentral = pathname === '/carreiras'
+  // Candidatos com o sistema em modo escuro viam texto claro sobre fundo branco: o portal é sempre claro.
+  // Ao sair (ex.: voltar para a área interna), reaplica a preferência salva.
+  useLayoutEffect(() => {
+    document.documentElement.classList.remove('dark')
+    return () => aplicarTema(useTema.getState().tema)
+  }, [])
   return (
     <div className="min-h-screen flex flex-col bg-white text-[#122029]">
       <a href="#portal-conteudo" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[400] focus:bg-white focus:px-4 focus:py-2 focus:rounded-xl focus:shadow-md">Pular para o conteúdo</a>

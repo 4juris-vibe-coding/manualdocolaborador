@@ -103,7 +103,7 @@ function ArtigoDetalhe({ artigo, onBack }: { artigo: Artigo; onBack: () => void 
         {/* Contato */}
         <Card className="p-5 flex items-center justify-between gap-4 flex-wrap bg-surface-2">
           <p className="text-[13.5px] text-muted">Não encontrou a resposta que precisava?</p>
-          <a href="mailto:rh@4juris.com.br"><Button variant="ink" icon="Mail" size="sm">Falar com o RH</Button></a>
+          <a href="mailto:recursoshumanos@4jurismarketing.com.br"><Button variant="ink" icon="Mail" size="sm">Falar com o RH</Button></a>
         </Card>
       </div>
     </div>

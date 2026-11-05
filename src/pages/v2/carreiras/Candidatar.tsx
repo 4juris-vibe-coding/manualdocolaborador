@@ -16,6 +16,39 @@ const EXT = /\.(pdf|docx?|odt)$/i
 interface Rascunho { nome: string; email: string; telefone: string; cidade: string; uf: string; linkedin: string; pretensao: string; disponibilidade: string; respostas: Record<string, string>; bancoTalentos: boolean }
 const VAZIO: Rascunho = { nome: '', email: '', telefone: '', cidade: '', uf: '', linkedin: '', pretensao: '', disponibilidade: '', respostas: {}, bancoTalentos: false }
 
+const tamanho = (b: number) => (b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1024 / 1024).toFixed(1).replace('.', ',')} MB`)
+
+/** Área de envio do currículo: clicar ou arrastar o arquivo; mostra nome, tamanho e permite trocar/remover. */
+function EnvioCurriculo({ arquivo, erro, onEscolher, attrs }: { arquivo: File | null; erro?: string; onEscolher: (a: File | null) => void; attrs: Record<string, unknown> }) {
+  const input = useRef<HTMLInputElement>(null)
+  const [sobre, setSobre] = useState(false)
+  const pdf = arquivo && /\.pdf$/i.test(arquivo.name)
+  const soltar = (e: React.DragEvent) => { e.preventDefault(); setSobre(false); const a = e.dataTransfer.files?.[0]; if (a) onEscolher(a) }
+  const campo = <input ref={input} id="cand-cv" type="file" accept=".pdf,.doc,.docx,.odt" className="sr-only" onChange={(e) => { onEscolher(e.target.files?.[0] ?? null); e.target.value = '' }} {...attrs} />
+  if (arquivo) return (
+    <div className={`flex items-center gap-3 rounded-2xl border p-3.5 sm:p-4 bg-[#f5fbf8] ${erro ? 'border-danger' : 'border-[#bfe6d5]'}`}>
+      {campo}
+      <span className={`grid place-items-center h-11 w-11 rounded-xl shrink-0 text-white text-[10.5px] font-extrabold tracking-wide ${pdf ? 'bg-[#c02e26]' : 'bg-brand'}`} aria-hidden>{(arquivo.name.split('.').pop() ?? '').toUpperCase().slice(0, 4)}</span>
+      <div className="min-w-0 flex-1">
+        <div className="text-[14px] font-semibold text-[#122029] truncate" title={arquivo.name}>{arquivo.name}</div>
+        <div className="text-[12.5px] text-[#3d4b56] flex items-center gap-1.5"><Icon name="CheckCircle2" className="h-3.5 w-3.5 text-[#0b7a52]" />{tamanho(arquivo.size)} · pronto para enviar</div>
+      </div>
+      <button type="button" onClick={() => input.current?.click()} className="h-9 px-3 rounded-lg text-[13px] font-semibold text-brand hover:bg-[#e7ecfd]">Trocar</button>
+      <button type="button" onClick={() => onEscolher(null)} aria-label="Remover arquivo" className="grid place-items-center h-9 w-9 rounded-lg text-[#3d4b56] hover:bg-[#fbe6e5] hover:text-[#c02e26]"><Icon name="X" className="h-4 w-4" /></button>
+    </div>
+  )
+  return (
+    <label htmlFor="cand-cv" onDragOver={(e) => { e.preventDefault(); setSobre(true) }} onDragLeave={() => setSobre(false)} onDrop={soltar}
+      className={`group flex flex-col items-center justify-center text-center gap-2 rounded-2xl border-2 border-dashed px-5 py-8 cursor-pointer transition focus-within:ring-2 focus-within:ring-brand focus-within:ring-offset-2
+        ${sobre ? 'border-brand bg-[#eef2ff]' : erro ? 'border-danger bg-[#fdf3f2]' : 'border-[#c9d5fb] bg-[#f7f9ff] hover:border-brand hover:bg-[#f2f5fe]'}`}>
+      {campo}
+      <span className="grid place-items-center h-12 w-12 rounded-2xl bg-white text-brand shadow-sm border border-[#dbe3fb] transition group-hover:scale-105" aria-hidden><Icon name="UploadCloud" className="h-6 w-6" /></span>
+      <span className="text-[14.5px] font-bold text-[#122029]">{sobre ? 'Solte o arquivo aqui' : <>Arraste o seu currículo ou <span className="text-brand underline underline-offset-2">escolha um arquivo</span></>}</span>
+      <span className="text-[12.5px] text-[#3d4b56]">PDF, DOC, DOCX ou ODT · até 3 MB</span>
+    </label>
+  )
+}
+
 export default function Candidatar() {
   const { slug = '' } = useParams()
   const [sp] = useSearchParams()
@@ -129,10 +162,11 @@ export default function Candidatar() {
                   <Field label="Pretensão salarial (opcional, R$)" erro={erros.pretensao} htmlFor="cand-pre"><input id="cand-pre" type="number" min={0} inputMode="numeric" className={cls('pretensao')} value={f.pretensao} onChange={(e) => set('pretensao', e.target.value)} {...ar('pretensao')} /></Field>
                   <Field label="Disponibilidade para início (opcional)" htmlFor="cand-disp"><input id="cand-disp" className="input" placeholder="Ex.: imediata, 30 dias" value={f.disponibilidade} onChange={(e) => set('disponibilidade', e.target.value)} /></Field>
                 </div>
-                <Field label="Currículo (PDF, DOC, DOCX ou ODT — até 3 MB)" required erro={erros.curriculo} htmlFor="cand-cv">
-                  <input id="cand-cv" type="file" accept=".pdf,.doc,.docx,.odt" className="block w-full text-[13px]" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} {...ar('curriculo')} />
-                  {arquivo && <p className="text-[12px] text-muted mt-1">Selecionado: {arquivo.name}</p>}
-                </Field>
+                <div className="mt-1">
+                  <div className="label">Currículo <span className="text-danger">*</span></div>
+                  <EnvioCurriculo arquivo={arquivo} erro={erros.curriculo} onEscolher={(a) => { setArquivo(a); setErros(({ curriculo: _, ...x }) => x) }} attrs={ar('curriculo')} />
+                  {erros.curriculo && <p id="curriculo-erro" role="alert" className="text-[11.5px] text-danger mt-1.5 font-medium">{erros.curriculo}</p>}
+                </div>
               </Card>
 
               {(v.perguntas ?? []).length > 0 && (

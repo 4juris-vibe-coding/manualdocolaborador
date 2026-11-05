@@ -550,7 +550,7 @@ export function seed(hoje = hojeISO()): DB {
     respostasAvaliacao, avaliacoesInicio, classificacoesGrupo, feedbacks, apresentacoes, sugestoes,
     config: {
       disponibilidade: POLITICA_PADRAO, gamificacao: CONFIG_GAMIFICACAO_PADRAO, financeiro: { diaEnvioNF: 22, diaPagamento: 25 },
-      geral: { nomeEmpresa: '4JURIS', razaoSocialTomador: '4JURIS MARKETING LTDA', cnpjTomador: '46.937.316/0001-05', emailRH: 'rh@4juris.com.br', emailFinanceiro: 'financeiro@4juris.com.br' },
+      geral: { nomeEmpresa: '4JURIS', razaoSocialTomador: '4JURIS MARKETING LTDA', cnpjTomador: '46.937.316/0001-05', emailRH: 'recursoshumanos@4jurismarketing.com.br', emailFinanceiro: 'financeiro@4juris.com.br' },
       cultura: CULTURA_PADRAO,
       avaliacaoInicio: CONFIG_INICIO_PADRAO,
     },

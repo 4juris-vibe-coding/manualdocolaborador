@@ -73,7 +73,7 @@ const citacao: SlideModelo = { id: 'citacao', nome: 'Citação', layout: 'citaca
   g('citacao', 'Citação', 'Uma frase que inspira o time.', { max: 200 }), t('autor', 'Quem disse', 'Nome · cargo', { max: 60 }),
 ] }
 const encerramento: SlideModelo = { id: 'encerramento', nome: 'Encerramento', layout: 'encerramento', campos: [
-  t('titulo', 'Título', 'Obrigado!', { max: 40 }), t('mensagem', 'Mensagem', 'Dúvidas, ideias e sugestões são bem-vindas.', { max: 140 }), t('contato', 'Contato', 'rh@4juris.com.br', { max: 80 }),
+  t('titulo', 'Título', 'Obrigado!', { max: 40 }), t('mensagem', 'Mensagem', 'Dúvidas, ideias e sugestões são bem-vindas.', { max: 140 }), t('contato', 'Contato', 'recursoshumanos@4jurismarketing.com.br', { max: 80 }),
 ] }
 
 const institucional: ModeloApresentacao = {

@@ -32,7 +32,7 @@ function Item({ icone, rotulo, valor }: { icone: string; rotulo: string; valor?:
   return (
     <div className="flex gap-3 py-2.5">
       <span className="grid place-items-center h-8 w-8 rounded-lg bg-[#f2f5fe] text-brand shrink-0"><Icon name={icone} className="h-4 w-4" /></span>
-      <div className="min-w-0"><div className="text-[11px] font-bold uppercase tracking-wider text-[#7a8590]">{rotulo}</div><div className="text-[13.5px] font-semibold text-[#122029] break-words">{valor}</div></div>
+      <div className="min-w-0"><div className="text-[11px] font-bold uppercase tracking-wider text-[#5f6b76]">{rotulo}</div><div className="text-[13.5px] font-semibold text-[#122029] break-words">{valor}</div></div>
     </div>
   )
 }
@@ -87,11 +87,11 @@ export default function VagaPublica() {
           <div className="mt-5 text-[12px] font-bold uppercase tracking-[0.14em] text-brand">Vaga aberta · 4JURIS{v.area ? ` · ${v.area}` : ''}</div>
           <h1 className="mt-2 text-[30px] sm:text-[44px] leading-[1.05] font-extrabold tracking-tight text-[#122029] max-w-4xl">{v.titulo}</h1>
           <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[14px] text-[#3d4b56]">
-            {local && <span className="inline-flex items-center gap-1.5"><Icon name="MapPin" className="h-4 w-4 text-[#7a8590]" />{local}</span>}
-            <span className="inline-flex items-center gap-1.5"><Icon name="Building2" className="h-4 w-4 text-[#7a8590]" />{ROTULO_MODALIDADE[v.modalidade] ?? v.modalidade}</span>
-            {regime && <span className="inline-flex items-center gap-1.5"><Icon name="BriefcaseBusiness" className="h-4 w-4 text-[#7a8590]" />{regime}</span>}
-            {v.senioridade && <span className="inline-flex items-center gap-1.5"><Icon name="TrendingUp" className="h-4 w-4 text-[#7a8590]" />{v.senioridade}</span>}
-            {v.jornada && v.jornada.length <= 40 && <span className="inline-flex items-center gap-1.5"><Icon name="Clock" className="h-4 w-4 text-[#7a8590]" />{v.jornada}</span>}
+            {local && <span className="inline-flex items-center gap-1.5"><Icon name="MapPin" className="h-4 w-4 text-[#5f6b76]" />{local}</span>}
+            <span className="inline-flex items-center gap-1.5"><Icon name="Building2" className="h-4 w-4 text-[#5f6b76]" />{ROTULO_MODALIDADE[v.modalidade] ?? v.modalidade}</span>
+            {regime && <span className="inline-flex items-center gap-1.5"><Icon name="BriefcaseBusiness" className="h-4 w-4 text-[#5f6b76]" />{regime}</span>}
+            {v.senioridade && <span className="inline-flex items-center gap-1.5"><Icon name="TrendingUp" className="h-4 w-4 text-[#5f6b76]" />{v.senioridade}</span>}
+            {v.jornada && v.jornada.length <= 40 && <span className="inline-flex items-center gap-1.5"><Icon name="Clock" className="h-4 w-4 text-[#5f6b76]" />{v.jornada}</span>}
           </div>
           <div className="mt-6 flex flex-col sm:flex-row sm:flex-wrap gap-2.5">
             <Link to={candidatar} className="sm:w-auto"><Button size="lg" icon="Send" className="w-full sm:w-auto justify-center">Candidatar-me</Button></Link>
@@ -190,7 +190,7 @@ export default function VagaPublica() {
           {/* Resumo fixo */}
           <aside className="order-first lg:order-none lg:sticky lg:top-24 space-y-4">
             <div className="rounded-2xl border border-[#e4e8ed] bg-white p-5 shadow-[0_16px_40px_-28px_rgba(18,32,41,.45)]">
-              <div className="text-[11.5px] font-bold uppercase tracking-[0.14em] text-[#7a8590] mb-1">Resumo da vaga</div>
+              <div className="text-[11.5px] font-bold uppercase tracking-[0.14em] text-[#5f6b76] mb-1">Resumo da vaga</div>
               <div className="divide-y divide-[#f0f2f5]">
                 <Item icone="MapPin" rotulo="Localização" valor={local} />
                 <Item icone="Building2" rotulo="Modelo de trabalho" valor={ROTULO_MODALIDADE[v.modalidade] ?? v.modalidade} />

@@ -12,7 +12,7 @@ export const CONFIG = {
   fonteDados: (fonte === 'api' ? 'api' : 'demo') as FonteDados,
   apiUrl: (import.meta.env.VITE_API_URL ?? '') as string,
   nomeEmpresa: (import.meta.env.VITE_NOME_EMPRESA ?? '4JURIS') as string,
-  emailRH: (import.meta.env.VITE_EMAIL_RH ?? 'rh@4juris.com.br') as string,
+  emailRH: (import.meta.env.VITE_EMAIL_RH ?? 'recursoshumanos@4jurismarketing.com.br') as string,
 }
 
 export const MODO_DEMO = CONFIG.fonteDados === 'demo'

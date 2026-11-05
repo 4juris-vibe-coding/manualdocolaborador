@@ -207,7 +207,7 @@ export default function Manual() {
             <p className="text-[13.5px] text-muted">Ficou com alguma dúvida sobre o manual?</p>
             <div className="flex gap-2">
               <Badge tone="brand" dot>Atualizado · jul/2026</Badge>
-              <a href="mailto:rh@4juris.com.br" className="text-[13px] font-semibold text-brand hover:underline flex items-center gap-1.5">
+              <a href="mailto:recursoshumanos@4jurismarketing.com.br" className="text-[13px] font-semibold text-brand hover:underline flex items-center gap-1.5">
                 <Icon name="Mail" className="h-4 w-4" /> Falar com o RH
               </a>
             </div>

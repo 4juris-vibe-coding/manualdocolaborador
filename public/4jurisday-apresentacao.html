@@ -557,7 +557,7 @@ const LAYOUTS = {
   }),
   encerramento: L('Encerramento', 'Agradecimento e contatos', {
     bg: '#F8F9F9', deco: { t: 'nenhum', p: 'dir' }, align: 'esq', semRodape: true,
-    f: { titulo: 'Obrigado!', c1t: 'Contato', c1d: 'rh@4juris.com.br', c2t: 'Próximo encontro', c2d: 'Data e local', vert: '4JURIS' },
+    f: { titulo: 'Obrigado!', c1t: 'Contato', c1d: 'recursoshumanos@4jurismarketing.com.br', c2t: 'Próximo encontro', c2d: 'Data e local', vert: '4JURIS' },
     render: (s, c) => `<div class="content mid" style="padding-right:560px">${ed(c, s, 'titulo', 'Título', 'h-xl')}<div class="ct"><div>${ed(c, s, 'c1t', 'Rótulo', '', 'b')}${ed(c, s, 'c1d', 'Detalhe', '', 'div')}</div><div>${ed(c, s, 'c2t', 'Rótulo', '', 'b')}${ed(c, s, 'c2d', 'Detalhe', '', 'div')}</div></div></div><div class="vert">${ed(c, s, 'vert', 'MARCA', '')}</div>`,
   }),
 };

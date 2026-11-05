@@ -29,11 +29,16 @@ export interface Conteudo {
   /** Observações em letra menor, abaixo do botão. */
   notas: string[]
   portal: string
+  /** Linha abaixo de "4JURIS" no cabeçalho. Padrão: "Portal do Colaborador". */
+  marca?: string
+  /** Rodapé: e-mails do processo seletivo aceitam resposta (reply-to no RH). */
+  aceitaResposta?: boolean
 }
 
 /** Moldura comum: cabeçalho azul com a marca, cartão branco, botão e rodapé escuro. */
 export function layoutEmail(c: Conteudo): string {
-  const p = (html: string) => `<p style="margin:0 0 16px;font-family:${FONTE};font-size:15px;line-height:1.65;color:${TINTA}">${html}</p>`
+  // Blocos que já são tabela (botões gerados a partir de links) não vão dentro de <p>.
+  const p = (html: string) => html.startsWith('<table') ? html : `<p style="margin:0 0 16px;font-family:${FONTE};font-size:15px;line-height:1.65;color:${TINTA}">${html}</p>`
   const nota = (html: string) => `<p style="margin:0 0 10px;font-family:${FONTE};font-size:13px;line-height:1.6;color:${SUAVE}">${html}</p>`
   const rh = emailRH()
   const botao = c.botao ? `
@@ -54,7 +59,7 @@ export function layoutEmail(c: Conteudo): string {
           <td style="padding-right:14px;width:44px"><img src="${c.portal}/email/logo-4juris.png" width="44" height="44" alt="4JURIS" style="display:block;border:0;border-radius:12px"></td>
           <td style="font-family:${FONTE};color:#ffffff">
             <div style="font-size:19px;font-weight:800;letter-spacing:.4px;line-height:1.1">4JURIS</div>
-            <div style="font-size:12px;color:#c9d5fb;line-height:1.5;letter-spacing:.2px">Portal do Colaborador</div>
+            <div style="font-size:12px;color:#c9d5fb;line-height:1.5;letter-spacing:.2px">${esc(c.marca ?? 'Portal do Colaborador')}</div>
           </td>
         </tr></table>
       </td></tr>
@@ -71,7 +76,7 @@ export function layoutEmail(c: Conteudo): string {
       </td></tr>
       <tr><td align="center" style="padding:24px 28px 0;font-family:${FONTE};font-size:12px;line-height:1.7;color:${SUAVE}">
         <b style="color:${TINTA}">Dúvidas?</b> Fale com o RH: <a href="mailto:${rh}" style="color:${AZUL};text-decoration:none;font-weight:600">${rh}</a><br>
-        E-mail automático da 4JURIS. Não é preciso responder.
+        ${c.aceitaResposta ? 'Se precisar, é só responder este e-mail: a resposta chega ao nosso time.' : 'E-mail automático da 4JURIS. Não é preciso responder.'}
       </td></tr>
       <tr><td align="center" style="padding:14px 28px 0;font-family:${FONTE};font-size:11px;color:#8a95a1;letter-spacing:.3px">&copy; 4JURIS · Todos os direitos reservados</td></tr>
     </table>
@@ -80,11 +85,27 @@ export function layoutEmail(c: Conteudo): string {
 </body></html>`
 }
 
-/** Converte uma mensagem em texto simples (parágrafos separados por linha em branco; links viram links) em e-mail na moldura da marca. */
-export function emailDeTexto(d: { assunto: string; texto: string; portal: string; etiqueta?: string }): string {
+/** Texto do botão para um link que aparece sozinho num parágrafo. */
+const textoDoBotao = (url: string) =>
+  /\/carreiras\/acompanhar/.test(url) ? 'Acompanhar minha candidatura'
+    : /\/carreiras\//.test(url) ? 'Ver a vaga'
+      : /\/(pesquisas?|responder)\b/.test(url) ? 'Responder agora'
+        : 'Abrir link'
+
+/** Converte uma mensagem em texto simples (parágrafos separados por linha em branco; links viram links) em e-mail na moldura da marca.
+ *  Um link na última linha de um parágrafo vira botão, em vez de um endereço longo no meio do texto. */
+export function emailDeTexto(d: { assunto: string; texto: string; portal: string; etiqueta?: string; marca?: string; aceitaResposta?: boolean }): string {
   const linkar = (t: string) => esc(t).replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" style="color:${AZUL};word-break:break-all">${u}</a>`).replace(/\n/g, '<br>')
-  const blocos = d.texto.trim().split(/\n{2,}/).filter(Boolean)
-  return layoutEmail({ previa: d.texto.replace(/\s+/g, ' ').trim().slice(0, 110), titulo: d.assunto, etiqueta: d.etiqueta, paragrafos: blocos.map(linkar), notas: [], portal: d.portal })
+  const botao = (u: string) => `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:2px 0 22px"><tr><td bgcolor="${AZUL}" style="border-radius:12px;background:${AZUL}"><a href="${esc(u)}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:${FONTE};font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px">${textoDoBotao(u)} &rarr;</a></td></tr></table>`
+  const URL_SO = /^https?:\/\/\S+$/
+  const blocos = d.texto.trim().split(/\n{2,}/).filter(Boolean).flatMap((b) => {
+    const linhas = b.trim().split('\n')
+    const ultima = linhas[linhas.length - 1].trim()
+    if (!URL_SO.test(ultima)) return [linkar(b)]
+    const antes = linhas.slice(0, -1).join('\n').trim()
+    return [...(antes ? [linkar(antes)] : []), botao(ultima)]
+  })
+  return layoutEmail({ previa: d.texto.replace(/\s+/g, ' ').trim().slice(0, 110), titulo: d.assunto, etiqueta: d.etiqueta, paragrafos: blocos, notas: [], portal: d.portal, marca: d.marca, aceitaResposta: d.aceitaResposta })
 }
 
 export const emailRH = () => process.env.EMAIL_RH || 'recursoshumanos@4jurismarketing.com.br'

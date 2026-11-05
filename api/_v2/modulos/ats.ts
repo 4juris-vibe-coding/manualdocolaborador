@@ -935,7 +935,7 @@ export const rotas: Rota[] = [
       if (!m) throw naoEncontrado('Mensagem não encontrada.')
       if (m.status === 'enviada') throw conflito('Esta mensagem já foi enviada.')
       const { enviarEmail } = await import('../email.js')
-      const res = await enviarEmail(m.email, m.assunto, m.corpo)
+      const res = await enviarEmail(m.email, m.assunto, m.corpo, { contexto: 'carreiras' })
       await db.query('update rec_comunicacoes set status = $2, erro = $3, enviada_em = case when $2 = $4 then now() else null end where id = $1', [m.id, res.status, res.erro ?? null, 'enviada'])
       await auditar(db, usuario.colaboradorId, 'comunicacao', m.id, 'reenvio', { status: res.status })
       return ok(res)

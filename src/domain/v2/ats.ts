@@ -168,6 +168,10 @@ export function mediaPonderada(notas: Record<string, number>, criterios?: Criter
 }
 
 /* ---------- modelos de mensagem ---------- */
+/** Textos padrão antigos: trocados pelo atual só se o RH nunca editou o modelo. */
+export const TEMPLATES_SUBSTITUIDOS: { chave: string; corpo: string }[] = [
+  { chave: 'atualizacao_etapa', corpo: 'Olá, {{nome}}!\n\nA sua candidatura à vaga "{{vaga}}" avançou no processo seletivo. Em breve entraremos em contato com os próximos passos.\n\nEquipe {{empresa}}' },
+]
 export const TEMPLATES_PADRAO: { chave: string; nome: string; assunto: string; corpo: string }[] = [
   { chave: 'confirmacao_candidatura', nome: 'Confirmação de candidatura', assunto: 'Recebemos a sua candidatura — {{vaga}}',
     corpo: 'Olá, {{nome}}!\n\nRecebemos a sua candidatura para a vaga "{{vaga}}". Vamos analisar o seu perfil e retornaremos pelos seus contatos.\n\nVocê pode acompanhar o andamento em:\n{{link_acompanhamento}}\n\nObrigado pelo interesse!\nEquipe {{empresa}}' },
@@ -176,7 +180,7 @@ export const TEMPLATES_PADRAO: { chave: string; nome: string; assunto: string; c
   { chave: 'solicitacao_informacoes', nome: 'Solicitação de informações', assunto: 'Precisamos de uma informação — {{vaga}}',
     corpo: 'Olá, {{nome}}!\n\nPara seguirmos com a sua candidatura à vaga "{{vaga}}", precisamos que nos envie:\n\n{{informacao_solicitada}}\n\nEquipe {{empresa}}' },
   { chave: 'atualizacao_etapa', nome: 'Atualização de etapa', assunto: 'Atualização da sua candidatura — {{vaga}}',
-    corpo: 'Olá, {{nome}}!\n\nA sua candidatura à vaga "{{vaga}}" avançou no processo seletivo. Em breve entraremos em contato com os próximos passos.\n\nEquipe {{empresa}}' },
+    corpo: 'Olá, {{nome}}!\n\nBoas notícias: a sua candidatura à vaga "{{vaga}}" avançou para a etapa {{etapa}}.\n\nEm breve entraremos em contato com os próximos passos. Você também pode acompanhar o processo com o código que recebeu ao se candidatar:\n{{link_acompanhamento}}\n\nEquipe {{empresa}}' },
   { chave: 'envio_proposta', nome: 'Envio de proposta', assunto: 'Proposta — {{vaga}}',
     corpo: 'Olá, {{nome}}!\n\nÉ com satisfação que enviamos a proposta para a vaga "{{vaga}}". Os detalhes serão compartilhados por um(a) recrutador(a) da nossa equipe.\n\nEquipe {{empresa}}' },
   { chave: 'encerramento', nome: 'Comunicação de encerramento', assunto: 'Sobre a sua candidatura — {{vaga}}',
@@ -194,7 +198,7 @@ export const PRIVACIDADE_PADRAO = {
     'Você pode solicitar acesso, correção, anonimização ou exclusão dos dados a qualquer momento, pelo canal indicado abaixo.',
   finalidade: 'processo_seletivo',
   baseLegal: 'execucao_pre_contratual',
-  contato: 'rh@4juris.com.br',
+  contato: 'recursoshumanos@4jurismarketing.com.br',
   retencaoMeses: 12,
   aviso: 'Texto inicial de referência. A base legal, a finalidade e o prazo de retenção precisam ser validados pelo jurídico da empresa antes do uso em produção.',
 }

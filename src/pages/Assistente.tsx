@@ -40,7 +40,7 @@ function responder(pergunta: string, ctx: { nome: string }): string {
     return `Os **pontos** vêm de ações de participação: presença em eventos (registrada pela organização), reconhecer e ser reconhecido por colegas, concluir conteúdos, responder pesquisas, desafios opcionais e iniciativas voluntárias. Cada ação pontua uma vez, tudo fica no seu histórico em *Minha jornada*, e pontos **não** têm relação com pagamentos ou avaliação profissional.`
   }
   if (m('senha', 'acesso', 'login', 'entrar')) {
-    return `Para questões de **acesso e senha**, fale com o RH em **rh@4juris.com.br**. O administrador pode redefinir sua senha pelo Painel Administrativo.`
+    return `Para questões de **acesso e senha**, fale com o RH em **recursoshumanos@4jurismarketing.com.br**. O administrador pode redefinir sua senha pelo Painel Administrativo.`
   }
   if (m('setor', 'liderança', 'lideranca', 'gestor')) {
     return `Cada pessoa está ligada a uma **área**, que pode ter uma ou mais **lideranças** responsáveis pela coordenação dos projetos. Algumas seções (como reembolsos) podem ser restritas às lideranças, conforme a configuração da área feita pelo RH.`
@@ -48,7 +48,7 @@ function responder(pergunta: string, ctx: { nome: string }): string {
   if (m('oi', 'olá', 'ola', 'bom dia', 'boa tarde', 'boa noite', 'tudo bem')) {
     return `Olá, ${ctx.nome}! 👋 Sou o assistente da plataforma 4JURIS. Posso te ajudar com notas fiscais, reembolsos, disponibilidade, parcerias, pagamentos e mais. Sobre o que você quer saber?`
   }
-  return `Boa pergunta, ${ctx.nome}! Ainda estou aprendendo sobre isso. Posso ajudar com **notas fiscais, reembolsos, disponibilidade, pagamentos, parcerias e reconhecimento**. Para temas mais específicos, fale com o RH em **rh@4juris.com.br**.`
+  return `Boa pergunta, ${ctx.nome}! Ainda estou aprendendo sobre isso. Posso ajudar com **notas fiscais, reembolsos, disponibilidade, pagamentos, parcerias e reconhecimento**. Para temas mais específicos, fale com o RH em **recursoshumanos@4jurismarketing.com.br**.`
 }
 
 /** Renderiza *negrito* simples do texto do assistente. */
