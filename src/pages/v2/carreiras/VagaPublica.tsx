@@ -183,6 +183,7 @@ export default function VagaPublica() {
                 />
               </div>
               <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(enderecoMapa)}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-[13.5px] font-bold text-brand hover:underline"><Icon name="Navigation" className="h-4 w-4" />Traçar rota no Google Maps</a>
+              <a href="https://www.instagram.com/somos4juris/" target="_blank" rel="noopener noreferrer" className="mt-3 sm:ml-6 flex sm:inline-flex items-center gap-1.5 text-[13.5px] font-bold text-brand hover:underline"><Icon name="Instagram" className="h-4 w-4" />Siga @somos4juris no Instagram</a>
             </section>
           </article>
 
