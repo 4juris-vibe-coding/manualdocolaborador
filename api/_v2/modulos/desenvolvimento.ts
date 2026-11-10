@@ -5,7 +5,7 @@
    Quem vê o quê (decidido AQUI, nunca no cliente):
    - Formulário: só o próprio respondente abre, salva e envia. Enviado
      não muda (nem pelo RH, nem pela liderança).
-   - Ciclo: RH (dsv:gerenciar), a pessoa avaliada e a liderança
+   - Ciclo: RH/diretoria (dsv:gerenciar), a pessoa avaliada e a liderança
      responsável (avaliador_id). Outras pessoas recebem 404.
    - Autoavaliação: a liderança só vê depois de enviar a própria.
    - Avaliação da liderança: a pessoa vê depois da devolutiva (config).
@@ -77,7 +77,7 @@ const nomeDe = (org: Org, id: string | null | undefined) => (id ? org.porId.get(
 
 /** Quem administra o desenvolvimento: RH, administração e a função adicional "gestão de desenvolvimento". */
 async function idsGestoresDsv(ex: Executor): Promise<string[]> {
-  return [...new Set([...(await idsComPapel(ex, 'rh', 'admin')), ...(await idsComFuncao(ex, 'gestor_desenvolvimento'))])]
+  return [...new Set([...(await idsComPapel(ex, 'rh', 'admin', 'diretoria')), ...(await idsComFuncao(ex, 'gestor_desenvolvimento'))])]
 }
 
 /* ---------- helpers de ciclo ---------- */

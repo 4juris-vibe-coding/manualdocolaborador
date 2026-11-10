@@ -196,8 +196,8 @@ export function ListaAcoes({ acoes, hoje, podeAtualizar, podeCancelar, onAtualiz
 
 /** Quem vê cada formulário (transparência antes de responder). */
 export const QUEM_VE: Record<string, string> = {
-  acomp_colaborador: 'Suas respostas são vistas por você, pela sua liderança direta e pelo RH. Elas orientam a conversa de acompanhamento — não são uma nota nem uma classificação.',
-  acomp_lideranca: 'Sua percepção é vista por você e pelo RH. A pessoa acompanhada vê o registro do acompanhamento que vocês combinarem na conversa.',
-  autoavaliacao: 'Sua autoavaliação é vista por você, pelo RH e pela sua liderança direta — ela só tem acesso depois de enviar a avaliação dela, para não ser influenciada.',
-  lider_avalia: 'Sua avaliação é vista por você e pelo RH. A pessoa avaliada tem acesso depois da devolutiva. Justifique com exemplos e situações concretas.',
+  acomp_colaborador: 'Suas respostas são vistas por você, pela sua liderança direta, pelo RH e pela diretoria. Elas orientam a conversa de acompanhamento — não são uma nota nem uma classificação.',
+  acomp_lideranca: 'Sua percepção é vista por você, pelo RH e pela diretoria. A pessoa acompanhada vê o registro do acompanhamento que vocês combinarem na conversa.',
+  autoavaliacao: 'Sua autoavaliação é vista por você, pelo RH, pela diretoria e pela sua liderança direta — ela só tem acesso depois de enviar a avaliação dela, para não ser influenciada.',
+  lider_avalia: 'Sua avaliação é vista por você, pelo RH e pela diretoria. A pessoa avaliada tem acesso depois da devolutiva. Justifique com exemplos e situações concretas.',
 }

@@ -123,8 +123,10 @@ export const MATRIZ: Record<Papel, Capacidade[]> = {
   financeiro: ['portal:usar', 'org:ver', ...FINANCEIRO],
   rh: ['portal:usar', ...RH],
   // Diretoria: visão executiva (indicadores agregados), sem editar cadastros.
+  // No Ciclo de desenvolvimento (AVD) tem o mesmo acesso do RH, inclusive o feedback confidencial da equipe sobre lideranças.
   diretoria: ['portal:usar', 'lideranca:painel', 'lideranca:ver_disponibilidade_equipe', 'rh:painel', 'relatorios:exportar', 'comunicados:publicar', 'eventos:gerenciar',
-    'vagas:ver', 'ats:ver', 'pesq:resultados', 'cargos:ver', 'org:ver', 'analytics:ver', 'fin:ver'],
+    'vagas:ver', 'ats:ver', 'pesq:resultados', 'cargos:ver', 'org:ver', 'analytics:ver', 'fin:ver',
+    'dsv:gerenciar', 'dsv:confidencial'],
   admin: ['portal:usar', ...RH, 'admin:usuarios', 'admin:auditoria', 'admin:privacidade', 'admin:dados_demo', 'config:geral', 'fin:autorizar', 'fin:config'],
 }
 
@@ -142,7 +144,7 @@ export const PAPEL_DESC: Record<Papel, string> = {
   gestor: 'Coordena áreas sob sua responsabilidade: disponibilidade da equipe, iniciativas e eventos da área.',
   financeiro: 'Acompanha as notas fiscais de todos (kanban), dispara cobranças, confere, aprova, autoriza e registra pagamentos.',
   rh: 'Administra pessoas, contratos, documentos, notas fiscais, integração, eventos, pesquisas e gamificação.',
-  diretoria: 'Consulta indicadores agregados e publica comunicados; não edita cadastros.',
+  diretoria: 'Consulta indicadores agregados, publica comunicados e conduz o ciclo de desenvolvimento (AVD); não edita cadastros.',
   admin: 'Tudo do RH, mais usuários e papéis, auditoria, privacidade e dados de demonstração.',
 }
 

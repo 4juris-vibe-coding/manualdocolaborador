@@ -182,6 +182,13 @@ describe('feedback da equipe sobre a liderança (confidencial)', () => {
     expect(JSON.stringify(depois.json)).not.toMatch(/texto de col/)
     // Superior (quem conduz a devolutiva da liderança) também não vê comentários.
     expect(JSON.stringify((await GET(m, `desenvolvimento/ciclos/${ciclo.id}`, c.dir1)).json)).not.toMatch(/texto de col/)
+
+    // Diretoria: mesmo acesso do RH, inclusive o feedback confidencial (com registro de acesso).
+    expect((await GET(m, 'desenvolvimento/painel', c.dir1)).status).toBe(200)
+    const dir = await GET(m, `desenvolvimento/ciclos/${ciclo.id}/feedback-equipe`, c.dir1)
+    expect(dir.status).toBe(200)
+    expect(dir.json.comentarios[0].respostas).toHaveLength(3)
+    expect((await q("select count(*)::int n from aud_eventos where entidade = 'dsv_ciclo' and acao = 'feedback_equipe_visualizado' and colaborador_id = 'dir1'"))[0].n).toBe(1)
   })
 })
 

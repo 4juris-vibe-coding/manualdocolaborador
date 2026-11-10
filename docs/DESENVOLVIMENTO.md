@@ -93,16 +93,16 @@ A coleta fecha quando:
 | Avaliação feita pela liderança | A liderança e o RH. A pessoa avaliada vê **depois da devolutiva** (configurável) |
 | Feedback da equipe sobre a liderança | Ver seção 5 |
 | Ações do PDI | Liderança e RH editam. A pessoa atualiza o andamento e o resultado das ações sob sua responsabilidade (não cancela) |
-| Painel, listas, exportação, configuração | `dsv:gerenciar`: RH, administração ou a função adicional **Gestão de desenvolvimento** |
+| Painel, listas, exportação, configuração | `dsv:gerenciar`: RH, administração, diretoria ou a função adicional **Gestão de desenvolvimento** |
 
-Capacidades novas: `dsv:gerenciar` e `dsv:confidencial` (RH e administração). A função adicional `gestor_desenvolvimento` dá as duas, como autorização expressa. Ela é concedida em *Administração › Funções adicionais*. A diretoria não recebe acesso ao módulo (minimização).
+Capacidades novas: `dsv:gerenciar` e `dsv:confidencial` (RH, administração e diretoria). A diretoria tem o mesmo acesso do RH no módulo, inclusive o feedback confidencial da equipe sobre lideranças (cada leitura fica registrada), e recebe as mesmas notificações de gestão. A função adicional `gestor_desenvolvimento` dá as duas a quem tem outro papel, como autorização expressa. Ela é concedida em *Administração › Funções adicionais*.
 
 ## 5. Feedback da equipe sobre a liderança (confidencial)
 
 - Antes de responder, a pessoa vê **como as respostas são usadas**. O texto não promete anonimato absoluto: em equipe pequena, um comentário pode identificar quem escreveu.
 - A resposta vai para `dsv_respostas_equipe`. Essa tabela **não tem respondente, convite nem hora** (só a data). O formulário guarda apenas "enviado" (com data) e nunca o conteúdo.
 - Abaixo do **mínimo de respostas** (padrão 3, configurável de 2 a 20), nada é exibido a ninguém além da contagem, e não é possível liberar resultados.
-- **RH com `dsv:confidencial`:** vê médias, comentários e exemplos, sem identificação e em ordem embaralhada. **Cada acesso fica registrado** (`feedback_equipe_visualizado`) e aparece em *Acessos a dados sensíveis*.
+- **RH e diretoria (`dsv:confidencial`):** vê médias, comentários e exemplos, sem identificação e em ordem embaralhada. **Cada acesso fica registrado** (`feedback_equipe_visualizado`) e aparece em *Acessos a dados sensíveis*.
 - O RH escreve uma **síntese construtiva** e a **libera**. A partir daí, a liderança avaliada (e quem conduz a devolutiva dela) vê **só médias por critério + síntese**, nunca comentários ou respostas individuais.
 - A exportação CSV do RH não inclui o feedback da equipe.
 

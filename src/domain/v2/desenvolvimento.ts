@@ -678,7 +678,7 @@ export const acaoAtrasada = (a: { status: StatusAcao; prazo: string | null }, ho
 
 /** Texto padrão de transparência mostrado antes do feedback sobre a liderança. */
 export function avisoConfidencialidade(minimo: number): string {
-  return `Suas respostas sobre a liderança são vistas apenas pelo RH e por pessoas expressamente autorizadas, para construir um feedback de desenvolvimento. ` +
+  return `Suas respostas sobre a liderança são vistas apenas pelo RH, pela diretoria e por pessoas expressamente autorizadas, para construir um feedback de desenvolvimento. ` +
     `A liderança nunca vê respostas individuais: recebe médias e uma síntese preparada pelo RH, e só quando houver pelo menos ${minimo} respostas. ` +
     `As respostas não ficam ligadas ao seu nome no banco de dados, mas, em equipes pequenas, o conteúdo de um comentário pode permitir identificar quem escreveu — por isso não prometemos anonimato absoluto. Escreva de forma respeitosa e com exemplos.`
 }
