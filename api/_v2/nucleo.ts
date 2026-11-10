@@ -169,10 +169,12 @@ export async function auditar(ex: Executor, quem: string | null, entidade: strin
 
 export interface NovaNotificacao { destinatarioId: string; tipo: string; titulo: string; corpo?: string; link?: string; chave?: string }
 /** Insere sem duplicar (mesma chave + destinatário). Nunca coloque dados sensíveis em título/corpo. */
-export async function notificar(ex: Executor, n: NovaNotificacao) {
-  await ex.query(
+export async function notificar(ex: Executor, n: NovaNotificacao): Promise<boolean> {
+  const r = await ex.query(
     'insert into ntf_notificacoes (destinatario_id, tipo, titulo, corpo, link, chave) values ($1,$2,$3,$4,$5,$6) on conflict (destinatario_id, chave) do nothing',
     [n.destinatarioId, n.tipo, n.titulo, n.corpo ?? null, n.link ?? null, n.chave ?? randomBytes(8).toString('hex')])
+  // true = notificação nova (sem chave repetida para o mesmo destinatário).
+  return (r.rowCount ?? 0) > 0
 }
 
 /* ---------- organização (fonte da verdade: coleções legadas em JSONB) ---------- */

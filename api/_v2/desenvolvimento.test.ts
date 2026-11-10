@@ -1,6 +1,6 @@
 /* Ciclo de desenvolvimento e AVD: ponta a ponta na API v2 (PGlite com o schema real). */
-import { beforeEach, describe, expect, it } from 'vitest'
-import { cookieDe, criarMundo, semear, ORG_BASE, GET, POST, PUT, PATCH, type Mundo } from './teste/harness'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { cookieDe, criarMundo, semear, ORG_BASE, GET, POST, PUT, PATCH, DEL, type Mundo } from './teste/harness'
 import { sincronizarDesenvolvimento, hojeBR } from './modulos/desenvolvimento'
 import { somarDias } from '../../src/domain/datas'
 import { somarMeses, MODELOS_PADRAO, type ChaveModelo } from '../../src/domain/v2/desenvolvimento'
@@ -183,12 +183,10 @@ describe('feedback da equipe sobre a liderança (confidencial)', () => {
     // Superior (quem conduz a devolutiva da liderança) também não vê comentários.
     expect(JSON.stringify((await GET(m, `desenvolvimento/ciclos/${ciclo.id}`, c.dir1)).json)).not.toMatch(/texto de col/)
 
-    // Diretoria: mesmo acesso do RH, inclusive o feedback confidencial (com registro de acesso).
+    // Diretoria tem o acesso confidencial, mas dir1 conduz a devolutiva de ger1: conflito de interesse, não lê comentários.
     expect((await GET(m, 'desenvolvimento/painel', c.dir1)).status).toBe(200)
-    const dir = await GET(m, `desenvolvimento/ciclos/${ciclo.id}/feedback-equipe`, c.dir1)
-    expect(dir.status).toBe(200)
-    expect(dir.json.comentarios[0].respostas).toHaveLength(3)
-    expect((await q("select count(*)::int n from aud_eventos where entidade = 'dsv_ciclo' and acao = 'feedback_equipe_visualizado' and colaborador_id = 'dir1'"))[0].n).toBe(1)
+    expect((await GET(m, `desenvolvimento/ciclos/${ciclo.id}/feedback-equipe`, c.dir1)).status).toBe(403)
+    expect((await PUT(m, `desenvolvimento/ciclos/${ciclo.id}/sintese`, c.dir1, { texto: 'x' })).status).toBe(403)
   })
 })
 
@@ -358,5 +356,145 @@ describe('atrasos e pendências', () => {
     expect((await q("select modelo_versao from dsv_formularios where ciclo_id = $1 and tipo = 'lider_avalia'", [c3.id]))[0].modelo_versao).toBe(1)
     expect((await PUT(m, 'desenvolvimento/modelos/avd_lider_membro', c.ger1, md)).status).toBe(403)
     expect((await PUT(m, 'desenvolvimento/config', c.rh1, { feedbackLideranca: { minRespostas: 4, minDiasNaEquipe: 30 } })).json.config.feedbackLideranca.minRespostas).toBe(4)
+  })
+})
+
+describe('imparcialidade, resumo da diretoria e e-mail', () => {
+  beforeEach(async () => { await sincronizarDesenvolvimento(m.db) })
+
+  it('quem tem acesso de gestão não administra o próprio ciclo nem vê nada a mais nele', async () => {
+    await m.pg.query("update app_colaboradores set dados = dados || jsonb_build_object('dataEntrada', $1::text, 'responsavelId', 'dir1') where id = 'rh1'", [somarMeses(hoje, -6)])
+    await sincronizarDesenvolvimento(m.db)
+    const [meu] = await ciclosDe('rh1')
+    expect(meu.tipo).toBe('avd')
+    const visto = await GET(m, `desenvolvimento/ciclos/${meu.id}`, c.rh1)
+    expect(visto.json.papel).toMatchObject({ rh: false, avaliado: true })
+    expect(visto.json.permissoes.cancelar).toBe(false)
+    expect((await POST(m, `desenvolvimento/ciclos/${meu.id}/cancelar`, c.rh1, { motivo: 'Teste de cancelamento do próprio ciclo' })).status).toBe(403)
+    expect((await POST(m, `desenvolvimento/ciclos/${meu.id}/suspender`, c.rh1, { motivo: 'Teste de suspensão do próprio ciclo' })).status).toBe(403)
+    expect((await POST(m, `desenvolvimento/ciclos/${meu.id}/avaliador`, c.rh1, { avaliadorId: 'ger2' })).status).toBe(403)
+    // A avaliação da liderança sobre o RH só aparece para ele depois da devolutiva, como para qualquer pessoa.
+    await enviar((await formDe(meu.id, 'lider_avalia')).id, 'dir1', respostas('avd_lider_membro', 4))
+    const depois = await GET(m, `desenvolvimento/ciclos/${meu.id}`, c.rh1)
+    expect(depois.json.formularios.find((f: any) => f.tipo === 'lider_avalia').nota).toBeNull()
+    // Outra pessoa com acesso de gestão (administração) segue podendo agir.
+    expect((await POST(m, `desenvolvimento/ciclos/${meu.id}/suspender`, c.admin1, { motivo: 'Afastamento combinado com a pessoa' })).status).toBe(200)
+  })
+
+  it('a diretoria recebe só o resumo semanal; os avisos operacionais ficam com o RH', async () => {
+    const dir = await q("select chave from ntf_notificacoes where destinatario_id = 'dir1' and tipo = 'desenvolvimento'")
+    expect(dir.filter((n) => n.chave.startsWith('dsv-inicio:'))).toHaveLength(0)
+    expect(dir.filter((n) => n.chave.startsWith('dsv-resumo:'))).toHaveLength(1)
+    expect((await q("select count(*)::int n from ntf_notificacoes where destinatario_id = 'rh1' and chave like 'dsv-inicio:%'"))[0].n).toBeGreaterThan(0)
+    await sincronizarDesenvolvimento(m.db)
+    expect((await q("select count(*)::int n from ntf_notificacoes where destinatario_id = 'dir1' and chave like 'dsv-resumo:%'"))[0].n).toBe(1)
+    const resumo = (await q("select corpo from ntf_notificacoes where destinatario_id = 'dir1' and chave like 'dsv-resumo:%'"))[0]
+    expect(resumo.corpo).toMatch(/ciclos em andamento/)
+  })
+
+  it('avisos novos também vão por e-mail para quem participa (não para o RH), sem repetir; dá para desligar', async () => {
+    await montar()
+    const enviados: { to: string; subject: string }[] = []
+    vi.stubEnv('RESEND_API_KEY', 'teste')
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: any) => { const b = JSON.parse(init.body); enviados.push({ to: b.to[0], subject: b.subject }); return new Response('{}', { status: 200 }) }))
+    try {
+      const r = await sincronizarDesenvolvimento(m.db)
+      expect(r.emails).toBeGreaterThan(0)
+      expect(r.emails).toBe(enviados.length)
+      expect(enviados.some((e) => e.to === 'col3@teste.local' && /autoavalia/i.test(e.subject))).toBe(true)
+      expect(enviados.some((e) => e.to === 'rh1@teste.local')).toBe(false)
+      const antes = enviados.length
+      await sincronizarDesenvolvimento(m.db)
+      expect(enviados.length).toBe(antes) // notificações já existentes não geram novo e-mail
+      // Desligado na configuração: nada sai.
+      await PUT(m, 'desenvolvimento/config', c.rh1, { emailNotificacoes: false })
+      await m.pg.query("update dsv_ciclos set prazo = $1", [somarDias(hoje, -1)])
+      await m.pg.query("update dsv_formularios set prazo = $1 where status in ('pendente','rascunho')", [somarDias(hoje, -1)])
+      expect((await sincronizarDesenvolvimento(m.db)).emails).toBe(0)
+    } finally {
+      vi.unstubAllGlobals()
+      vi.unstubAllEnvs()
+    }
+  })
+})
+
+describe('afastamentos', () => {
+  beforeEach(async () => { await sincronizarDesenvolvimento(m.db) })
+
+  it('suspende os ciclos durante o afastamento e retoma no retorno, com prazo estendido', async () => {
+    const [ciclo] = await ciclosDe('col3')
+    expect(ciclo.etapa).toBe('coleta')
+    const corpo = { inicio: somarDias(hoje, -2), categoria: 'licenca' }
+    expect((await POST(m, 'desenvolvimento/pessoas/col3/afastamentos', c.ger1, corpo)).status).toBe(403)
+    expect((await POST(m, 'desenvolvimento/pessoas/rh1/afastamentos', c.rh1, corpo)).status).toBe(403)
+    const r = await POST(m, 'desenvolvimento/pessoas/col3/afastamentos', c.rh1, corpo)
+    expect(r.status).toBe(201)
+    expect(r.json.suspensos).toBe(1)
+    expect((await ciclosDe('col3'))[0].etapa).toBe('suspensa')
+    expect((await POST(m, 'desenvolvimento/pessoas/col3/afastamentos', c.rh1, { inicio: hoje })).status).toBe(409) // sobreposição
+
+    // Durante o afastamento a pessoa não recebe lembretes.
+    await m.pg.query("update dsv_formularios set prazo = $2 where ciclo_id = $1", [ciclo.id, somarDias(hoje, -1)])
+    await sincronizarDesenvolvimento(m.db)
+    expect((await q("select count(*)::int n from ntf_notificacoes where destinatario_id = 'col3' and chave like 'dsv-atraso:%'"))[0].n).toBe(0)
+
+    // A jornada mostra o afastamento só para quem administra.
+    expect((await GET(m, 'desenvolvimento/pessoas/col3/jornada', c.rh1)).json.afastamentos[0]).toMatchObject({ categoria: 'licenca', emCurso: true })
+    expect((await GET(m, 'desenvolvimento/pessoas/col3/jornada', c.ger1)).json.afastamentos).toBeNull()
+
+    // Retorno registrado: o ciclo volta à etapa em que estava, com prazo de pelo menos 5 dias.
+    const af = (await q("select id from dsv_afastamentos where colaborador_id = 'col3'"))[0]
+    const volta = await PATCH(m, `desenvolvimento/afastamentos/${af.id}`, c.rh1, { fim: somarDias(hoje, -1) })
+    expect(volta.json.retomados).toBe(1)
+    const [depois] = await q('select etapa, prazo::text as prazo, afastamento_id from dsv_ciclos where id = $1', [ciclo.id])
+    expect(depois).toMatchObject({ etapa: 'coleta', afastamento_id: null })
+    expect(depois.prazo >= somarDias(hoje, 5)).toBe(true)
+    expect((await q("select prazo::text as prazo from dsv_formularios where ciclo_id = $1 and status = 'pendente' limit 1", [ciclo.id]))[0].prazo >= somarDias(hoje, 5)).toBe(true)
+    expect((await q("select count(*)::int n from ntf_notificacoes where destinatario_id = 'col3' and chave like 'dsv-retomado:%'"))[0].n).toBe(1)
+
+    // Registro feito por engano: remover retoma na hora.
+    const outro = await POST(m, 'desenvolvimento/pessoas/col4/afastamentos', c.rh1, { inicio: hoje, categoria: 'descanso' })
+    expect((await ciclosDe('col4'))[0].etapa).toBe('suspensa')
+    expect((await DEL(m, `desenvolvimento/afastamentos/${outro.json.id}`, c.rh1)).json.retomados).toBe(1)
+    expect((await ciclosDe('col4'))[0].etapa).toBe('coleta')
+  })
+})
+
+describe('revisão do PDI, calibração e indicadores', () => {
+  beforeEach(async () => { await sincronizarDesenvolvimento(m.db) })
+
+  async function pdiRegistrado(revisaoEm: string) {
+    const [ciclo] = await ciclosDe('col3')
+    const id = ciclo.id
+    await enviar((await formDe(id, 'autoavaliacao')).id, 'col3', respostas('avd_auto_membro', 5))
+    await enviar((await formDe(id, 'lider_avalia')).id, 'ger1', respostas('avd_lider_membro', 3))
+    await PUT(m, `desenvolvimento/ciclos/${id}/devolutiva`, c.ger1, { concluir: true, realizadaEm: hoje, pontosFortes: 'Entregas', aDesenvolver: 'Comunicação', feedback: 'Alinhamentos semanais.' })
+    await POST(m, `desenvolvimento/ciclos/${id}/acoes`, c.ger1, { descricao: 'Treinamento de comunicação', responsavel: 'colaborador', prazo: somarDias(hoje, 60) })
+    expect((await PUT(m, `desenvolvimento/ciclos/${id}/pdi`, c.ger1, { registrar: true, metas: 'Duas apresentações ao cliente', revisaoEm })).status).toBe(200)
+    return id
+  }
+
+  it('lembra a revisão do PDI e registra cada revisão com a próxima data', async () => {
+    const id = await pdiRegistrado(somarDias(hoje, 2))
+    await sincronizarDesenvolvimento(m.db)
+    expect((await q("select count(*)::int n from ntf_notificacoes where chave like 'dsv-revisao:%' and destinatario_id in ('col3','ger1')"))[0].n).toBe(2)
+    expect((await GET(m, `desenvolvimento/ciclos/${id}`, c.ger1)).json.permissoes.revisarPdi).toBe(true)
+    expect((await POST(m, `desenvolvimento/ciclos/${id}/pdi/revisao`, c.col3, { texto: 'Revisão feita pela própria pessoa' })).status).toBe(403)
+    expect((await POST(m, `desenvolvimento/ciclos/${id}/pdi/revisao`, c.ger1, { texto: 'curto' })).status).toBe(400)
+    expect((await POST(m, `desenvolvimento/ciclos/${id}/pdi/revisao`, c.ger1, { texto: 'Metas no caminho; treinamento concluído.', proximaRevisao: hoje })).status).toBe(400)
+    expect((await POST(m, `desenvolvimento/ciclos/${id}/pdi/revisao`, c.ger1, { texto: 'Metas no caminho; treinamento concluído.', proximaRevisao: somarDias(hoje, 60) })).status).toBe(200)
+    const d = await GET(m, `desenvolvimento/ciclos/${id}`, c.col3)
+    expect(d.json.pdi.revisaoEm).toBe(somarDias(hoje, 60))
+    expect(d.json.pdi.revisoes).toEqual([expect.objectContaining({ em: hoje, por: 'Gil Gestor', texto: 'Metas no caminho; treinamento concluído.' })])
+    expect(d.json.permissoes.revisarPdi).toBe(false)
+  })
+
+  it('o painel traz calibração por liderança e por área e indicadores por área', async () => {
+    await pdiRegistrado(somarDias(hoje, 30))
+    const p = await GET(m, 'desenvolvimento/painel', c.rh1)
+    const g = p.json.calibracao.porAvaliador.grupos.find((x: any) => x.nome === 'Gil Gestor')
+    expect(g).toMatchObject({ n: 1, media: 3, mediaAuto: 5, diferenca: -2 })
+    expect(p.json.calibracao.porArea.grupos[0].nome).toBe('Jurídico')
+    expect(p.json.porArea.find((a: any) => a.area === 'Jurídico')).toMatchObject({ total: expect.any(Number), taxaConclusao: expect.any(Number) })
   })
 })

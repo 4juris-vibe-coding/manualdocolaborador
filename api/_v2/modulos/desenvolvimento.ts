@@ -7,6 +7,9 @@
      não muda (nem pelo RH, nem pela liderança).
    - Ciclo: RH/diretoria (dsv:gerenciar), a pessoa avaliada e a liderança
      responsável (avaliador_id). Outras pessoas recebem 404.
+   - Imparcialidade: ninguém administra o próprio ciclo (mesmo com
+     dsv:gerenciar), e quem é avaliado ou conduz o ciclo de uma liderança
+     não lê o feedback confidencial da equipe dela.
    - Autoavaliação: a liderança só vê depois de enviar a própria.
    - Avaliação da liderança: a pessoa vê depois da devolutiva (config).
    - Feedback da equipe sobre a liderança: respostas sem respondente
@@ -19,8 +22,9 @@ import { createHash } from 'node:crypto'
 import {
   auditar, conflito, dataISO, enumerado, idsComFuncao, idsComPapel, invalido, naoEncontrado, notificar, ok, paginacao,
   pessoas as lerPessoas, setores as lerSetores, cargos as lerCargos, proibido, tem, texto,
-  type Db, type Executor, type Rota, type Usuario,
+  type Db, type Executor, type NovaNotificacao, type Rota, type Usuario,
 } from '../nucleo.js'
+import { emailConfigurado, enviarEmail, urlPortal } from '../email.js'
 import * as D from '../../../src/domain/v2/desenvolvimento.js'
 import { somarDias } from '../../../src/domain/datas.js'
 
@@ -35,7 +39,7 @@ const uuid = (v: string) => { if (!UUID.test(v)) throw naoEncontrado(); return v
 const CICLO_COLS = `c.id, c.colaborador_id, c.vinculo_id, c.data_base::text as data_base, c.tipo, c.marco, c.numero,
   c.data_prevista::text as data_prevista, c.prazo::text as prazo, c.etapa, c.etapa_antes_suspensao, c.lideranca,
   c.avaliador_id, c.avaliador_manual, c.setor_id, c.cargo_id, c.coleta_concluida_em, c.concluido_em, c.concluido_por,
-  c.cancelado_em, c.cancelado_por, c.motivo, c.criado_em`
+  c.cancelado_em, c.cancelado_por, c.motivo, c.criado_em, c.afastamento_id, c.suspenso_em::text as suspenso_em`
 const FORM_COLS = `f.id, f.ciclo_id, f.tipo, f.respondente_id, f.modelo_chave, f.modelo_versao, f.retrato, f.status, f.rascunho, f.respostas,
   f.nota, f.prazo::text as prazo, f.enviado_em, f.motivo`
 
@@ -44,6 +48,7 @@ interface Ciclo {
   data_prevista: string; prazo: string; etapa: D.Etapa; etapa_antes_suspensao: D.Etapa | null; lideranca: boolean
   avaliador_id: string | null; avaliador_manual: boolean; setor_id: string | null; cargo_id: string | null
   coleta_concluida_em: Date | null; concluido_em: Date | null; concluido_por: string | null; cancelado_em: Date | null; cancelado_por: string | null; motivo: string | null; criado_em: Date
+  afastamento_id: string | null; suspenso_em: string | null
 }
 interface Form {
   id: string; ciclo_id: string; tipo: D.TipoFormulario; respondente_id: string; modelo_chave: D.ChaveModelo; modelo_versao: number
@@ -75,9 +80,34 @@ async function lerOrg(ex: Executor): Promise<Org> {
 }
 const nomeDe = (org: Org, id: string | null | undefined) => (id ? org.porId.get(id)?.nome ?? 'Cadastro removido' : null)
 
-/** Quem administra o desenvolvimento: RH, administração e a função adicional "gestão de desenvolvimento". */
+/** Quem opera o desenvolvimento no dia a dia (avisos operacionais): RH, administração e a função "gestão de desenvolvimento". */
 async function idsGestoresDsv(ex: Executor): Promise<string[]> {
-  return [...new Set([...(await idsComPapel(ex, 'rh', 'admin', 'diretoria')), ...(await idsComFuncao(ex, 'gestor_desenvolvimento'))])]
+  return [...new Set([...(await idsComPapel(ex, 'rh', 'admin')), ...(await idsComFuncao(ex, 'gestor_desenvolvimento'))])]
+}
+
+/** Avisos que também saem por e-mail. Só entram na fila quando a notificação é nova (a chave impede repetição). */
+type FilaEmail = NovaNotificacao[]
+async function avisar(ex: Executor, n: NovaNotificacao, fila?: FilaEmail) {
+  if ((await notificar(ex, n)) && fila) fila.push(n)
+}
+/** Limite por execução: o excedente fica só no aviso do portal (evita estourar o tempo da função e o limite do provedor). */
+const LIMITE_EMAILS = 150
+
+/** Envia a fila depois da transação (nunca dentro dela). Sem RESEND_API_KEY ou com o e-mail desligado na configuração, não envia. */
+export async function enviarFilaEmail(db: Executor, fila: FilaEmail): Promise<number> {
+  if (!fila.length || !emailConfigurado()) return 0
+  if (!(await lerConfig(db)).emailNotificacoes) return 0
+  const ids = [...new Set(fila.map((n) => n.destinatarioId))]
+  const pessoas = new Map((await db.query("select id, dados->>'email' as email, dados->>'status' as status from app_colaboradores where id = any($1::text[])", [ids])).rows.map((r) => [r.id as string, r]))
+  let enviados = 0
+  for (const n of fila.slice(0, LIMITE_EMAILS)) {
+    const p = pessoas.get(n.destinatarioId)
+    if (!p?.email || p.status === 'encerrado') continue
+    const r = await enviarEmail(p.email, n.titulo, `${n.corpo ?? ''}\n\nAcesse no portal: ${urlPortal()}${n.link ?? '/desenvolvimento'}`)
+    if (r.status === 'enviada') enviados++
+    else console.error('[desenvolvimento] e-mail não enviado:', r.erro)
+  }
+  return enviados
 }
 
 /* ---------- helpers de ciclo ---------- */
@@ -103,7 +133,7 @@ function tituloNotificacaoForm(tipo: D.TipoFormulario, ciclo: Pick<Ciclo, 'tipo'
   }
 }
 
-async function criarFormulario(ex: Executor, ciclo: Pick<Ciclo, 'id' | 'tipo' | 'numero'>, plano: D.PlanoFormulario, prazo: string, avaliadoNome: string, cache: Map<D.ChaveModelo, D.Modelo>) {
+async function criarFormulario(ex: Executor, ciclo: Pick<Ciclo, 'id' | 'tipo' | 'numero'>, plano: D.PlanoFormulario, prazo: string, avaliadoNome: string, cache: Map<D.ChaveModelo, D.Modelo>, fila?: FilaEmail) {
   let m = cache.get(plano.modelo)
   if (!m) { m = await modeloAtual(ex, plano.modelo); cache.set(plano.modelo, m) }
   const r = await ex.query(`insert into dsv_formularios (ciclo_id, tipo, respondente_id, modelo_chave, modelo_versao, retrato, prazo)
@@ -112,7 +142,7 @@ async function criarFormulario(ex: Executor, ciclo: Pick<Ciclo, 'id' | 'tipo' | 
   const id = r.rows[0]?.id as string | undefined
   if (id) {
     const n = tituloNotificacaoForm(plano.tipo, ciclo, avaliadoNome)
-    await notificar(ex, { destinatarioId: plano.respondenteId, tipo: 'desenvolvimento', titulo: n.titulo, corpo: `${n.corpo} Prazo: ${dataBR(prazo)}.`, link: linkForm(id), chave: `dsv-form:${id}` })
+    await avisar(ex, { destinatarioId: plano.respondenteId, tipo: 'desenvolvimento', titulo: n.titulo, corpo: `${n.corpo} Prazo: ${dataBR(prazo)}.`, link: linkForm(id), chave: `dsv-form:${id}` }, fila)
   }
   return id
 }
@@ -124,7 +154,7 @@ function naEquipeDesde(p: D.PessoaMin, liderId: string, historico: Obj[]): strin
 }
 
 /** Fecha a coleta se possível e avança a etapa. Devolve a nova etapa (ou null se não mudou). */
-async function avancarSePronto(ex: Executor, cicloId: string, hoje: string, cfg: D.ConfigDesenvolvimento, org: Org): Promise<D.Etapa | null> {
+async function avancarSePronto(ex: Executor, cicloId: string, hoje: string, cfg: D.ConfigDesenvolvimento, org: Org, fila?: FilaEmail): Promise<D.Etapa | null> {
   const c = await cicloPorId(ex, cicloId, true)
   if (c.etapa !== 'coleta') return null
   const forms = await formsDoCiclo(ex, c.id)
@@ -142,19 +172,20 @@ async function avancarSePronto(ex: Executor, cicloId: string, hoje: string, cfg:
     for (const g of await idsGestoresDsv(ex)) await notificar(ex, { destinatarioId: g, tipo: 'desenvolvimento', titulo: `Consolidar feedback da equipe de ${nome}`, corpo: `Prepare a síntese para a devolutiva até ${dataBR(prazo)}.`, link: linkCiclo(c.id), chave: `dsv-consolidar:${c.id}` })
   } else if (c.avaliador_id) {
     const t = c.tipo === 'acompanhamento' ? `Registre o acompanhamento de ${nome}` : `Hora da devolutiva de ${nome}`
-    await notificar(ex, { destinatarioId: c.avaliador_id, tipo: 'desenvolvimento', titulo: t, corpo: `Os formulários foram concluídos. Prazo: ${dataBR(prazo)}.`, link: linkCiclo(c.id), chave: `dsv-devolutiva:${c.id}` })
+    await avisar(ex, { destinatarioId: c.avaliador_id, tipo: 'desenvolvimento', titulo: t, corpo: `Os formulários foram concluídos. Prazo: ${dataBR(prazo)}.`, link: linkCiclo(c.id), chave: `dsv-devolutiva:${c.id}` }, fila)
   }
   return etapa
 }
 
 /* ---------- rotina: gera ciclos, acompanha lideranças, avança etapas e lembra prazos ---------- */
-export interface ResultadoSync { criados: number; avancados: number; reprogramados: number; cancelados: number; lembretes: number }
+export interface ResultadoSync { criados: number; avancados: number; reprogramados: number; cancelados: number; lembretes: number; suspensos: number; retomados: number; emails: number }
 
 export async function sincronizarDesenvolvimento(db: Db, agora = new Date(), so?: string[]): Promise<ResultadoSync> {
   const hoje = hojeBR(agora)
-  return db.tx(async (t) => {
+  const fila: FilaEmail = []
+  const resultado = await db.tx(async (t) => {
     await t.query('select pg_advisory_xact_lock(hashtext($1))', ['dsv:sync'])
-    const out: ResultadoSync = { criados: 0, avancados: 0, reprogramados: 0, cancelados: 0, lembretes: 0 }
+    const out: ResultadoSync = { criados: 0, avancados: 0, reprogramados: 0, cancelados: 0, lembretes: 0, suspensos: 0, retomados: 0, emails: 0 }
     let cfg = await lerConfig(t)
     if (!cfg.inicioVigencia) { cfg = { ...cfg, inicioVigencia: hoje }; await gravarConfig(t, cfg, null) }
     const org = await lerOrg(t)
@@ -163,6 +194,9 @@ export async function sincronizarDesenvolvimento(db: Db, agora = new Date(), so?
     const cache = new Map<D.ChaveModelo, D.Modelo>()
     let historico: Obj[] | null = null
     const filtroSo = so ? 'and colaborador_id = any($1::text[])' : ''
+    // Afastamentos em curso hoje: ciclos da pessoa ficam suspensos e ela não recebe lembretes.
+    const afastados = new Map((await t.query(`select id, colaborador_id, categoria, fim::text as fim from dsv_afastamentos
+      where inicio <= $1::date and (fim is null or fim >= $1::date) order by inicio`, [hoje])).rows.map((a) => [a.colaborador_id as string, a]))
 
     const abertos = (await t.query(`select ${CICLO_COLS} from dsv_ciclos c where c.etapa not in ('concluida','cancelada') ${filtroSo.replace('colaborador_id', 'c.colaborador_id')}`, so ? [so] : [])).rows as Ciclo[]
     const cancelar = async (c: Ciclo, motivo: string) => {
@@ -199,6 +233,31 @@ export async function sincronizarDesenvolvimento(db: Db, agora = new Date(), so?
         }
       }
 
+      // Afastamento: suspende os ciclos abertos; no retorno, retoma os que a rotina suspendeu, com os prazos estendidos.
+      const af = afastados.get(p.id)
+      if (af || meus.some((c) => c.afastamento_id)) {
+        const atuais = (await t.query(`select ${CICLO_COLS} from dsv_ciclos c where c.colaborador_id = $1 and c.etapa not in ('concluida','cancelada')`, [p.id])).rows as Ciclo[]
+        if (af) {
+          const motivo = `${D.CATEGORIA_AFASTAMENTO[af.categoria as D.CategoriaAfastamento] ?? 'Afastamento'}${af.fim ? ` (retorno em ${dataBR(somarDias(af.fim, 1))})` : ' (sem data de retorno)'}`
+          for (const c of atuais.filter((x) => x.etapa !== 'suspensa')) {
+            await t.query("update dsv_ciclos set etapa = 'suspensa', etapa_antes_suspensao = $2, motivo = $3, afastamento_id = $4, suspenso_em = $5, atualizado_em = now() where id = $1", [c.id, c.etapa, motivo, af.id, hoje])
+            await auditar(t, null, 'dsv_ciclo', c.id, 'ciclo_suspenso_afastamento', { etapa: c.etapa })
+            out.suspensos++
+          }
+          continue // durante o afastamento não abre novos marcos
+        }
+        for (const c of atuais.filter((x) => x.etapa === 'suspensa' && x.afastamento_id)) {
+          const etapa = c.etapa_antes_suspensao ?? 'coleta'
+          const prazo = D.prazoAposPausa(c.prazo, c.suspenso_em ?? hoje, hoje)
+          await t.query('update dsv_ciclos set etapa = $2, etapa_antes_suspensao = null, prazo = $3, motivo = null, afastamento_id = null, suspenso_em = null, atualizado_em = now() where id = $1', [c.id, etapa, prazo])
+          if (etapa === 'coleta') await t.query("update dsv_formularios set prazo = greatest(prazo, $2::date), atualizado_em = now() where ciclo_id = $1 and status in ('pendente','rascunho')", [c.id, prazo])
+          await auditar(t, null, 'dsv_ciclo', c.id, 'ciclo_retomado_afastamento', { etapa, prazo })
+          for (const d of [c.colaborador_id, c.avaliador_id].filter(Boolean) as string[])
+            await avisar(t, { destinatarioId: d, tipo: 'desenvolvimento', titulo: `${D.rotuloMarco(c.tipo, c.numero)} retomado${d === c.colaborador_id ? '' : `: ${p.nome}`}`, corpo: `O ciclo voltou a correr depois do afastamento. Novo prazo: ${dataBR(prazo)}.`, link: linkCiclo(c.id), chave: `dsv-retomado:${c.id}:${hoje}` }, fila)
+          out.retomados++
+        }
+      }
+
       const lider = D.liderDe(p, org.gente, org.setores)
       const lideranca = D.ehLideranca(p.id, org.gente, org.setores)
       for (const m of D.marcosDevidos(v.inicio, hoje, cfg)) {
@@ -217,7 +276,7 @@ export async function sincronizarDesenvolvimento(db: Db, agora = new Date(), so?
           equipe = D.equipeDe(p.id, org.gente, org.setores).filter((x) => { const desde = naEquipeDesde(x, p.id, historico!); return !!desde && desde <= limite }).map((x) => x.id)
         }
         const ciclo = { id, tipo: m.tipo, numero: m.numero }
-        for (const plano of D.formulariosDoCiclo(m.tipo, p.id, lider, m.tipo === 'avd' && lideranca, equipe)) await criarFormulario(t, ciclo, plano, prazo, p.nome, cache)
+        for (const plano of D.formulariosDoCiclo(m.tipo, p.id, lider, m.tipo === 'avd' && lideranca, equipe)) await criarFormulario(t, ciclo, plano, prazo, p.nome, cache, fila)
         await auditar(t, null, 'dsv_ciclo', id, 'ciclo_aberto', { marco: m.marco, dataPrevista: m.data, lideranca: m.tipo === 'avd' && lideranca, avaliadorId: lider, equipe: equipe.length })
         if (cfg.avisarRhInicio || !lider) for (const g of gestores) {
           await notificar(t, {
@@ -245,7 +304,7 @@ export async function sincronizarDesenvolvimento(db: Db, agora = new Date(), so?
         }
         if (c.etapa === 'coleta' && D.exigeLideranca(c) && !forms.some((x) => D.ehFormLideranca(x.tipo))) {
           const plano = D.formulariosDoCiclo(c.tipo, p.id, liderAtual, c.lideranca, []).find((x) => D.ehFormLideranca(x.tipo))
-          if (plano) await criarFormulario(t, c, plano, c.prazo, nome, cache)
+          if (plano) await criarFormulario(t, c, plano, c.prazo, nome, cache, fila)
         }
         await t.query('update dsv_ciclos set avaliador_id = $2, atualizado_em = now() where id = $1', [c.id, liderAtual])
         await auditar(t, null, 'dsv_ciclo', c.id, 'lideranca_atualizada', { de: c.avaliador_id, para: liderAtual })
@@ -262,16 +321,16 @@ export async function sincronizarDesenvolvimento(db: Db, agora = new Date(), so?
             await t.query("update dsv_formularios set status = 'dispensado', rascunho = null, motivo = 'Saiu da equipe', atualizado_em = now() where id = $1", [f.id])
         }
       }
-      if (c.etapa === 'coleta' && await avancarSePronto(t, c.id, hoje, cfg, org)) { out.avancados++; continue }
+      if (c.etapa === 'coleta' && await avancarSePronto(t, c.id, hoje, cfg, org, fila)) { out.avancados++; continue }
 
       // Lembretes e atrasos (uma notificação por formulário/etapa, sem duplicar).
       if (c.etapa === 'coleta') {
-        for (const f of (await formsDoCiclo(t, c.id)).filter((x) => !D.formFeito(x))) {
+        for (const f of (await formsDoCiclo(t, c.id)).filter((x) => !D.formFeito(x) && !afastados.has(x.respondente_id))) {
           const dias = D.diasParaPrazo(f.prazo, hoje)
           if (dias >= 0 && dias <= cfg.lembreteDiasAntes) {
-            await notificar(t, { destinatarioId: f.respondente_id, tipo: 'desenvolvimento', titulo: `Prazo próximo: ${D.FORMULARIO_INFO[f.tipo].rotulo.toLowerCase()}`, corpo: `Responda até ${dataBR(f.prazo)}.`, link: linkForm(f.id), chave: `dsv-lembrete:${f.id}` }); out.lembretes++
+            await avisar(t, { destinatarioId: f.respondente_id, tipo: 'desenvolvimento', titulo: `Prazo próximo: ${D.FORMULARIO_INFO[f.tipo].rotulo.toLowerCase()}`, corpo: `Responda até ${dataBR(f.prazo)}.`, link: linkForm(f.id), chave: `dsv-lembrete:${f.id}` }, fila); out.lembretes++
           } else if (dias < 0) {
-            await notificar(t, { destinatarioId: f.respondente_id, tipo: 'desenvolvimento', titulo: `Formulário em atraso: ${D.FORMULARIO_INFO[f.tipo].rotulo.toLowerCase()}`, corpo: `O prazo era ${dataBR(f.prazo)}. Ainda dá para responder.`, link: linkForm(f.id), chave: `dsv-atraso:${f.id}` }); out.lembretes++
+            await avisar(t, { destinatarioId: f.respondente_id, tipo: 'desenvolvimento', titulo: `Formulário em atraso: ${D.FORMULARIO_INFO[f.tipo].rotulo.toLowerCase()}`, corpo: `O prazo era ${dataBR(f.prazo)}. Ainda dá para responder.`, link: linkForm(f.id), chave: `dsv-atraso:${f.id}` }, fila); out.lembretes++
           }
         }
         if (c.prazo < hoje) for (const g of gestores) await notificar(t, { destinatarioId: g, tipo: 'desenvolvimento', titulo: `${D.rotuloMarco(c.tipo, c.numero)} de ${nome} em atraso`, corpo: 'Há formulários pendentes depois do prazo.', link: linkCiclo(c.id), chave: `dsv-atraso-rh:${c.id}:coleta` })
@@ -280,8 +339,11 @@ export async function sincronizarDesenvolvimento(db: Db, agora = new Date(), so?
         const dias = D.diasParaPrazo(c.prazo, hoje)
         const etapa = D.ETAPA_ROTULO[c.etapa].toLowerCase()
         for (const d of resp) {
-          if (dias < 0) { await notificar(t, { destinatarioId: d, tipo: 'desenvolvimento', titulo: `Etapa em atraso (${etapa}): ${nome}`, corpo: `O prazo era ${dataBR(c.prazo)}.`, link: linkCiclo(c.id), chave: `dsv-atraso:${c.id}:${c.etapa}` }); out.lembretes++ }
-          else if (dias <= cfg.lembreteDiasAntes) { await notificar(t, { destinatarioId: d, tipo: 'desenvolvimento', titulo: `Prazo próximo (${etapa}): ${nome}`, corpo: `Até ${dataBR(c.prazo)}.`, link: linkCiclo(c.id), chave: `dsv-lembrete:${c.id}:${c.etapa}` }); out.lembretes++ }
+          if (afastados.has(d)) continue
+          // E-mail só para quem conduz a conversa; o RH acompanha pelo portal (e pelo resumo).
+          const f = gestores.includes(d) ? undefined : fila
+          if (dias < 0) { await avisar(t, { destinatarioId: d, tipo: 'desenvolvimento', titulo: `Etapa em atraso (${etapa}): ${nome}`, corpo: `O prazo era ${dataBR(c.prazo)}.`, link: linkCiclo(c.id), chave: `dsv-atraso:${c.id}:${c.etapa}` }, f); out.lembretes++ }
+          else if (dias <= cfg.lembreteDiasAntes) { await avisar(t, { destinatarioId: d, tipo: 'desenvolvimento', titulo: `Prazo próximo (${etapa}): ${nome}`, corpo: `Até ${dataBR(c.prazo)}.`, link: linkCiclo(c.id), chave: `dsv-lembrete:${c.id}:${c.etapa}` }, f); out.lembretes++ }
         }
         if (dias < 0 && c.etapa !== 'consolidacao' && c.etapa !== 'encerramento')
           for (const g of gestores) await notificar(t, { destinatarioId: g, tipo: 'desenvolvimento', titulo: `Etapa em atraso (${etapa}): ${nome}`, corpo: `O prazo era ${dataBR(c.prazo)}.`, link: linkCiclo(c.id), chave: `dsv-atraso-rh:${c.id}:${c.etapa}` })
@@ -302,24 +364,92 @@ export async function sincronizarDesenvolvimento(db: Db, agora = new Date(), so?
       if (a.responsavel === 'rh') for (const g of gestores) dest.add(g)
       const desc = String(a.descricao).slice(0, 80)
       for (const d of dest) {
-        await notificar(t, {
+        if (afastados.has(d)) continue
+        await avisar(t, {
           destinatarioId: d, tipo: 'desenvolvimento', titulo: atrasada ? 'Ação de desenvolvimento atrasada' : 'Ação de desenvolvimento com prazo próximo',
           corpo: `${desc}${d !== a.colaborador_id ? ` (${p.nome})` : ''} · prazo ${dataBR(a.prazo)}.`, link: linkCiclo(a.ciclo_id), chave: `dsv-acao:${a.id}:${atrasada ? 'atraso' : 'proximo'}`,
-        })
+        }, gestores.includes(d) ? undefined : fila)
         out.lembretes++
+      }
+    }
+
+    // Revisão do PDI (só o PDI mais recente de cada pessoa): lembrete antes da data e aviso se passar sem revisão registrada.
+    const revisoes = (await t.query(`select p.ciclo_id, p.revisao_em::text as revisao_em, c.colaborador_id, c.avaliador_id
+      from dsv_pdis p join dsv_ciclos c on c.id = p.ciclo_id
+      where p.registrado_em is not null and p.revisao_em is not null and p.revisao_em <= $1::date and p.revisao_em >= $2::date and c.etapa <> 'cancelada'
+        and not exists (select 1 from dsv_ciclos c2 where c2.colaborador_id = c.colaborador_id and c2.tipo = 'avd' and c2.etapa <> 'cancelada' and c2.data_prevista > c.data_prevista)
+        ${so ? 'and c.colaborador_id = any($3::text[])' : ''}`, so ? [somarDias(hoje, cfg.lembreteDiasAntes), somarDias(hoje, -30), so] : [somarDias(hoje, cfg.lembreteDiasAntes), somarDias(hoje, -30)])).rows
+    for (const r of revisoes) {
+      const p = org.porId.get(r.colaborador_id)
+      if (!p || !D.elegivelStatus(p)) continue
+      const passou = r.revisao_em < hoje
+      for (const d of [r.colaborador_id, r.avaliador_id].filter(Boolean) as string[]) {
+        if (afastados.has(d)) continue
+        await avisar(t, {
+          destinatarioId: d, tipo: 'desenvolvimento',
+          titulo: passou ? `Revisão do PDI pendente${d === r.colaborador_id ? '' : `: ${p.nome}`}` : `Revisão do PDI em ${dataBR(r.revisao_em)}${d === r.colaborador_id ? '' : `: ${p.nome}`}`,
+          corpo: passou ? 'A data combinada passou. Converse sobre o andamento das metas e registre a revisão.' : 'Separe um tempo para revisar metas e ações com a liderança e registrar a revisão.',
+          link: linkCiclo(r.ciclo_id), chave: `dsv-revisao:${r.ciclo_id}:${r.revisao_em}:${passou ? 'atraso' : 'proximo'}`,
+        }, fila)
+        out.lembretes++
+      }
+    }
+
+    // Resumo semanal para a diretoria (uma vez por semana, só na rotina completa). Os avisos operacionais ficam com o RH.
+    if (!so && cfg.resumoSemanalDiretoria) {
+      const diretoria = await idsComPapel(t, 'diretoria')
+      if (diretoria.length) {
+        const r = (await t.query(`select count(*) filter (where etapa not in ('concluida','cancelada'))::int abertos,
+            count(*) filter (where etapa not in ('concluida','cancelada','suspensa') and prazo < $1::date)::int atrasados,
+            count(*) filter (where etapa in ('consolidacao','encerramento'))::int rh,
+            count(*) filter (where etapa = 'suspensa')::int suspensos,
+            count(*) filter (where etapa = 'concluida' and concluido_em >= $2::date)::int concluidos
+          from dsv_ciclos`, [hoje, somarDias(hoje, -7)])).rows[0]
+        const acoesAtrasadas = Number((await t.query("select count(*)::int n from dsv_acoes where status in ('planejada','em_andamento') and prazo < $1::date", [hoje])).rows[0].n)
+        if (r.abertos || r.concluidos || acoesAtrasadas) {
+          const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`
+          const corpo = [
+            `${plural(r.abertos, 'ciclo em andamento', 'ciclos em andamento')}, ${plural(r.atrasados, 'em atraso', 'em atraso')}`,
+            r.concluidos ? `${plural(r.concluidos, 'concluído', 'concluídos')} nos últimos 7 dias` : '',
+            r.rh ? `${plural(r.rh, 'aguardando o RH', 'aguardando o RH')} (consolidação ou encerramento)` : '',
+            r.suspensos ? `${plural(r.suspensos, 'suspenso', 'suspensos')}` : '',
+            acoesAtrasadas ? `${plural(acoesAtrasadas, 'ação de PDI atrasada', 'ações de PDI atrasadas')}` : '',
+          ].filter(Boolean).join('; ') + '.'
+          for (const d of diretoria) await avisar(t, { destinatarioId: d, tipo: 'desenvolvimento', titulo: 'Resumo semanal do desenvolvimento', corpo, link: '/rh/desenvolvimento', chave: `dsv-resumo:${D.semanaISO(hoje)}` }, fila)
+        }
       }
     }
     return out
   })
+  // E-mails depois do commit: uma falha de envio nunca desfaz a rotina.
+  resultado.emails = await enviarFilaEmail(db, fila).catch((e) => { console.error('[desenvolvimento] fila de e-mail', e); return 0 })
+  return resultado
 }
 
 /* ---------- acesso por ciclo ---------- */
 interface PapelCiclo { rh: boolean; confidencial: boolean; avaliado: boolean; lider: boolean }
 function papelNoCiclo(u: Usuario, c: Ciclo): PapelCiclo {
-  const p = { rh: tem(u, 'dsv:gerenciar'), confidencial: tem(u, 'dsv:confidencial'), avaliado: c.colaborador_id === u.colaboradorId, lider: !!c.avaliador_id && c.avaliador_id === u.colaboradorId }
+  const avaliado = c.colaborador_id === u.colaboradorId
+  const lider = !!c.avaliador_id && c.avaliador_id === u.colaboradorId
+  const p = {
+    // Imparcialidade: no próprio ciclo, quem tem acesso de gestão participa só como pessoa avaliada.
+    rh: tem(u, 'dsv:gerenciar') && !avaliado,
+    // Quem é avaliado ou conduz a devolutiva desta liderança vê só médias e síntese, nunca os comentários.
+    confidencial: tem(u, 'dsv:confidencial') && !avaliado && !lider,
+    avaliado, lider,
+  }
   // Quem não participa não descobre nem que o ciclo existe.
   if (!p.rh && !p.avaliado && !p.lider) throw naoEncontrado()
   return p
+}
+/** Ações de gestão do RH sobre um ciclo: nunca no próprio ciclo. */
+function exigirGestao(u: Usuario, c: Ciclo) {
+  if (c.colaborador_id === u.colaboradorId) throw proibido('Ninguém administra o próprio ciclo de desenvolvimento. Outra pessoa do RH ou da diretoria precisa fazer isso.')
+}
+/** Feedback confidencial: nem a liderança avaliada nem quem conduz a devolutiva dela. */
+function exigirConfidencial(u: Usuario, c: Ciclo) {
+  if (c.colaborador_id === u.colaboradorId || c.avaliador_id === u.colaboradorId)
+    throw proibido('Quem é avaliado ou conduz a devolutiva desta liderança não acessa o feedback confidencial. Outra pessoa do RH ou da diretoria faz a consolidação.')
 }
 
 /** Linha de listagem: ciclo + nomes + status exibido + resumo dos formulários. */
@@ -381,7 +511,7 @@ async function detalheCiclo(ex: Executor, u: Usuario, c: Ciclo, hoje: string) {
   const forms = await formsDoCiclo(ex, c.id)
   const dev = (await ex.query(`select realizada_em::text as realizada_em, rh_acompanhou, pontos_fortes, a_desenvolver, dificuldades, orientacoes, feedback,
       percepcao_colaborador, percepcao_em, registrada_por, registrada_em from dsv_devolutivas where ciclo_id = $1`, [c.id])).rows[0] ?? null
-  const pdi = (await ex.query('select metas, treinamentos, indicadores, revisao_em::text as revisao_em, registrado_por, registrado_em from dsv_pdis where ciclo_id = $1', [c.id])).rows[0] ?? null
+  const pdi = (await ex.query('select metas, treinamentos, indicadores, revisao_em::text as revisao_em, registrado_por, registrado_em, revisoes from dsv_pdis where ciclo_id = $1', [c.id])).rows[0] ?? null
   const acoes = (await ex.query(`select id, origem, competencia, descricao, responsavel, prazo::text as prazo, indicador, status, resultado, concluida_em::text as concluida_em
       from dsv_acoes where ciclo_id = $1 order by criado_em`, [c.id])).rows
   // Ações de ciclos anteriores ainda abertas ou concluídas desde então: "o que foi feito do último PDI".
@@ -437,7 +567,10 @@ async function detalheCiclo(ex: Executor, u: Usuario, c: Ciclo, hoje: string) {
       orientacoes: dev.orientacoes, feedback: dev.feedback, percepcaoColaborador: dev.percepcao_colaborador, percepcaoEm: dev.percepcao_em,
       registradaPor: nomeDe(org, dev.registrada_por), registradaEm: dev.registrada_em,
     },
-    pdi: pdi && { metas: pdi.metas, treinamentos: pdi.treinamentos, indicadores: pdi.indicadores, revisaoEm: pdi.revisao_em, registradoPor: nomeDe(org, pdi.registrado_por), registradoEm: pdi.registrado_em },
+    pdi: pdi && {
+      metas: pdi.metas, treinamentos: pdi.treinamentos, indicadores: pdi.indicadores, revisaoEm: pdi.revisao_em, registradoPor: nomeDe(org, pdi.registrado_por), registradoEm: pdi.registrado_em,
+      revisoes: ((pdi.revisoes ?? []) as Obj[]).map((r) => ({ em: r.em, por: nomeDe(org, r.por), texto: r.texto })).reverse(),
+    },
     acoes, acoesAnteriores: anteriores.map((a) => ({ ...a, rotulo: D.rotuloMarco(a.tipo, a.numero) })),
     eventos,
     permissoes: {
@@ -455,6 +588,7 @@ async function detalheCiclo(ex: Executor, u: Usuario, c: Ciclo, hoje: string) {
       retomar: papel.rh && c.etapa === 'suspensa',
       designar: papel.rh && aberto && c.etapa !== 'suspensa',
       dispensar: papel.rh && c.etapa === 'coleta',
+      revisarPdi: c.tipo === 'avd' && conduz && !!pdi?.registrado_em && c.etapa !== 'cancelada',
     },
     escala: cfg.escala, escalaPercepcao: D.ESCALA_PERCEPCAO, naRotulo: cfg.naRotulo,
   }
@@ -479,8 +613,9 @@ async function jornada(ex: Executor, u: Usuario, pessoaId: string, hoje: string)
   const org = await lerOrg(ex)
   const p = org.porId.get(pessoaId)
   if (!p) throw naoEncontrado()
-  const rh = tem(u, 'dsv:gerenciar')
   const eu = u.colaboradorId === pessoaId
+  // Na própria jornada, quem tem acesso de gestão vê o mesmo que qualquer pessoa avaliada.
+  const rh = tem(u, 'dsv:gerenciar') && !eu
   const lider = D.liderDe(p, org.gente, org.setores) === u.colaboradorId ||
     Number((await ex.query("select count(*)::int n from dsv_ciclos where colaborador_id = $1 and avaliador_id = $2 and etapa not in ('cancelada')", [pessoaId, u.colaboradorId])).rows[0].n) > 0
   if (!rh && !eu && !lider) throw naoEncontrado()
@@ -496,7 +631,7 @@ async function jornada(ex: Executor, u: Usuario, pessoaId: string, hoje: string)
     const devOk = !!devPorCiclo.get(c.id)?.registrada_em
     const verLider = rh || lider || (eu && cfg.colaboradorVeAvaliacaoLideranca && devOk)
     let equipe: number | null = null
-    if (c.lideranca && (rh && tem(u, 'dsv:confidencial') || ((eu || lider) && sinteses.get(c.id)))) {
+    if (c.lideranca && ((rh && tem(u, 'dsv:confidencial') && c.avaliadorId !== u.colaboradorId) || ((eu || lider) && sinteses.get(c.id)))) {
       const ag = await agregadoEquipe(ex, c.id, cfg)
       equipe = ag.agregado.suprimido ? null : ag.agregado.media
     }
@@ -526,7 +661,14 @@ async function jornada(ex: Executor, u: Usuario, pessoaId: string, hoje: string)
   const acoes = (await ex.query(`select a.id, a.ciclo_id, a.origem, a.competencia, a.descricao, a.responsavel, a.prazo::text as prazo, a.status, a.resultado, a.concluida_em::text as concluida_em
      from dsv_acoes a where a.colaborador_id = $1 order by a.criado_em desc`, [pessoaId])).rows
   const existentes = new Set(ciclos.filter((c) => c.dataBase === v?.inicio).map((c) => c.marco))
+  // Afastamentos: só para quem administra (categoria genérica, sem motivo detalhado).
+  const afastamentos = rh ? (await ex.query(`select id, inicio::text as inicio, fim::text as fim, categoria, observacao, criado_por, criado_em
+      from dsv_afastamentos where colaborador_id = $1 order by inicio desc`, [pessoaId])).rows.map((a) => ({
+    id: a.id, inicio: a.inicio, fim: a.fim, categoria: a.categoria, rotulo: D.CATEGORIA_AFASTAMENTO[a.categoria as D.CategoriaAfastamento] ?? a.categoria,
+    observacao: a.observacao, criadoPor: nomeDe(org, a.criado_por), emCurso: a.inicio <= hoje && (!a.fim || a.fim >= hoje),
+  })) : null
   return {
+    afastamentos,
     pessoa: { id: p.id, nome: p.nome, setor: setorNome(p.setorId), cargo: cargoNome(p.cargoId), lideranca: nomeDe(org, D.liderDe(p, org.gente, org.setores)), ehLideranca: D.ehLideranca(p.id, org.gente, org.setores), admissao: v?.inicio ?? null, status: p.status },
     ciclos: ciclos.map((c) => ({ ...c, devolutivaEm: devPorCiclo.get(c.id)?.realizada_em ?? null, notaLideranca: (rh || lider || (eu && cfg.colaboradorVeAvaliacaoLideranca && devPorCiclo.get(c.id)?.registrada_em)) ? c.notaLideranca : null })),
     proximos: v ? D.proximosMarcos(v.inicio, hoje, 4).filter((m) => !existentes.has(m.marco)) : [],
@@ -638,6 +780,7 @@ export const rotas: Rota[] = [
     metodo: 'POST', padrao: 'desenvolvimento/formularios/:id/enviar',
     h: async ({ db, params, req, usuario, agora }) => {
       const hoje = hojeBR(agora)
+      const fila: FilaEmail = []
       const res = await db.tx(async (t) => {
         const f = (await t.query(`select ${FORM_COLS} from dsv_formularios f where f.id = $1 for update`, [uuid(params.id)])).rows[0] as Form | undefined
         if (!f || f.respondente_id !== usuario.colaboradorId) throw naoEncontrado()
@@ -659,9 +802,10 @@ export const rotas: Rota[] = [
           await auditar(t, usuario.colaboradorId, 'dsv_ciclo', c.id, 'formulario_enviado', { formularioId: f.id, tipo: f.tipo })
         }
         await t.query(`update ntf_notificacoes set lida_em = coalesce(lida_em, now()) where destinatario_id = $1 and link = $2`, [usuario.colaboradorId, linkForm(f.id)])
-        const etapa = await avancarSePronto(t, c.id, hoje, cfg, await lerOrg(t))
+        const etapa = await avancarSePronto(t, c.id, hoje, cfg, await lerOrg(t), fila)
         return { cicloId: c.id, etapa }
       })
+      await enviarFilaEmail(db, fila).catch(() => 0)
       return ok({ ok: true, ...res })
     },
   },
@@ -813,6 +957,85 @@ export const rotas: Rota[] = [
     },
   },
 
+  {
+    // Revisão (check-in) do PDI: o que foi visto e, se combinado, a próxima data. Liderança responsável ou RH.
+    metodo: 'POST', padrao: 'desenvolvimento/ciclos/:id/pdi/revisao',
+    h: async ({ db, params, req, usuario, agora }) => {
+      const hoje = hojeBR(agora)
+      const nota = texto(req.corpo?.texto, 'o que foi revisado', { min: 10, max: 3000 })
+      const proxima = dataISO(req.corpo?.proximaRevisao, 'próxima revisão')
+      if (proxima && proxima <= hoje) throw invalido('A próxima revisão precisa ser uma data futura.', { proximaRevisao: 'Data passada' })
+      await db.tx(async (t) => {
+        const c = await cicloPorId(t, params.id, true)
+        const papel = papelNoCiclo(usuario, c)
+        if (!papel.rh && !papel.lider) throw proibido('Só a liderança responsável ou o RH registram a revisão do PDI.')
+        if (c.etapa === 'cancelada') throw conflito('Ciclo cancelado.')
+        const pdi = (await t.query('select registrado_em from dsv_pdis where ciclo_id = $1 for update', [c.id])).rows[0]
+        if (!pdi?.registrado_em) throw conflito('Registre o PDI antes de revisá-lo.')
+        await t.query(`update dsv_pdis set revisoes = coalesce(revisoes, '[]'::jsonb) || $2::jsonb, revisao_em = $3, atualizado_em = now() where ciclo_id = $1`,
+          [c.id, JSON.stringify([{ em: hoje, por: usuario.colaboradorId, texto: nota }]), proxima])
+        await auditar(t, usuario.colaboradorId, 'dsv_ciclo', c.id, 'pdi_revisado', { proxima })
+        if (c.colaborador_id !== usuario.colaboradorId)
+          await notificar(t, { destinatarioId: c.colaborador_id, tipo: 'desenvolvimento', titulo: 'Revisão do seu PDI registrada', corpo: proxima ? `Próxima revisão: ${dataBR(proxima)}.` : 'Veja o que foi registrado.', link: linkCiclo(c.id), chave: `dsv-revisado:${c.id}:${hoje}` })
+      })
+      return ok({ ok: true })
+    },
+  },
+
+  /* ===== RH: afastamentos (suspendem e retomam os ciclos automaticamente) ===== */
+  {
+    metodo: 'POST', padrao: 'desenvolvimento/pessoas/:id/afastamentos', cap: 'dsv:gerenciar',
+    h: async ({ db, params, req, usuario, agora }) => {
+      const org = await lerOrg(db)
+      const p = org.porId.get(params.id)
+      if (!p) throw naoEncontrado()
+      if (p.id === usuario.colaboradorId) throw proibido('O próprio afastamento é registrado por outra pessoa do RH ou da diretoria.')
+      const b = req.corpo ?? {}
+      const inicio = dataISO(b.inicio, 'início', true)!
+      const fim = dataISO(b.fim, 'retorno previsto')
+      if (fim && fim < inicio) throw invalido('O retorno não pode ser antes do início.', { fim: 'Antes do início' })
+      const categoria = enumerado(b.categoria, 'tipo', ['descanso', 'licenca', 'afastamento', 'outro'] as const, 'afastamento')
+      const sobrepoe = (await db.query(`select 1 from dsv_afastamentos where colaborador_id = $1 and inicio <= coalesce($3::date, 'infinity'::date) and coalesce(fim, 'infinity'::date) >= $2::date limit 1`, [p.id, inicio, fim])).rows[0]
+      if (sobrepoe) throw conflito('Já existe um afastamento neste período. Ajuste o registro existente.')
+      const r = await db.query(`insert into dsv_afastamentos (colaborador_id, inicio, fim, categoria, observacao, criado_por) values ($1,$2,$3,$4,$5,$6) returning id`,
+        [p.id, inicio, fim, categoria, textoOpc(b.observacao, 'observação', 300), usuario.colaboradorId])
+      await auditar(db, usuario.colaboradorId, 'pessoa', p.id, 'dsv_afastamento_registrado', { inicio, fim, categoria })
+      const sync = await sincronizarDesenvolvimento(db, agora, [p.id])
+      return ok({ id: r.rows[0].id, suspensos: sync.suspensos, retomados: sync.retomados }, 201)
+    },
+  },
+  {
+    // Ajusta datas/tipo (ex.: registrar o retorno). No retorno, a rotina retoma os ciclos com os prazos estendidos.
+    metodo: 'PATCH', padrao: 'desenvolvimento/afastamentos/:id', cap: 'dsv:gerenciar',
+    h: async ({ db, params, req, usuario, agora }) => {
+      const a = (await db.query('select id, colaborador_id, inicio::text as inicio, fim::text as fim, categoria from dsv_afastamentos where id = $1', [uuid(params.id)])).rows[0]
+      if (!a) throw naoEncontrado()
+      if (a.colaborador_id === usuario.colaboradorId) throw proibido('O próprio afastamento é ajustado por outra pessoa do RH ou da diretoria.')
+      const b = req.corpo ?? {}
+      const inicio = b.inicio !== undefined ? dataISO(b.inicio, 'início', true)! : a.inicio
+      const fim = b.fim !== undefined ? dataISO(b.fim, 'retorno previsto') : a.fim
+      if (fim && fim < inicio) throw invalido('O retorno não pode ser antes do início.', { fim: 'Antes do início' })
+      const categoria = b.categoria !== undefined ? enumerado(b.categoria, 'tipo', ['descanso', 'licenca', 'afastamento', 'outro'] as const) : a.categoria
+      await db.query('update dsv_afastamentos set inicio = $2, fim = $3, categoria = $4, atualizado_em = now() where id = $1', [a.id, inicio, fim, categoria])
+      await auditar(db, usuario.colaboradorId, 'pessoa', a.colaborador_id, 'dsv_afastamento_ajustado', { inicio, fim, categoria })
+      const sync = await sincronizarDesenvolvimento(db, agora, [a.colaborador_id])
+      return ok({ ok: true, suspensos: sync.suspensos, retomados: sync.retomados })
+    },
+  },
+  {
+    // Remove um registro feito por engano. Ciclos suspensos por ele são retomados na mesma hora.
+    metodo: 'DELETE', padrao: 'desenvolvimento/afastamentos/:id', cap: 'dsv:gerenciar',
+    h: async ({ db, params, usuario, agora }) => {
+      const a = (await db.query('select id, colaborador_id from dsv_afastamentos where id = $1', [uuid(params.id)])).rows[0]
+      if (!a) throw naoEncontrado()
+      if (a.colaborador_id === usuario.colaboradorId) throw proibido('O próprio afastamento é ajustado por outra pessoa do RH ou da diretoria.')
+      await db.query('delete from dsv_afastamentos where id = $1', [a.id])
+      await auditar(db, usuario.colaboradorId, 'pessoa', a.colaborador_id, 'dsv_afastamento_removido', {})
+      const sync = await sincronizarDesenvolvimento(db, agora, [a.colaborador_id])
+      return ok({ ok: true, retomados: sync.retomados })
+    },
+  },
+
   /* ===== RH: condução e exceções do ciclo ===== */
   {
     metodo: 'POST', padrao: 'desenvolvimento/ciclos/:id/consolidar', cap: 'dsv:gerenciar',
@@ -820,6 +1043,7 @@ export const rotas: Rota[] = [
       const hoje = hojeBR(agora)
       await db.tx(async (t) => {
         const c = await cicloPorId(t, params.id, true)
+        exigirGestao(usuario, c)
         if (c.etapa !== 'consolidacao') throw conflito('O ciclo não está em consolidação.')
         const cfg = await lerConfig(t)
         const prazo = D.prazoDaEtapa('devolutiva', 'avd', hoje, cfg)
@@ -836,6 +1060,7 @@ export const rotas: Rota[] = [
     h: async ({ db, params, usuario }) => {
       await db.tx(async (t) => {
         const c = await cicloPorId(t, params.id, true)
+        exigirGestao(usuario, c)
         if (c.etapa !== 'encerramento') throw conflito('Só é possível encerrar depois da devolutiva e do PDI registrados.')
         const pdi = (await t.query('select registrado_em from dsv_pdis where ciclo_id = $1', [c.id])).rows[0]
         const dev = (await t.query('select registrada_em from dsv_devolutivas where ciclo_id = $1', [c.id])).rows[0]
@@ -854,6 +1079,7 @@ export const rotas: Rota[] = [
       const motivo = texto(req.corpo?.motivo, 'justificativa', { min: 10, max: 1000 })
       await db.tx(async (t) => {
         const c = await cicloPorId(t, params.id, true)
+        exigirGestao(usuario, c)
         if (c.etapa !== 'concluida') throw conflito('Só ciclos concluídos podem ser reabertos.')
         const cfg = await lerConfig(t)
         await t.query("update dsv_ciclos set etapa = 'devolutiva', prazo = $2, concluido_em = null, concluido_por = null, motivo = $3, atualizado_em = now() where id = $1",
@@ -869,8 +1095,9 @@ export const rotas: Rota[] = [
       const motivo = texto(req.corpo?.motivo, 'justificativa', { min: 10, max: 1000 })
       await db.tx(async (t) => {
         const c = await cicloPorId(t, params.id, true)
+        exigirGestao(usuario, c)
         exigirAberto(c)
-        await t.query("update dsv_ciclos set etapa = 'cancelada', cancelado_em = now(), cancelado_por = $2, motivo = $3, atualizado_em = now() where id = $1", [c.id, usuario.colaboradorId, motivo])
+        await t.query("update dsv_ciclos set etapa = 'cancelada', cancelado_em = now(), cancelado_por = $2, motivo = $3, afastamento_id = null, suspenso_em = null, atualizado_em = now() where id = $1", [c.id, usuario.colaboradorId, motivo])
         await t.query("update dsv_formularios set status = 'dispensado', rascunho = null, motivo = 'Ciclo cancelado', dispensado_por = $2, atualizado_em = now() where ciclo_id = $1 and status in ('pendente','rascunho')", [c.id, usuario.colaboradorId])
         await auditar(t, usuario.colaboradorId, 'dsv_ciclo', c.id, 'ciclo_cancelado', { motivo })
       })
@@ -884,9 +1111,10 @@ export const rotas: Rota[] = [
       const motivo = texto(req.corpo?.motivo, 'justificativa', { min: 10, max: 1000 })
       await db.tx(async (t) => {
         const c = await cicloPorId(t, params.id, true)
+        exigirGestao(usuario, c)
         exigirAberto(c)
         if (c.etapa === 'suspensa') throw conflito('O ciclo já está suspenso.')
-        await t.query("update dsv_ciclos set etapa = 'suspensa', etapa_antes_suspensao = $2, motivo = $3, atualizado_em = now() where id = $1", [c.id, c.etapa, motivo])
+        await t.query("update dsv_ciclos set etapa = 'suspensa', etapa_antes_suspensao = $2, motivo = $3, suspenso_em = $4, atualizado_em = now() where id = $1", [c.id, c.etapa, motivo, hojeBR()])
         await auditar(t, usuario.colaboradorId, 'dsv_ciclo', c.id, 'ciclo_suspenso', { motivo, etapa: c.etapa })
       })
       return ok({ ok: true })
@@ -900,9 +1128,11 @@ export const rotas: Rota[] = [
       if (prazo < hoje) throw invalido('O novo prazo precisa ser hoje ou no futuro.', { prazo: 'Data passada' })
       await db.tx(async (t) => {
         const c = await cicloPorId(t, params.id, true)
+        exigirGestao(usuario, c)
         if (c.etapa !== 'suspensa') throw conflito('O ciclo não está suspenso.')
         const etapa = c.etapa_antes_suspensao ?? 'coleta'
-        await t.query('update dsv_ciclos set etapa = $2, etapa_antes_suspensao = null, prazo = $3, atualizado_em = now() where id = $1', [c.id, etapa, prazo])
+        // Retomada manual: desliga a suspensão automática (se a pessoa ainda estiver afastada, a rotina suspende de novo).
+        await t.query('update dsv_ciclos set etapa = $2, etapa_antes_suspensao = null, prazo = $3, motivo = null, afastamento_id = null, suspenso_em = null, atualizado_em = now() where id = $1', [c.id, etapa, prazo])
         if (etapa === 'coleta') await t.query("update dsv_formularios set prazo = $2, atualizado_em = now() where ciclo_id = $1 and status in ('pendente','rascunho')", [c.id, prazo])
         await auditar(t, usuario.colaboradorId, 'dsv_ciclo', c.id, 'ciclo_retomado', { prazo, etapa })
       })
@@ -916,6 +1146,7 @@ export const rotas: Rota[] = [
       const novo = texto(req.corpo?.avaliadorId, 'liderança responsável', { max: 80 })
       await db.tx(async (t) => {
         const c = await cicloPorId(t, params.id, true)
+        exigirGestao(usuario, c)
         exigirAberto(c)
         const org = await lerOrg(t)
         const p = org.porId.get(novo)
@@ -945,6 +1176,7 @@ export const rotas: Rota[] = [
       const r = await db.tx(async (t) => {
         const f = (await t.query(`select ${FORM_COLS} from dsv_formularios f where f.id = $1 for update`, [uuid(params.id)])).rows[0] as Form | undefined
         if (!f) throw naoEncontrado()
+        exigirGestao(usuario, await cicloPorId(t, f.ciclo_id))
         if (D.formFeito(f)) throw conflito('Este formulário já foi concluído.')
         await t.query("update dsv_formularios set status = 'dispensado', rascunho = null, motivo = $2, dispensado_por = $3, atualizado_em = now() where id = $1", [f.id, motivo, usuario.colaboradorId])
         await auditar(t, usuario.colaboradorId, 'dsv_ciclo', f.ciclo_id, 'formulario_dispensado', { formularioId: f.id, tipo: f.tipo, motivo })
@@ -960,6 +1192,7 @@ export const rotas: Rota[] = [
     h: async ({ db, params, usuario }) => {
       const c = await cicloPorId(db, params.id)
       if (!c.lideranca) throw naoEncontrado()
+      exigirConfidencial(usuario, c)
       const cfg = await lerConfig(db)
       const { modelo, respostas, agregado } = await agregadoEquipe(db, c.id, cfg)
       const sintese = (await db.query('select texto, liberada_em, atualizado_em from dsv_sinteses where ciclo_id = $1', [c.id])).rows[0] ?? null
@@ -981,6 +1214,7 @@ export const rotas: Rota[] = [
     h: async ({ db, params, req, usuario }) => {
       const c = await cicloPorId(db, params.id)
       if (!c.lideranca) throw naoEncontrado()
+      exigirConfidencial(usuario, c)
       const t = texto(req.corpo?.texto, 'síntese', { obrigatorio: !!req.corpo?.liberar, max: 6000 })
       const cfg = await lerConfig(db)
       const n = Number((await db.query('select count(*)::int n from dsv_respostas_equipe where ciclo_id = $1', [c.id])).rows[0].n)
@@ -1093,6 +1327,22 @@ export const rotas: Rota[] = [
         const sem = `${c.dataPrevista.slice(0, 4)}/${Number(c.dataPrevista.slice(5, 7)) <= 6 ? 1 : 2}`
         const x = (evolucao[sem] ??= { soma: 0, n: 0 }); x.soma += c.notaLideranca!; x.n++
       }
+      // Calibração: avaliações da liderança no período, por quem avaliou e por área (conversa sobre critérios, não correção de notas).
+      const avaliadas = noPeriodo.filter((c) => c.tipo === 'avd' && c.notaLideranca !== null)
+      const calibracao = { porAvaliador: D.calibrar(avaliadas, 'avaliador'), porArea: D.calibrar(avaliadas, 'area') }
+      // Indicadores por área: volume, conclusão, atraso e tempo até concluir (data prevista → encerramento).
+      const areas = new Map<string, { area: string; total: number; concluidos: number; abertos: number; atrasados: number; dias: number[] }>()
+      for (const c of noPeriodo.filter((x) => x.etapa !== 'cancelada')) {
+        const k = c.setorNome ?? 'Sem área'
+        const a = areas.get(k) ?? { area: k, total: 0, concluidos: 0, abertos: 0, atrasados: 0, dias: [] }
+        a.total++
+        if (c.etapa === 'concluida') { a.concluidos++; if (c.concluidoEm) a.dias.push(D.diasEntre(c.dataPrevista, new Date(c.concluidoEm).toISOString().slice(0, 10))) }
+        else { a.abertos++; if (c.atrasado) a.atrasados++ }
+        areas.set(k, a)
+      }
+      const media = (xs: number[]) => (xs.length ? Math.round(xs.reduce((s, x) => s + x, 0) / xs.length) : null)
+      const porArea = [...areas.values()].map((a) => ({ area: a.area, total: a.total, concluidos: a.concluidos, abertos: a.abertos, atrasados: a.atrasados,
+        taxaConclusao: Math.round((a.concluidos / a.total) * 100), diasAteConcluir: media(a.dias) })).sort((x, y) => y.total - x.total)
       const cargosL = await lerCargos(db)
       const lideres = [...new Set(org.gente.filter((p) => D.elegivelStatus(p)).map((p) => D.liderDe(p, org.gente, org.setores)).filter((x): x is string => !!x))]
       return ok({
@@ -1113,7 +1363,8 @@ export const rotas: Rota[] = [
           pdisConcluidos: pdiRows.filter((r) => r.abertas === 0 && r.concluidas > 0).length,
           acoesAtrasadas: pdiRows.reduce((s, r) => s + r.atrasadas, 0),
         },
-        porStatus, proximas,
+        porStatus, proximas, calibracao, porArea,
+        diasAteConcluir: media([...areas.values()].flatMap((a) => a.dias)),
         atencao: abertos.filter((c) => c.atrasado || c.status === 'sem_lideranca').slice(0, 20),
         historico: {
           criterios: Object.values(criterios).map((x) => ({ nome: x.nome, media: Math.round((x.soma / x.n) * 10) / 10, n: x.n })).sort((a, b) => a.media - b.media),

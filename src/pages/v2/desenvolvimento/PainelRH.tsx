@@ -1,7 +1,7 @@
 /* RH · Ciclo de desenvolvimento e AVD: painel, ciclos, visão histórica e configuração (prazos, escala, critérios e pesos). */
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BarList, Button, Callout, Card, CardHead, Field, PageHeader, SearchBox, Select, StatCard, Tabela, TD, TH, Tabs, Toggle, classesBotao } from '@/components/ui'
+import { Badge, BarList, Button, Callout, Card, CardHead, Field, PageHeader, SearchBox, Select, StatCard, Tabela, TD, TH, Tabs, Toggle, classesBotao } from '@/components/ui'
 import { Aguardar, SoComBanco } from '@/components/v2/estados'
 import { Paginacao } from '@/components/v2/Paginacao'
 import { LinhaTempo } from '@/components/v2/charts2'
@@ -9,7 +9,7 @@ import { StatusCiclo } from '@/components/v2/desenvolvimento/comuns'
 import { api, executar, qs, useApi } from '@/data/v2/api'
 import { dataBR } from '@/lib/fmt'
 import { cn } from '@/lib/utils'
-import { STATUS_DSV, type ConfigDesenvolvimento, type Criterio, type Modelo, type Pergunta } from '@/domain/v2/desenvolvimento'
+import { STATUS_DSV, type ConfigDesenvolvimento, type Criterio, type GrupoCalibracao, type Modelo, type Pergunta } from '@/domain/v2/desenvolvimento'
 import type { LinhaCiclo } from './Meu'
 
 interface Painel {
@@ -19,6 +19,9 @@ interface Painel {
   proximas: { pessoaId: string; nome: string; marco: string; rotulo: string; data: string; tipo: string }[]
   atencao: LinhaCiclo[]
   historico: { criterios: { nome: string; media: number; n: number }[]; competencias: { competencia: string; n: number }[]; evolucao: { semestre: string; media: number; n: number }[] }
+  calibracao: { porAvaliador: { geral: number | null; grupos: GrupoCalibracao[] }; porArea: { geral: number | null; grupos: GrupoCalibracao[] } }
+  porArea: { area: string; total: number; concluidos: number; abertos: number; atrasados: number; taxaConclusao: number; diasAteConcluir: number | null }[]
+  diasAteConcluir: number | null
   filtros: { setores: { id: string; nome: string }[]; cargos: { id: string; nome: string }[]; lideres: { id: string; nome: string }[] }
 }
 interface Filtros { setor: string; cargo: string; lider: string; tipo: string; status: string; de: string; ate: string; situacao: string; q: string; marco: string }
@@ -89,6 +92,7 @@ function VisaoPainel({ d, irCiclos }: { d: Painel; irCiclos: (f: Partial<Filtros
         {card('Target', i.pdisAndamento, 'PDIs em andamento', 'brand')}
         {card('Trophy', i.pdisConcluidos, 'PDIs com todas as ações concluídas', 'success')}
         {card('UserX', i.semLideranca, 'Ciclos sem liderança definida', 'danger', { status: 'sem_lideranca' })}
+        {card('AlarmClockOff', i.acoesAtrasadas, 'Ações de PDI atrasadas', 'danger')}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
@@ -179,7 +183,71 @@ function Historico({ d }: { d: Painel }) {
           <div className="p-5"><BarList itens={h.competencias.map((c) => ({ rotulo: c.competencia, valor: c.n }))} vazio="Sem ações registradas no período." /></div>
         </Card>
       </div>
+      <PorArea d={d} />
+      <Calibracao d={d} />
     </div>
+  )
+}
+
+const num1 = (n: number | null) => (n === null ? '—' : String(n).replace('.', ','))
+const sinal = (n: number | null) => (n === null ? '—' : `${n > 0 ? '+' : ''}${num1(n)}`)
+
+function PorArea({ d }: { d: Painel }) {
+  return (
+    <Card>
+      <CardHead title="Andamento por área" sub={`Ciclos no período e filtros selecionados${d.diasAteConcluir !== null ? ` · em média ${d.diasAteConcluir} dias da data prevista até o encerramento` : ''}.`} />
+      {d.porArea.length === 0 ? <p className="p-5 text-[13px] text-muted">Sem ciclos no período.</p> : (
+        <Tabela minWidth={640}>
+          <thead><tr><th className={TH}>Área</th><th className={TH}>Ciclos</th><th className={TH}>Concluídos</th><th className={TH}>Em aberto</th><th className={TH}>Em atraso</th><th className={TH}>Dias até concluir</th></tr></thead>
+          <tbody>
+            {d.porArea.map((a) => (
+              <tr key={a.area}>
+                <td className={TD}><span className="font-semibold text-ink">{a.area}</span></td>
+                <td className={TD}><span className="tabular-nums">{a.total}</span></td>
+                <td className={TD}><span className="tabular-nums">{a.concluidos}</span> <span className="text-[12px] text-muted">({a.taxaConclusao}%)</span></td>
+                <td className={TD}><span className="tabular-nums">{a.abertos}</span></td>
+                <td className={TD}><span className={cn('tabular-nums', a.atrasados > 0 && 'text-danger font-semibold')}>{a.atrasados}</span></td>
+                <td className={TD}><span className="tabular-nums">{a.diasAteConcluir ?? '—'}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </Tabela>
+      )}
+    </Card>
+  )
+}
+
+/** Calibração: compara como cada liderança (e cada área) avalia, para alinhar critérios entre quem avalia. */
+function Calibracao({ d }: { d: Painel }) {
+  const [por, setPor] = useState<'porAvaliador' | 'porArea'>('porAvaliador')
+  const c = d.calibracao[por]
+  return (
+    <Card>
+      <CardHead title="Calibração das avaliações" sub={`Média das avaliações da liderança no período${c.geral !== null ? ` · média geral ${num1(c.geral)}` : ''}.`}
+        action={<Select label="Agrupar por" value={por} onChange={(v) => setPor(v as typeof por)}><option value="porAvaliador">Quem avaliou</option><option value="porArea">Área</option></Select>} />
+      <div className="px-5 pb-2">
+        <Callout tone="neutral" icon="Scale">Serve para conversar sobre critérios antes das devolutivas: uma liderança que avalia sempre muito acima ou abaixo da média pode estar usando a escala de outro jeito. Não é para corrigir notas. Alerta a partir de 3 avaliações com diferença de 0,7 ou mais da média geral.</Callout>
+      </div>
+      {c.grupos.length === 0 ? <p className="p-5 text-[13px] text-muted">Sem avaliações da liderança no período.</p> : (
+        <Tabela minWidth={720}>
+          <thead><tr><th className={TH}>{por === 'porAvaliador' ? 'Quem avaliou' : 'Área'}</th><th className={TH}>Avaliações</th><th className={TH}>Média</th><th className={TH}>Autoavaliação</th><th className={TH}>Liderança − auto</th><th className={TH}>Notas ≥ 4</th><th className={TH}>Notas ≤ 2</th><th className={TH}></th></tr></thead>
+          <tbody>
+            {c.grupos.map((g) => (
+              <tr key={g.chave}>
+                <td className={TD}><span className="font-semibold text-ink">{g.nome}</span></td>
+                <td className={TD}><span className="tabular-nums">{g.n}</span></td>
+                <td className={TD}><span className="font-bold tabular-nums">{num1(g.media)}</span> <span className="text-[12px] text-muted">({sinal(g.desvio)})</span></td>
+                <td className={TD}><span className="tabular-nums">{num1(g.mediaAuto)}</span></td>
+                <td className={TD}><span className="tabular-nums">{sinal(g.diferenca)}</span></td>
+                <td className={TD}><span className="tabular-nums">{g.altas}%</span></td>
+                <td className={TD}><span className="tabular-nums">{g.baixas}%</span></td>
+                <td className={TD}>{g.alerta && <Badge tone="warning" dot>{g.alerta === 'acima' ? 'Avalia acima da média' : 'Avalia abaixo da média'}</Badge>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Tabela>
+      )}
+    </Card>
   )
 }
 
@@ -244,6 +312,8 @@ function ConfigGeral({ inicial, onSalvo }: { inicial: ConfigDesenvolvimento; onS
         <section className="space-y-3">
           <Toggle checked={c.colaboradorVeAvaliacaoLideranca} onChange={(v) => setC({ ...c, colaboradorVeAvaliacaoLideranca: v })} label="A pessoa avaliada vê a avaliação da liderança depois da devolutiva" />
           <Toggle checked={c.avisarRhInicio} onChange={(v) => setC({ ...c, avisarRhInicio: v })} label="Avisar o RH a cada ciclo iniciado" />
+          <Toggle checked={c.emailNotificacoes} onChange={(v) => setC({ ...c, emailNotificacoes: v })} label="Enviar também por e-mail os avisos a quem participa (formulário aberto, prazo, atraso, devolutiva, revisão do PDI)" />
+          <Toggle checked={c.resumoSemanalDiretoria} onChange={(v) => setC({ ...c, resumoSemanalDiretoria: v })} label="Enviar à diretoria um resumo semanal (em vez dos avisos do dia a dia)" />
         </section>
         <Button icon="Check" onClick={() => executar(() => api.put('desenvolvimento/config', c), 'Configuração salva.').then((ok) => { if (ok) onSalvo() })}>Salvar configuração</Button>
       </div>

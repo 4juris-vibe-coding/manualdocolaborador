@@ -172,3 +172,48 @@ describe('etapas e status', () => {
     expect(c.justificativaObrigatoria).toEqual([1, 2])
   })
 })
+
+describe('afastamentos, semana e configuração nova', () => {
+  it('afastamento em curso: início ≤ dia ≤ fim; sem fim fica em aberto', () => {
+    const l = [{ id: 'a', inicio: '2026-03-01', fim: '2026-03-10' }, { id: 'b', inicio: '2026-05-01', fim: null }]
+    expect(D.afastamentoEm(l, '2026-03-10')?.id).toBe('a')
+    expect(D.afastamentoEm(l, '2026-03-11')).toBeNull()
+    expect(D.afastamentoEm(l, '2027-01-01')?.id).toBe('b')
+  })
+  it('retomada estende o prazo pelos dias de pausa, com mínimo de 5 dias a partir de hoje', () => {
+    expect(D.prazoAposPausa('2026-03-20', '2026-03-10', '2026-03-30')).toBe('2026-04-09') // 20 dias de pausa
+    expect(D.prazoAposPausa('2026-03-11', '2026-03-10', '2026-03-12')).toBe('2026-03-17') // mínimo de 5 dias
+  })
+  it('semana ISO (chave do resumo semanal)', () => {
+    expect(D.semanaISO('2026-11-10')).toBe('2026-W46')
+    expect(D.semanaISO('2026-01-01')).toBe('2026-W01')
+    expect(D.semanaISO('2027-01-01')).toBe('2026-W53')
+  })
+  it('e-mail e resumo semanal ligados por padrão; aceitam desligar', () => {
+    expect(D.normalizarConfig({})).toMatchObject({ emailNotificacoes: true, resumoSemanalDiretoria: true })
+    expect(D.normalizarConfig({ emailNotificacoes: false, resumoSemanalDiretoria: 'x' })).toMatchObject({ emailNotificacoes: false, resumoSemanalDiretoria: true })
+  })
+})
+
+describe('calibração e comparação para a devolutiva', () => {
+  const l = (avaliadorId: string, setor: string, lid: number, auto: number | null = null) => ({ avaliadorId, avaliadorNome: avaliadorId.toUpperCase(), setorNome: setor, notaLideranca: lid, notaAuto: auto })
+  it('agrupa por quem avaliou e alerta quem se afasta da média geral (com mínimo de avaliações)', () => {
+    const r = D.calibrar([l('a', 'X', 5, 4), l('a', 'X', 5, 4), l('a', 'X', 4.5), l('b', 'Y', 2, 3), l('b', 'Y', 2.5, 3), l('b', 'Y', 2), l('c', 'Y', 3)], 'avaliador')
+    expect(r.geral).toBe(3.4)
+    const a = r.grupos.find((g) => g.chave === 'a')!, b = r.grupos.find((g) => g.chave === 'b')!, c = r.grupos.find((g) => g.chave === 'c')!
+    expect(a).toMatchObject({ n: 3, media: 4.8, alerta: 'acima', altas: 100, diferenca: 1 })
+    expect(b).toMatchObject({ n: 3, media: 2.2, alerta: 'abaixo', baixas: 67, diferenca: -0.7 })
+    expect(c.alerta).toBeNull() // só 1 avaliação: sem alerta
+    expect(D.calibrar([l('a', 'X', 5)], 'area').grupos[0].nome).toBe('X')
+    expect(D.calibrar([], 'area')).toEqual({ geral: null, grupos: [] })
+  })
+  it('compara autoavaliação e liderança por critério; diferenças de 2+ pontos viram tema de conversa', () => {
+    const lider = { modelo: { criterios: [{ id: 'c1', nome: 'Qualidade', dimensao: 'Entregas', descricao: '', peso: 1 }, { id: 'c2', nome: 'Prazos', dimensao: 'Entregas', descricao: '', peso: 1 }, { id: 'c9', nome: 'Comunicação', dimensao: 'Relações', descricao: '', peso: 1 }] }, respostas: { notas: { c1: 2, c2: 4, c9: 3 } as Record<string, D.Nota> } }
+    const auto = { modelo: { criterios: [{ id: 'c1', nome: 'Qualidade', dimensao: 'Entregas', descricao: '', peso: 1 }, { id: 'x', nome: 'comunicação ', dimensao: 'Relações', descricao: '', peso: 1 }] }, respostas: { notas: { c1: 5, x: 3 } as Record<string, D.Nota> } }
+    const r = D.compararAvaliacoes(lider, auto)
+    expect(r[0]).toMatchObject({ id: 'c1', auto: 5, lideranca: 2, diferenca: -3, conversar: true })
+    expect(r.find((x) => x.id === 'c9')).toMatchObject({ auto: 3, diferenca: 0, conversar: false }) // casou pelo nome
+    expect(r[r.length - 1]).toMatchObject({ id: 'c2', auto: null, diferenca: null })
+    expect(D.compararAvaliacoes(lider, null).every((x) => x.auto === null)).toBe(true)
+  })
+})

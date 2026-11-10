@@ -32,7 +32,7 @@ O módulo só funciona com o banco (`VITE_DATA_SOURCE=api`). No modo demonstraç
 | Troca de liderança | Formulários da liderança **ainda não enviados** passam à nova liderança, que também assume as próximas etapas (devolutiva e PDI). O que já foi enviado continua ligado a quem respondeu. |
 | Membro sai da equipe de uma liderança | O feedback pendente dele sobre essa liderança é dispensado. Não conta como resposta nem como avaliação negativa. |
 | Mudança de função ou área | O ciclo guarda área e função **da abertura** (retrato). A jornada mostra as mudanças a partir de `historicoFuncao`. |
-| Afastamento | O RH **suspende** o ciclo com justificativa (os prazos param) e depois o **retoma** com novo prazo. Também pode **dispensar** um formulário específico. |
+| Afastamento | O RH registra o afastamento na **jornada da pessoa** (tipo, início e retorno previsto, sem motivo médico). Enquanto durar, a rotina **suspende** os ciclos abertos, não abre marcos novos e não manda lembretes à pessoa. No retorno, os ciclos **voltam sozinhos** à etapa em que estavam, com o prazo estendido pelos dias de pausa (mínimo de 5 dias para responder), e a pessoa e a liderança são avisadas. O RH também pode suspender/retomar à mão ou **dispensar** um formulário específico. |
 | Sem liderança no cadastro | O ciclo fica "Sem liderança definida" e o RH é avisado. O RH **designa** quem conduz, e a rotina passa a respeitar a designação. |
 
 ## 2. Fluxos
@@ -88,14 +88,19 @@ A coleta fecha quando:
 | Informação | Quem acessa |
 |---|---|
 | Formulário (rascunho e envio) | Só quem responde. Respostas enviadas são **imutáveis**: ninguém altera, nem RH nem liderança |
-| Ciclo | RH (`dsv:gerenciar`), a pessoa avaliada e a liderança responsável. Para qualquer outra pessoa, a API responde 404 (não revela que o ciclo existe) |
+| Ciclo | RH e diretoria (`dsv:gerenciar`), a pessoa avaliada e a liderança responsável. Para qualquer outra pessoa, a API responde 404 (não revela que o ciclo existe) |
+| Afastamentos | Só `dsv:gerenciar`, na jornada da pessoa. Ninguém registra o próprio |
 | Autoavaliação / percepção do(a) colaborador(a) | A pessoa, o RH e a liderança, esta **só depois de enviar a própria avaliação** (evita ancoragem) |
 | Avaliação feita pela liderança | A liderança e o RH. A pessoa avaliada vê **depois da devolutiva** (configurável) |
 | Feedback da equipe sobre a liderança | Ver seção 5 |
 | Ações do PDI | Liderança e RH editam. A pessoa atualiza o andamento e o resultado das ações sob sua responsabilidade (não cancela) |
 | Painel, listas, exportação, configuração | `dsv:gerenciar`: RH, administração, diretoria ou a função adicional **Gestão de desenvolvimento** |
 
-Capacidades novas: `dsv:gerenciar` e `dsv:confidencial` (RH, administração e diretoria). A diretoria tem o mesmo acesso do RH no módulo, inclusive o feedback confidencial da equipe sobre lideranças (cada leitura fica registrada), e recebe as mesmas notificações de gestão. A função adicional `gestor_desenvolvimento` dá as duas a quem tem outro papel, como autorização expressa. Ela é concedida em *Administração › Funções adicionais*.
+Capacidades novas: `dsv:gerenciar` e `dsv:confidencial` (RH, administração e diretoria). A diretoria tem o mesmo acesso do RH no módulo, inclusive o feedback confidencial da equipe sobre lideranças (cada leitura fica registrada). A função adicional `gestor_desenvolvimento` dá as duas a quem tem outro papel, como autorização expressa. Ela é concedida em *Administração › Funções adicionais*.
+
+**Imparcialidade (regras do servidor, valem para RH, administração e diretoria):**
+- Ninguém administra o **próprio ciclo**: no próprio ciclo e na própria jornada, quem tem acesso de gestão vê e faz só o que qualquer pessoa avaliada vê e faz (não cancela, não suspende, não designa, não vê a avaliação da liderança antes da devolutiva). Outra pessoa do RH, da administração ou da diretoria age.
+- Quem **conduz a devolutiva de uma liderança** (normalmente o superior dela) não lê os comentários confidenciais da equipe sobre ela, mesmo tendo `dsv:confidencial`. Vê, como a própria liderança, só médias e síntese depois de liberadas. A consolidação fica com outra pessoa.
 
 ## 5. Feedback da equipe sobre a liderança (confidencial)
 
@@ -108,16 +113,22 @@ Capacidades novas: `dsv:gerenciar` e `dsv:confidencial` (RH, administração e d
 
 ## 6. Notificações
 
-Usam a infraestrutura existente (`ntf_notificacoes`, com chave que impede duplicidade). Não há serviço externo novo. Eventos notificados:
+Usam a infraestrutura existente (`ntf_notificacoes`, com chave que impede duplicidade). Eventos notificados:
 - ciclo iniciado (a cada participante e ao RH);
 - prazo próximo (X dias antes, configurável) e formulário em atraso (respondente e RH);
 - devolutiva, consolidação, PDI e encerramento pendentes ou atrasados (para quem conduz a etapa);
 - devolutiva registrada e síntese liberada (para a pessoa avaliada);
-- ação de PDI com prazo em até 7 dias ou atrasada (responsável e, no atraso, a liderança).
+- ação de PDI com prazo em até 7 dias ou atrasada (responsável e, no atraso, a liderança);
+- revisão do PDI: lembrete antes da data combinada e aviso se ela passar sem revisão registrada (pessoa e liderança; só o PDI mais recente);
+- ciclo retomado depois de um afastamento.
+
+**Quem recebe o quê.** Os avisos operacionais vão para RH, administração e quem tem a função *Gestão de desenvolvimento*. A **diretoria** recebe um **resumo semanal** (ciclos em andamento, em atraso, aguardando o RH, suspensos, concluídos na semana e ações de PDI atrasadas), um por semana, na primeira execução completa da rotina. Dá para desligar em *Configuração*. Pessoas afastadas não recebem lembretes.
+
+**E-mail.** Os avisos a quem participa também saem por e-mail (Resend, a mesma infraestrutura do recrutamento e das pesquisas): formulário aberto, prazo próximo, atraso, hora da devolutiva, revisão do PDI, retomada e o resumo da diretoria. O RH acompanha pelo portal (não recebe e-mail por ciclo). O e-mail só sai quando a notificação é nova, depois de gravada a rotina, com limite de 150 por execução (o excedente fica só no portal). Sem `RESEND_API_KEY`, ou com a opção desligada em *Configuração*, nada é enviado.
 
 Os alertas antigos de "marco de 30/60/90 dias" deixaram de virar notificação no modo com banco, para não duplicar com os do módulo.
 
-## 7. Banco (`db/v2/101-desenvolvimento.sql`)
+## 7. Banco (`db/v2/101-desenvolvimento.sql` e `102-desenvolvimento-afastamentos.sql`)
 
 | Tabela | Conteúdo |
 |---|---|
@@ -130,10 +141,20 @@ Os alertas antigos de "marco de 30/60/90 dias" deixaram de virar notificação n
 | `dsv_devolutivas` | Devolutiva / registro do acompanhamento e percepção da pessoa |
 | `dsv_pdis` | Metas, treinamentos, indicadores, data de revisão |
 | `dsv_acoes` | Ações (PDI e acompanhamento) com responsável, prazo, indicador, andamento e resultado |
+| `dsv_afastamentos` | Afastamentos: pessoa, tipo (descanso, licença, afastamento, outro), início, último dia, observação curta |
+| `dsv_ciclos.afastamento_id`, `suspenso_em` | Suspensão automática por afastamento e a data, para estender o prazo no retorno |
+| `dsv_pdis.revisoes` | Revisões do PDI: data, quem registrou e o que foi visto |
 
 Também amplia a restrição `acl_funcoes_funcao_check` para aceitar `gestor_desenvolvimento`. Tudo é aditivo: nenhuma tabela existente perde dados. O histórico de ações fica em `aud_eventos` (entidade `dsv_ciclo`).
 
-## 8. Depende de decisão ou configuração do RH
+## 8. Indicadores, calibração e apoio à devolutiva
+
+- **Andamento por área** (*Visão histórica*): ciclos no período, concluídos (%), em aberto, em atraso e dias, em média, da data prevista até o encerramento.
+- **Calibração**: média das avaliações da liderança por **quem avaliou** e por **área**, comparada com a média geral e com a autoavaliação, mais a proporção de notas ≥ 4 e ≤ 2. Alerta quando um grupo com 3 ou mais avaliações fica 0,7 ponto ou mais acima ou abaixo da média geral. Serve para alinhar critérios entre lideranças, não para corrigir notas.
+- **Autoavaliação × liderança** (tela do ciclo, a partir da devolutiva): os critérios lado a lado, com as maiores diferenças primeiro. Diferenças de 2 pontos ou mais aparecem como "conversar".
+- **Revisão do PDI**: a liderança ou o RH registram cada revisão (o que foi visto e a próxima data). Sem próxima data, os lembretes param.
+
+## 9. Depende de decisão ou configuração do RH
 
 - Revisar os **critérios, perguntas e pesos** padrão, que seguem o briefing e são editáveis.
 - Definir os **prazos** e o **mínimo de respostas** do feedback da equipe.
@@ -141,9 +162,12 @@ Também amplia a restrição `acl_funcoes_funcao_check` para aceitar `gestor_des
 - Conceder a função **Gestão de desenvolvimento** a quem mais deva administrar os ciclos ou ler o feedback confidencial.
 - Conferir no cadastro o **responsável direto** de cada pessoa. É dele que vem a liderança de cada ciclo.
 - Configurar `CRON_SECRET` na Vercel para a rotina diária. Sem ele, os ciclos abrem quando o RH, a pessoa ou a liderança acessam as telas.
+- Conferir `RESEND_API_KEY` na Vercel para os e-mails, e decidir se ficam ligados (*Configuração*).
+- Registrar os afastamentos na jornada de cada pessoa.
 
-## 9. Limitações conhecidas
+## 10. Limitações conhecidas
 
 - O tempo na equipe para avaliar a liderança usa o último registro de mudança de gestor no histórico. Sem esse registro, usa o início da parceria.
-- O sistema não tem cadastro de afastamentos. Eles são tratados pela suspensão do ciclo ou pela dispensa de formulário, sempre com justificativa do RH.
+- Afastamentos ficam no módulo de desenvolvimento, não no cadastro geral da pessoa. Marcos que venceriam durante o afastamento podem não ser abertos depois, se passarem da folga de prazo. Nesse caso o próximo marco abre normalmente.
+- Se quem conduz o ciclo (a liderança) se afastar, os ciclos da equipe dele não param sozinhos: o RH designa outra pessoa para conduzir.
 - A separação entre respondente e resposta impede a ligação pela aplicação e pelo banco de dados. Um administrador de banco com acesso físico às páginas da tabela ainda poderia tentar correlacionar pela ordem de gravação. O mesmo limite vale para a Central de pesquisas.

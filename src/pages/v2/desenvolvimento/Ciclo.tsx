@@ -10,7 +10,7 @@ import { api, executar, useApi } from '@/data/v2/api'
 import { dataBR, dataHoraBR } from '@/lib/fmt'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/lib/store'
-import { RESPONSAVEL_ACAO, type Agregado, type Etapa, type NivelEscala, type Respostas, type RetratoModelo, type StatusExibido, type TipoCiclo } from '@/domain/v2/desenvolvimento'
+import { RESPONSAVEL_ACAO, compararAvaliacoes, type Agregado, type Etapa, type NivelEscala, type Respostas, type RetratoModelo, type StatusExibido, type TipoCiclo } from '@/domain/v2/desenvolvimento'
 
 interface FormInfo { id: string; tipo: string; rotulo: string; status: string; prazo: string; enviadoEm: string | null; motivo: string | null; respondenteId: string | null; respondenteNome: string | null; meu: boolean; nota: number | null; retrato: RetratoModelo | null; respostas: Respostas | null }
 interface Detalhe {
@@ -23,11 +23,11 @@ interface Detalhe {
   formularios: FormInfo[]
   feedbackEquipe: null | { convidados: number; respostas: number; minimo: number; pendentes: number; suprimido: boolean; sinteseLiberada: boolean; agregado?: Agregado; sintese?: string; sinteseRascunho?: string }
   devolutiva: null | { realizadaEm: string | null; rhAcompanhou: boolean; pontosFortes: string | null; aDesenvolver: string | null; dificuldades: string | null; orientacoes: string | null; feedback: string | null; percepcaoColaborador: string | null; percepcaoEm: string | null; registradaPor: string | null; registradaEm: string | null }
-  pdi: null | { metas: string | null; treinamentos: string | null; indicadores: string | null; revisaoEm: string | null; registradoPor: string | null; registradoEm: string | null }
+  pdi: null | { metas: string | null; treinamentos: string | null; indicadores: string | null; revisaoEm: string | null; registradoPor: string | null; registradoEm: string | null; revisoes: { em: string; por: string | null; texto: string }[] }
   acoes: Acao[]
   acoesAnteriores: (Acao & { rotulo: string })[]
   eventos: { em: string; quem: string; acao: string; detalhes: Record<string, unknown> }[]
-  permissoes: Record<'devolutiva' | 'pdi' | 'acoes' | 'percepcao' | 'atualizarAcoes' | 'consolidar' | 'sintese' | 'encerrar' | 'reabrir' | 'cancelar' | 'suspender' | 'retomar' | 'designar' | 'dispensar', boolean>
+  permissoes: Record<'devolutiva' | 'pdi' | 'acoes' | 'percepcao' | 'atualizarAcoes' | 'consolidar' | 'sintese' | 'encerrar' | 'reabrir' | 'cancelar' | 'suspender' | 'retomar' | 'designar' | 'dispensar' | 'revisarPdi', boolean>
   escala: NivelEscala[]; escalaPercepcao: NivelEscala[]; naRotulo: string
 }
 
@@ -37,6 +37,7 @@ const ACAO_EVENTO: Record<string, string> = {
   pdi_registrado: 'PDI registrado', acao_incluida: 'Ação incluída', acao_atualizada: 'Ação atualizada', ciclo_encerrado: 'Ciclo encerrado pelo RH', ciclo_reaberto: 'Ciclo reaberto',
   ciclo_cancelado: 'Ciclo cancelado', ciclo_cancelado_automaticamente: 'Ciclo cancelado automaticamente', ciclo_suspenso: 'Ciclo suspenso', ciclo_retomado: 'Ciclo retomado',
   avaliador_designado: 'Liderança designada pelo RH', lideranca_atualizada: 'Liderança atualizada (troca no cadastro)', formulario_dispensado: 'Formulário dispensado',
+  ciclo_suspenso_afastamento: 'Ciclo suspenso automaticamente (afastamento)', ciclo_retomado_afastamento: 'Ciclo retomado automaticamente (retorno do afastamento)', pdi_revisado: 'Revisão do PDI registrada',
   consolidacao_concluida: 'Consolidação concluída', sintese_salva: 'Síntese salva', sintese_liberada: 'Síntese liberada à liderança', feedback_equipe_visualizado: 'Feedback confidencial consultado', data_base_corrigida: 'Data de admissão corrigida',
 }
 
@@ -92,7 +93,7 @@ function Tela({ d, recarregar }: { d: Detalhe; recarregar: () => void }) {
         </>} />
       <Etapas c={c} />
 
-      {c.etapa === 'suspensa' && <Callout tone="warning" icon="PauseCircle" className="mb-5">Ciclo suspenso: {c.motivo}. Os prazos não correm enquanto estiver suspenso.</Callout>}
+      {c.etapa === 'suspensa' && <Callout tone="warning" icon="PauseCircle" className="mb-5">Ciclo suspenso: {c.motivo}. Os prazos não correm enquanto estiver suspenso.{c.motivo && !d.papel.avaliado && ' Se for um afastamento registrado, o ciclo volta sozinho no retorno, com os prazos estendidos.'}</Callout>}
       {c.etapa === 'cancelada' && <Callout tone="neutral" icon="Ban" className="mb-5">Ciclo cancelado: {c.motivo}. As respostas já enviadas ficam no histórico.</Callout>}
       {c.status === 'sem_lideranca' && <Callout tone="warning" icon="UserX" className="mb-5">Sem liderança definida no cadastro. {d.papel.rh ? 'Designe quem conduz este ciclo.' : 'O RH vai designar quem conduz.'}</Callout>}
 
@@ -144,6 +145,7 @@ function Tela({ d, recarregar }: { d: Detalhe; recarregar: () => void }) {
             </Card>
           )}
 
+          {!acomp && <Comparacao d={d} />}
           <Devolutiva d={d} recarregar={recarregar} />
           {!acomp && (d.pdi || d.permissoes.pdi) && <Pdi d={d} recarregar={recarregar} />}
 
@@ -311,7 +313,65 @@ function Pdi({ d, recarregar }: { d: Detalhe; recarregar: () => void }) {
           </div>
         )}
         {edita && c.etapa === 'pdi' && <p className="text-[12px] text-muted mt-3">Inclua ao menos uma ação de desenvolvimento (quadro “Ações do PDI”) antes de registrar.</p>}
+        {p?.registradoEm && <RevisoesPdi d={d} recarregar={recarregar} />}
       </div>
+    </Card>
+  )
+}
+
+/** Revisões (check-ins) do PDI: o que foi visto em cada conversa e a próxima data. */
+function RevisoesPdi({ d, recarregar }: { d: Detalhe; recarregar: () => void }) {
+  const p = d.pdi!
+  const [aberto, setAberto] = useState(false)
+  const [v, setV] = useState({ texto: '', proximaRevisao: '' })
+  const salvar = () => executar(() => api.post(`desenvolvimento/ciclos/${d.ciclo.id}/pdi/revisao`, { texto: v.texto, proximaRevisao: v.proximaRevisao || null }), 'Revisão registrada.')
+    .then((ok) => { if (ok) { setV({ texto: '', proximaRevisao: '' }); setAberto(false); recarregar() } })
+  return (
+    <div className="mt-5 pt-4 border-t border-line">
+      <div className="flex items-center gap-3 flex-wrap mb-2">
+        <h4 className="text-[13px] font-bold text-ink flex-1">Revisões do PDI</h4>
+        {p.revisaoEm && <Badge tone={p.revisaoEm < new Date().toISOString().slice(0, 10) ? 'danger' : 'brand'} dot>Próxima revisão: {dataBR(p.revisaoEm)}</Badge>}
+      </div>
+      {p.revisoes.length === 0 ? <p className="text-[12.5px] text-muted">Nenhuma revisão registrada ainda. Use a data combinada para conversar sobre metas e ações e registre aqui o que foi visto.</p> : (
+        <ul className="space-y-2">
+          {p.revisoes.map((r, i) => <li key={i} className="rounded-lg bg-surface-2 px-3 py-2"><div className="text-[11.5px] text-muted">{dataBR(r.em)} · {r.por ?? '—'}</div><p className="text-[13px] text-ink-2 whitespace-pre-line">{r.texto}</p></li>)}
+        </ul>
+      )}
+      {d.permissoes.revisarPdi && (aberto ? (
+        <div className="mt-3">
+          <Field label="O que foi revisado" required hint="Andamento das metas e ações, ajustes combinados." htmlFor="rv-texto"><textarea id="rv-texto" rows={3} className="input" value={v.texto} onChange={(e) => setV({ ...v, texto: e.target.value })} /></Field>
+          <Field label="Próxima revisão" hint="Opcional. Sem data, os lembretes param." htmlFor="rv-data"><input id="rv-data" type="date" className="input sm:max-w-[220px]" value={v.proximaRevisao} onChange={(e) => setV({ ...v, proximaRevisao: e.target.value })} /></Field>
+          <div className="flex gap-2"><Button size="sm" icon="Check" onClick={salvar} disabled={v.texto.trim().length < 10}>Registrar revisão</Button><Button size="sm" variant="ghost" onClick={() => setAberto(false)}>Cancelar</Button></div>
+        </div>
+      ) : <Button className="mt-3" size="sm" variant="soft" icon="CalendarCheck" onClick={() => setAberto(true)}>Registrar revisão</Button>)}
+    </div>
+  )
+}
+
+/** Autoavaliação × avaliação da liderança, por critério: ponto de partida para a devolutiva (maiores diferenças primeiro). */
+function Comparacao({ d }: { d: Detalhe }) {
+  const lider = d.formularios.find((f) => f.tipo === 'lider_avalia' && f.respostas && f.retrato)
+  const auto = d.formularios.find((f) => f.tipo === 'autoavaliacao' && f.respostas && f.retrato)
+  const [todos, setTodos] = useState(false)
+  if (!lider || !auto || d.ciclo.etapa === 'coleta') return null
+  const itens = compararAvaliacoes({ modelo: lider.retrato!, respostas: lider.respostas! }, { modelo: auto.retrato!, respostas: auto.respostas! })
+  const destaque = itens.filter((x) => x.conversar)
+  const lista = todos ? itens : itens.slice(0, Math.max(5, destaque.length))
+  return (
+    <Card>
+      <CardHead title="Autoavaliação × liderança" sub={destaque.length ? `${destaque.length} critério(s) com diferença de 2 pontos ou mais: bons temas para começar a conversa.` : 'Percepções próximas em todos os critérios.'} />
+      <ul className="divide-y divide-line">
+        {lista.map((k) => (
+          <li key={k.id} className="px-5 py-2 flex items-center gap-3 text-[13px]">
+            <span className="flex-1 min-w-0"><span className="text-ink">{k.nome}</span><span className="block text-[11.5px] text-muted">{k.dimensao}</span></span>
+            <span className="tabular-nums w-14 text-right"><span className="text-[11px] text-muted block leading-none">auto</span>{k.auto ?? '—'}</span>
+            <span className="tabular-nums w-16 text-right"><span className="text-[11px] text-muted block leading-none">liderança</span><b>{k.lideranca ?? '—'}</b></span>
+            <span className={cn('w-24 text-right', k.conversar ? 'text-warning font-semibold' : 'text-muted')}>{k.diferenca === null ? '' : k.conversar ? `${k.diferenca > 0 ? '+' : ''}${k.diferenca} · conversar` : `${k.diferenca > 0 ? '+' : ''}${k.diferenca}`}</span>
+          </li>
+        ))}
+      </ul>
+      {itens.length > lista.length && <div className="px-5 py-3"><Button size="sm" variant="ghost" onClick={() => setTodos(true)}>Ver todos os {itens.length} critérios</Button></div>}
+      <p className="px-5 pb-4 text-[11.5px] text-muted">Notas de 1 a 5. A diferença é liderança − autoavaliação.</p>
     </Card>
   )
 }

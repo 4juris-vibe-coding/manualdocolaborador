@@ -12,6 +12,7 @@
      tomada automaticamente a partir dele.
    ============================================================ */
 import { somarDias, diasEntre } from '../datas.js'
+export { diasEntre }
 
 /* ---------- tipos ---------- */
 export type TipoCiclo = 'acompanhamento' | 'avd'
@@ -65,6 +66,10 @@ export interface ConfigDesenvolvimento {
   colaboradorVeAvaliacaoLideranca: boolean
   /** RH recebe aviso a cada ciclo iniciado. */
   avisarRhInicio: boolean
+  /** Os avisos principais (formulário aberto, prazo, atraso, devolutiva pendente) também vão por e-mail. */
+  emailNotificacoes: boolean
+  /** A diretoria recebe um resumo semanal do módulo (os avisos operacionais ficam com o RH). */
+  resumoSemanalDiretoria: boolean
 }
 
 export const ESCALA_AVD_PADRAO: NivelEscala[] = [
@@ -96,6 +101,8 @@ export const CONFIG_PADRAO: ConfigDesenvolvimento = {
   lembreteDiasAntes: 3,
   colaboradorVeAvaliacaoLideranca: true,
   avisarRhInicio: true,
+  emailNotificacoes: true,
+  resumoSemanalDiretoria: true,
 }
 
 const num = (v: unknown, padrao: number, min: number, max: number) => {
@@ -139,6 +146,8 @@ export function normalizarConfig(v: unknown): ConfigDesenvolvimento {
     lembreteDiasAntes: num(o.lembreteDiasAntes, p.lembreteDiasAntes, 0, 15),
     colaboradorVeAvaliacaoLideranca: typeof o.colaboradorVeAvaliacaoLideranca === 'boolean' ? o.colaboradorVeAvaliacaoLideranca : p.colaboradorVeAvaliacaoLideranca,
     avisarRhInicio: typeof o.avisarRhInicio === 'boolean' ? o.avisarRhInicio : p.avisarRhInicio,
+    emailNotificacoes: typeof o.emailNotificacoes === 'boolean' ? o.emailNotificacoes : p.emailNotificacoes,
+    resumoSemanalDiretoria: typeof o.resumoSemanalDiretoria === 'boolean' ? o.resumoSemanalDiretoria : p.resumoSemanalDiretoria,
   }
 }
 
@@ -681,4 +690,111 @@ export function avisoConfidencialidade(minimo: number): string {
   return `Suas respostas sobre a liderança são vistas apenas pelo RH, pela diretoria e por pessoas expressamente autorizadas, para construir um feedback de desenvolvimento. ` +
     `A liderança nunca vê respostas individuais: recebe médias e uma síntese preparada pelo RH, e só quando houver pelo menos ${minimo} respostas. ` +
     `As respostas não ficam ligadas ao seu nome no banco de dados, mas, em equipes pequenas, o conteúdo de um comentário pode permitir identificar quem escreveu — por isso não prometemos anonimato absoluto. Escreva de forma respeitosa e com exemplos.`
+}
+
+/* ---------- afastamentos ---------- */
+export type CategoriaAfastamento = 'descanso' | 'licenca' | 'afastamento' | 'outro'
+export const CATEGORIA_AFASTAMENTO: Record<CategoriaAfastamento, string> = {
+  descanso: 'Descanso combinado', licenca: 'Licença', afastamento: 'Afastamento', outro: 'Outro motivo',
+}
+export interface Afastamento { id: string; inicio: string; fim: string | null }
+
+/** Afastamento em curso na data (início ≤ dia ≤ fim; sem fim = em aberto). */
+export const afastamentoEm = <T extends Afastamento>(lista: T[], dia: string): T | null =>
+  lista.find((a) => a.inicio <= dia && (!a.fim || a.fim >= dia)) ?? null
+
+
+/**
+ * Novo prazo na retomada depois de um afastamento: o prazo anterior + os dias de pausa,
+ * nunca antes de `minimoDias` a partir de hoje (quem volta precisa de tempo para responder).
+ */
+export function prazoAposPausa(prazoAntes: string, suspensoEm: string, hoje: string, minimoDias = 5): string {
+  const pausa = Math.max(0, diasEntre(suspensoEm, hoje))
+  const estendido = somarDias(prazoAntes, pausa)
+  const minimo = somarDias(hoje, minimoDias)
+  return estendido > minimo ? estendido : minimo
+}
+
+/* ---------- resumo semanal ---------- */
+/** Semana ISO no formato 2026-W46 (chave do resumo semanal: um por semana). */
+export function semanaISO(dia: string): string {
+  const d = new Date(`${dia}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + 3 - ((d.getUTCDay() + 6) % 7)) // quinta-feira da mesma semana
+  const ano = d.getUTCFullYear()
+  const jan4 = new Date(Date.UTC(ano, 0, 4, 12))
+  jan4.setUTCDate(jan4.getUTCDate() + 3 - ((jan4.getUTCDay() + 6) % 7))
+  const semana = 1 + Math.round((d.getTime() - jan4.getTime()) / (7 * 86400000))
+  return `${ano}-W${String(semana).padStart(2, '0')}`
+}
+
+/* ---------- calibração ---------- */
+export interface LinhaCalibracao { avaliadorId: string | null; avaliadorNome: string | null; setorNome: string | null; notaAuto: number | null; notaLideranca: number | null }
+export interface GrupoCalibracao {
+  chave: string; nome: string; n: number; media: number; mediaAuto: number | null
+  /** Diferença média liderança − autoavaliação (negativa: a liderança avalia abaixo da percepção da pessoa). */
+  diferenca: number | null
+  /** % de avaliações com média ≥ 4 e com média ≤ 2. */
+  altas: number; baixas: number
+  /** Distância da média geral (positiva: avalia acima da média da empresa). */
+  desvio: number
+  alerta: 'acima' | 'abaixo' | null
+}
+const r1 = (n: number) => Math.round(n * 10) / 10
+
+/**
+ * Agrupa as avaliações da liderança por quem avaliou (ou por área) para comparar os critérios de quem avalia.
+ * Alerta quando o grupo tem ao menos `minimo` avaliações e se afasta da média geral em `limite` ou mais.
+ * Serve para conversar sobre critérios (calibração), não para corrigir notas.
+ */
+export function calibrar(linhas: LinhaCalibracao[], por: 'avaliador' | 'area', minimo = 3, limite = 0.7): { geral: number | null; grupos: GrupoCalibracao[] } {
+  const validas = linhas.filter((l) => l.notaLideranca !== null)
+  if (!validas.length) return { geral: null, grupos: [] }
+  const geral = validas.reduce((s, l) => s + l.notaLideranca!, 0) / validas.length
+  const mapa = new Map<string, { nome: string; ls: LinhaCalibracao[] }>()
+  for (const l of validas) {
+    const chave = por === 'avaliador' ? l.avaliadorId ?? '—' : l.setorNome ?? '—'
+    const nome = por === 'avaliador' ? l.avaliadorNome ?? 'Sem liderança' : l.setorNome ?? 'Sem área'
+    const g = mapa.get(chave) ?? { nome, ls: [] }
+    g.ls.push(l)
+    mapa.set(chave, g)
+  }
+  const grupos = [...mapa.entries()].map(([chave, g]): GrupoCalibracao => {
+    const n = g.ls.length
+    const media = g.ls.reduce((s, l) => s + l.notaLideranca!, 0) / n
+    const comAuto = g.ls.filter((l) => l.notaAuto !== null)
+    const mediaAuto = comAuto.length ? comAuto.reduce((s, l) => s + l.notaAuto!, 0) / comAuto.length : null
+    const diferenca = comAuto.length ? comAuto.reduce((s, l) => s + (l.notaLideranca! - l.notaAuto!), 0) / comAuto.length : null
+    const desvio = media - geral
+    return {
+      chave, nome: g.nome, n, media: r1(media), mediaAuto: mediaAuto === null ? null : r1(mediaAuto), diferenca: diferenca === null ? null : r1(diferenca),
+      altas: Math.round((g.ls.filter((l) => l.notaLideranca! >= 4).length / n) * 100),
+      baixas: Math.round((g.ls.filter((l) => l.notaLideranca! <= 2).length / n) * 100),
+      desvio: r1(desvio),
+      alerta: n >= minimo && Math.abs(desvio) >= limite ? (desvio > 0 ? 'acima' : 'abaixo') : null,
+    }
+  }).sort((a, b) => b.n - a.n || a.nome.localeCompare(b.nome))
+  return { geral: r1(geral), grupos }
+}
+
+/* ---------- comparação autoavaliação × liderança (apoio à devolutiva) ---------- */
+export interface ItemComparacao { id: string; nome: string; dimensao: string; auto: number | null; lideranca: number | null; diferenca: number | null; conversar: boolean }
+type AvaliacaoComparavel = { modelo: Pick<RetratoModelo, 'criterios'>; respostas: Pick<Respostas, 'notas'> }
+
+/**
+ * Cruza, critério a critério, a autoavaliação e a avaliação da liderança (casa por id e, sem id igual, por nome).
+ * `conversar` marca diferenças de 2 pontos ou mais: bons pontos de partida para a conversa.
+ * Ordem: maiores diferenças primeiro; critérios sem as duas notas no fim.
+ */
+export function compararAvaliacoes(lider: AvaliacaoComparavel, auto: AvaliacaoComparavel | null): ItemComparacao[] {
+  const nota = (v: unknown) => (typeof v === 'number' ? v : null)
+  const norm = (t: string) => t.trim().toLowerCase()
+  const itens = lider.modelo.criterios.map((k): ItemComparacao => {
+    const par = auto ? auto.modelo.criterios.find((x) => x.id === k.id) ?? auto.modelo.criterios.find((x) => norm(x.nome) === norm(k.nome)) : undefined
+    const l = nota(lider.respostas.notas?.[k.id])
+    const a = par && auto ? nota(auto.respostas.notas?.[par.id]) : null
+    const diferenca = l !== null && a !== null ? l - a : null
+    return { id: k.id, nome: k.nome, dimensao: k.dimensao, auto: a, lideranca: l, diferenca, conversar: diferenca !== null && Math.abs(diferenca) >= 2 }
+  })
+  const peso = (x: ItemComparacao) => (x.diferenca === null ? -1 : Math.abs(x.diferenca))
+  return itens.sort((x, y) => peso(y) - peso(x))
 }
