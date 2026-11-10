@@ -15,8 +15,11 @@ import { progresso, prazoItem } from '@/domain/jornada'
 import { can } from '@/domain/permissions'
 import { Dropdown } from '@/components/Dropdown'
 import { AcessosEquipe } from '@/components/AcessosEquipe'
+import { MODO_API } from '@/data/config'
+import { useNavigate } from 'react-router-dom'
 
 export default function Lideranca() {
+  const irPara = useNavigate()
   const s = useStore()
   const user = s.currentUser()
   const hoje = hojeISO()
@@ -50,12 +53,15 @@ export default function Lideranca() {
   return (
     <>
       <PageHeader title="Painel da liderança" subtitle="Coordenação das áreas sob sua responsabilidade: disponibilidade, objetivos e integração."
-        actions={minhas.length > 1 && (
-          <Select label="Área" value={areaSel} onChange={setAreaSel}>
-            <option value="todas">Todas as minhas áreas ({minhas.length})</option>
-            {minhas.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
-          </Select>
-        )} />
+        actions={<>
+          {MODO_API && <Button variant="ghost" icon="Sprout" onClick={() => irPara('/lideranca/desenvolvimento')}>Desenvolvimento da equipe</Button>}
+          {minhas.length > 1 && (
+            <Select label="Área" value={areaSel} onChange={setAreaSel}>
+              <option value="todas">Todas as minhas áreas ({minhas.length})</option>
+              {minhas.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
+            </Select>
+          )}
+        </>} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard icon="Users" tone="brand" value={equipe.length} label="Pessoas nas áreas" />

@@ -114,6 +114,13 @@ const CargosGovernanca = lazy(() => import('@/pages/v2/cargos/Governanca'))
 const OrganogramaPagina = lazy(() => import('@/pages/v2/org/Organograma'))
 const PeopleAnalytics = lazy(() => import('@/pages/v2/analytics/Analytics'))
 const FuncoesAdicionais = lazy(() => import('@/pages/v2/admin/FuncoesAdicionais'))
+// Ciclo de desenvolvimento e AVD
+const DsvMeu = lazy(() => import('@/pages/v2/desenvolvimento/Meu'))
+const DsvJornada = lazy(() => import('@/pages/v2/desenvolvimento/Meu').then((m) => ({ default: m.JornadaPessoa })))
+const DsvResponder = lazy(() => import('@/pages/v2/desenvolvimento/Responder'))
+const DsvCiclo = lazy(() => import('@/pages/v2/desenvolvimento/Ciclo'))
+const DsvEquipe = lazy(() => import('@/pages/v2/desenvolvimento/Equipe'))
+const DsvPainel = lazy(() => import('@/pages/v2/desenvolvimento/PainelRH'))
 
 /** Página atual com carregamento sob demanda e rede de segurança (o erro de uma página não derruba o app; trocar de rota limpa o erro). */
 function PaginaSegura() {
@@ -196,7 +203,7 @@ export function App() {
             <Route path="/rh/exigencias" element={<RHExigencias />} />
             <Route path="/rh/competencias" element={<RHCompetencias />} />
             <Route path="/rh/avaliacoes" element={<RHAvaliacoes />} />
-            <Route path="/rh/inicio-parceria" element={<RHInicio />} />
+            <Route path="/rh/inicio-parceria" element={MODO_API ? <Navigate to="/rh/desenvolvimento" replace /> : <RHInicio />} />
             <Route path="/rh/metas" element={<RHMetas />} />
             <Route path="/rh/analise-grupos" element={<RHAnalise />} />
             <Route path="/rh/busca-perfil" element={<RHBusca />} />
@@ -266,6 +273,13 @@ export function App() {
             <Route path="/meus-contratos" element={<MeusContratos />} />
             <Route path="/meus-documentos" element={<MeusDocumentos />} />
             <Route path="/admin/funcoes" element={<FuncoesAdicionais />} />
+            {/* v2 · Ciclo de desenvolvimento e AVD */}
+            <Route path="/desenvolvimento" element={<DsvMeu />} />
+            <Route path="/desenvolvimento/responder/:id" element={<DsvResponder />} />
+            <Route path="/desenvolvimento/ciclos/:id" element={<DsvCiclo />} />
+            <Route path="/desenvolvimento/pessoas/:id" element={<DsvJornada />} />
+            <Route path="/lideranca/desenvolvimento" element={<DsvEquipe />} />
+            <Route path="/rh/desenvolvimento" element={<DsvPainel />} />
             {/* Rotas antigas → novos módulos */}
             <Route path="/recesso" element={<Navigate to="/disponibilidade" replace />} />
             <Route path="/folgas" element={<Navigate to="/disponibilidade" replace />} />

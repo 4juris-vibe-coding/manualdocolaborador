@@ -10,7 +10,7 @@
     <title>4JURIS Pessoas · Comunidade e gestão de pessoas</title>
     <script>
       // Aplica o tema antes da renderização (evita piscar).
-      try { var t = localStorage.getItem('4juris_tema'); if (t === 'escuro' || (t !== 'claro' && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark') } catch (e) {}
+      try { var t = localStorage.getItem('4juris_tema'); if (!/^\/carreiras(\/|$)/.test(location.pathname) && (t === 'escuro' || (t !== 'claro' && matchMedia('(prefers-color-scheme: dark)').matches))) document.documentElement.classList.add('dark') } catch (e) {}
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -38,8 +38,8 @@
       @keyframes tc-entra { from { opacity: 0 } }
       @media (prefers-reduced-motion: reduce) { .tc *, .tc *::after, .tc { animation-duration: 0s !important; animation-iteration-count: 1 !important } }
     </style>
-    <script type="module" crossorigin src="/assets/index-CzbruDdS.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DGsWTgF6.css">
+    <script type="module" crossorigin src="/assets/index-CB6FLxU9.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DQIaetFU.css">
   </head>
   <body>
     <div id="root">

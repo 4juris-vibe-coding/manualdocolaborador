@@ -78,6 +78,7 @@ export default function PessoaDetalhe() {
         eyebrow={<Badge tone={st.tone} dot>{st.label}</Badge>}
         actions={<>
           <Button variant="ghost" icon="Pencil" onClick={() => setEditar(true)}>Editar</Button>
+          {MODO_API && s.pode('dsv:gerenciar') && <Button variant="ghost" icon="Sprout" onClick={() => navigate(`/desenvolvimento/pessoas/${p.id}`)}>Desenvolvimento</Button>}
           {p.status === 'encerrado'
             ? <><Button variant="ghost" icon="CalendarClock" onClick={() => setCorrigir(true)}>Corrigir encerramento</Button><Button variant="soft" icon="RotateCcw" onClick={() => setReativar(true)}>Reativar parceria</Button></>
             : !p.encerramentoAgendado && <Button variant="danger" icon="UserMinus" onClick={() => setEncerrar(true)}>Encerrar parceria</Button>}

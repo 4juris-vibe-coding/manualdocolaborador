@@ -13,5 +13,6 @@ import { rotas as fotos } from './modulos/fotos.js'
 import { rotas as avaliacoesEtapa } from './modulos/avaliacoesEtapa.js'
 import { rotas as rhCiclo } from './modulos/rhCiclo.js'
 import { rotas as lgpd } from './modulos/lgpd.js'
+import { rotas as desenvolvimento } from './modulos/desenvolvimento.js'
 
-export const ROTAS = compilar([...base, ...vagas, ...ats, ...publico, ...pesquisas, ...cargos, ...organograma, ...analytics, ...financeiro, ...fotos, ...avaliacoesEtapa, ...rhCiclo, ...lgpd])
+export const ROTAS = compilar([...base, ...vagas, ...ats, ...publico, ...pesquisas, ...cargos, ...organograma, ...analytics, ...financeiro, ...fotos, ...avaliacoesEtapa, ...rhCiclo, ...lgpd, ...desenvolvimento])

@@ -16,10 +16,12 @@ export const ACESSOS_SENSIVEIS: TipoAcessoSensivel[] = [
   { chave: 'exportar_candidaturas', entidade: 'candidatura', acao: 'exportacao', rotulo: 'Exportação de candidaturas (CSV)' },
   { chave: 'download_documento_financeiro', entidade: 'documento', acao: 'baixado', rotulo: 'Download de documento financeiro/cadastral' },
   { chave: 'download_nota_fiscal', entidade: 'nota_fiscal', acao: 'arquivo_baixado', rotulo: 'Download de nota fiscal' },
+  { chave: 'ver_feedback_lideranca', entidade: 'dsv_ciclo', acao: 'feedback_equipe_visualizado', rotulo: 'Leitura do feedback da equipe sobre uma liderança' },
+  { chave: 'exportar_avaliacoes', entidade: 'dsv_ciclo', acao: 'exportacao', rotulo: 'Exportação de avaliações de desempenho (CSV)' },
 ]
 
 export const ROTULO_ENTIDADE_SENSIVEL: Record<string, string> = {
-  candidatura: 'Candidatura', documento: 'Documento (financeiro)', nota_fiscal: 'Nota fiscal',
+  candidatura: 'Candidatura', documento: 'Documento (financeiro)', nota_fiscal: 'Nota fiscal', dsv_ciclo: 'Avaliação de desempenho',
 }
 
 export const tipoAcessoPorChave = (chave: string) => ACESSOS_SENSIVEIS.find((t) => t.chave === chave)

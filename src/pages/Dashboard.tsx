@@ -8,6 +8,7 @@ import { celebracoesDoDia } from '@/domain/aniversarios'
 import { comunicadoVisivel, eventoVisivel } from '@/domain/visibilidade'
 import { pesquisaAbertaPara } from '@/domain/pesquisas'
 import { podeVerReembolsosView } from '@/lib/utils'
+import { AvisoDesenvolvimento } from '@/components/v2/desenvolvimento/AvisoInicio'
 
 /** Saudação pela hora local: madrugada (0h–5h), dia (5h–12h), tarde (12h–18h) e noite. */
 function saudacao(h = new Date().getHours()): string {
@@ -88,6 +89,8 @@ export default function Dashboard() {
           </Link>
         </div>
       </div>
+
+      <AvisoDesenvolvimento />
 
       {celebracoes.length > 0 && (
         <Link to="/aniversarios" className="card p-4 mb-6 flex items-center gap-3 hover:shadow-sm transition bg-gradient-to-r from-gold-soft to-surface">

@@ -45,3 +45,7 @@ Variáveis novas: `CRON_SECRET` (alertas diários pelo agendador da Vercel) e `A
 ## Módulos v2 (recrutamento, pesquisas, cargos, organograma, analytics)
 
 Veja `docs/V2.md`. Para ativar no banco: `npm run db:setup` (aplica `db/v2/*.sql`, aditivo e idempotente). Depois, em **Administração > Funções adicionais**, conceda recrutador / analista de RH / responsável por pesquisas. E-mails reais exigem `RESEND_API_KEY`; sem ela as mensagens ficam como "não configurado".
+
+## Ciclo de desenvolvimento e AVD
+
+Acompanhamento inicial (30/60/90 dias), AVD semestral automática, feedback confidencial da equipe sobre a liderança, devolutiva e PDI. Áreas: *Meu desenvolvimento*, *Desenvolvimento da equipe* (liderança) e *Ciclo de desenvolvimento* (RH). Regras, permissões, banco e limitações em [`docs/DESENVOLVIMENTO.md`](docs/DESENVOLVIMENTO.md). Migração `db/v2/101-desenvolvimento.sql`, aplicada automaticamente.

@@ -74,6 +74,9 @@ export type Capacidade =
   | 'fin:autorizar'            // autorização de pagamento
   | 'fin:config'               // configurações financeiras e segregação de funções
   | 'fin:disparar'             // disparos (manuais e automáticos) pedindo as notas fiscais do mês
+  // Ciclo de desenvolvimento e AVD (v2) — verificadas no servidor (api/_v2/modulos/desenvolvimento.ts)
+  | 'dsv:gerenciar'            // painel do RH, ciclos de todos, configuração, encerrar/reabrir/cancelar
+  | 'dsv:confidencial'         // feedback da equipe sobre lideranças (agregado + comentários, com mínimo de respostas)
   // Administração da plataforma
   | 'admin:usuarios'
   | 'acessos:equipe'           // liderança: cadastra pessoas e cria/envia acessos (login) de colaboradores das áreas que lidera
@@ -110,6 +113,7 @@ const RH: Capacidade[] = [
   'estrutura:gerenciar', 'onboarding:gerenciar', 'eventos:gerenciar', 'gamificacao:configurar',
   'pesquisas:gerenciar', 'disponibilidade:configurar', 'financeiro:gerenciar', 'relatorios:exportar',
   'desenvolvimento:gerenciar', 'beneficios:gerenciar', 'perfis:consultar', 'sugestoes:moderar',
+  'dsv:gerenciar', 'dsv:confidencial',
 ]
 
 /** Matriz papel → capacidades. Ajuste aqui (e só aqui) as permissões. */
@@ -143,7 +147,7 @@ export const PAPEL_DESC: Record<Papel, string> = {
 }
 
 /** Funções adicionais (além do papel), concedidas pelo RH. Tabela acl_funcoes. */
-export type FuncaoAdicional = 'recrutador' | 'analista_rh' | 'resp_pesquisas' | 'aprovador_financeiro' | 'analista_financeiro' | 'autorizador_pagamentos'
+export type FuncaoAdicional = 'recrutador' | 'analista_rh' | 'resp_pesquisas' | 'aprovador_financeiro' | 'analista_financeiro' | 'autorizador_pagamentos' | 'gestor_desenvolvimento'
 
 export const FUNCAO_LABEL: Record<FuncaoAdicional, string> = {
   recrutador: 'Recrutador(a)',
@@ -152,6 +156,7 @@ export const FUNCAO_LABEL: Record<FuncaoAdicional, string> = {
   aprovador_financeiro: 'Aprovação financeira de vagas',
   analista_financeiro: 'Analista financeiro (notas e pagamentos)',
   autorizador_pagamentos: 'Autorização de pagamentos',
+  gestor_desenvolvimento: 'Gestão de desenvolvimento (AVD e feedback confidencial)',
 }
 
 const FUNCOES_CAPS: Record<FuncaoAdicional, Capacidade[]> = {
@@ -162,6 +167,7 @@ const FUNCOES_CAPS: Record<FuncaoAdicional, Capacidade[]> = {
   aprovador_financeiro: ['vagas:ver', 'vagas:ver_remuneracao'],
   analista_financeiro: ['fin:ver', 'fin:conferir', 'fin:pagar'],
   autorizador_pagamentos: ['fin:ver', 'fin:autorizar'],
+  gestor_desenvolvimento: ['dsv:gerenciar', 'dsv:confidencial'],
 }
 
 /** Capacidades efetivas: as do papel mais as das funções adicionais. Usada no servidor e no cliente. */

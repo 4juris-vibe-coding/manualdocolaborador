@@ -37,7 +37,7 @@ export default function Alertas() {
   const [verDispensados, setVerDispensados] = useState(false)
   const [classificar, setClassificar] = useState<string | null>(null)
   const todos = useMemo(() => alertasRH({ colaboradores: s.colaboradores, contratos: s.contratos, documentos: s.documentos, exigencias: s.exigencias, processos: s.processos },
-    hoje, { diasAniversario: Number(antecedencia), diasDocumento: Number(antecedencia), diasContrato: Math.max(60, Number(antecedencia)) }), [s.colaboradores, s.contratos, s.documentos, s.exigencias, s.processos, hoje, antecedencia])
+    hoje, { diasAniversario: Number(antecedencia), diasDocumento: Number(antecedencia), diasContrato: Math.max(60, Number(antecedencia)), linkMarcoInicio: MODO_API ? '/rh/desenvolvimento' : undefined }), [s.colaboradores, s.contratos, s.documentos, s.exigencias, s.processos, hoje, antecedencia])
   const visiveis = todos.filter((a) => (verDispensados ? !!dispensados[a.chave] : !dispensados[a.chave]) && (sev === 'todos' || a.severidade === sev) && (tipo === 'todos' || a.tipo === tipo))
   const cont = (x: Severidade) => todos.filter((a) => a.severidade === x && !dispensados[a.chave]).length
   const semClass = todos.filter((a) => a.tipo === 'encerramento_sem_classificacao')

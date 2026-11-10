@@ -16,6 +16,7 @@ import { criarProcesso, processoAberto } from '../../../src/domain/jornada.js'
 import { alertasRH } from '../../../src/domain/alertasRH.js'
 import { convidarParaDesligamento } from './pesquisas.js'
 import { processarRetencaoCandidatos } from '../lgpdRetencao.js'
+import { sincronizarDesenvolvimento } from './desenvolvimento.js'
 import type { ChecklistModelo, Colaborador, ProcessoJornada } from '../../../src/lib/types.js'
 
 type Obj = Record<string, any>
@@ -98,7 +99,8 @@ export async function notificarAlertasRH(ex: Executor, agora = new Date()): Prom
   const destinatarios = await idsComPapel(ex, 'rh', 'admin')
   let n = 0
   // Avisos de atenção e críticos; celebrações (aniversários) só aparecem no painel.
-  for (const a of lista.filter((x) => x.severidade !== 'info').slice(0, 80)) {
+  // Marcos de 30/60/90 dias: com o banco, o ciclo de desenvolvimento (desenvolvimento.ts) já avisa cada participante — não duplica.
+  for (const a of lista.filter((x) => x.severidade !== 'info' && x.tipo !== 'marco_inicio').slice(0, 80)) {
     for (const d of destinatarios) {
       // Sem dados sensíveis no título/corpo: só nome, tipo e data.
       const r = await ex.query('insert into ntf_notificacoes (destinatario_id, tipo, titulo, corpo, link, chave) values ($1,$2,$3,$4,$5,$6) on conflict (destinatario_id, chave) do nothing',
@@ -109,14 +111,17 @@ export async function notificarAlertasRH(ex: Executor, agora = new Date()): Prom
   return { alertas: lista.length, notificados: n }
 }
 
-/** Rotina diária completa: encerramentos agendados, alertas do RH e retenção LGPD de candidaturas. */
+/** Rotina diária completa: encerramentos agendados, alertas do RH, ciclo de desenvolvimento e retenção LGPD de candidaturas. */
 export async function rotinaDiariaRH(db: Db, agora = new Date()) {
   const encerramentos = await aplicarEncerramentosAgendados(db, agora)
   const alertas = await db.tx((t) => notificarAlertasRH(t, agora))
+  // Ciclo de desenvolvimento: abre acompanhamentos/AVDs devidos, acompanha trocas de liderança, avança etapas e lembra prazos.
+  let desenvolvimento: Awaited<ReturnType<typeof sincronizarDesenvolvimento>> | { erro: string }
+  try { desenvolvimento = await sincronizarDesenvolvimento(db, agora) } catch (e) { desenvolvimento = { erro: e instanceof Error ? e.message : 'falha no ciclo de desenvolvimento' } }
   let retencao: { anonimizados: number } | { erro: string } = { anonimizados: 0 }
   // Falha na retenção não impede o resto da rotina; o erro volta no resultado (e no log do agendador).
   try { retencao = await processarRetencaoCandidatos(db, agora) } catch (e) { retencao = { erro: e instanceof Error ? e.message : 'falha na retenção' } }
-  return { encerramentos, alertas, retencao }
+  return { encerramentos, alertas, desenvolvimento, retencao }
 }
 
 export const rotas: Rota[] = [

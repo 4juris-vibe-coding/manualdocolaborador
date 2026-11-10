@@ -53,6 +53,7 @@ export const NAV: NavGroup[] = [
       { to: '/meus-contratos', label: 'Meus contratos', icon: 'FileSignature', desc: 'Contratos de prestação de serviços em que você é contratada(o).', soApi: true },
       { to: '/meus-documentos', label: 'Meus documentos', icon: 'FolderLock', desc: 'Envio e acompanhamento dos seus documentos.', soApi: true },
       { to: '/avaliacoes', label: 'Avaliações', icon: 'ClipboardCheck', desc: 'Avaliações para responder e seus resultados.' },
+      { to: '/desenvolvimento', label: 'Meu desenvolvimento', icon: 'Sprout', desc: 'Acompanhamentos 30/60/90, AVD semestral, devolutivas e seu PDI.', soApi: true },
     ],
   },
   {
@@ -86,6 +87,7 @@ export const NAV: NavGroup[] = [
     items: [
       { to: '/lideranca', label: 'Painel da liderança', icon: 'UserCog', desc: 'Equipe, disponibilidade, objetivos e integração.', cap: 'lideranca:painel' },
       { to: '/financeiro/notas', label: 'Aceite de serviços', icon: 'BadgeCheck', desc: 'Notas fiscais dos contratos que você gere, para aceitar ou devolver.', cap: 'lideranca:painel', soApi: true },
+      { to: '/lideranca/desenvolvimento', label: 'Desenvolvimento da equipe', icon: 'UsersRound', desc: 'Avaliações, devolutivas e PDIs da equipe; feedback sobre a sua liderança.', cap: 'lideranca:painel', soApi: true },
       { to: '/rh/feedbacks', label: 'Feedbacks', icon: 'MessageSquareText', desc: 'Feedbacks de alinhamento sobre as entregas.', cap: 'feedbacks:registrar' },
       { to: '/recrutamento/vagas', label: 'Vagas e aprovações', icon: 'BadgePlus', desc: 'Solicite vagas, acompanhe e decida aprovações.', cap: ['vagas:solicitar', 'vagas:ver'] },
     ],
@@ -170,7 +172,9 @@ export const NAV: NavGroup[] = [
     title: 'Desenvolvimento', area: 'rh',
     items: [
       { to: '/rh/avaliacoes', label: 'Ciclos de avaliação', icon: 'ClipboardCheck', desc: 'Ciclos 90°, 180°, 360° e relatórios.', cap: 'desenvolvimento:gerenciar' },
-      { to: '/rh/inicio-parceria', label: 'Início de parceria', icon: 'Sprout', desc: 'Avaliações nos primeiros 30, 60 e 90 dias.', cap: 'desenvolvimento:gerenciar' },
+      { to: '/rh/desenvolvimento', label: 'Ciclo de desenvolvimento (AVD)', icon: 'Sprout', desc: 'Acompanhamento 30/60/90, AVD semestral, devolutivas, PDIs e feedback sobre lideranças.', cap: 'dsv:gerenciar', soApi: true },
+      // Com o banco, o acompanhamento de 30/60/90 dias é feito pelo Ciclo de desenvolvimento (a rota redireciona).
+      { to: '/rh/inicio-parceria', label: 'Início de parceria', icon: 'Sprout', desc: 'Avaliações nos primeiros 30, 60 e 90 dias.', cap: 'desenvolvimento:gerenciar', soDemo: true },
       { to: '/rh/metas', label: 'Metas', icon: 'Target', desc: 'Metas e objetivos das áreas.', cap: 'desenvolvimento:gerenciar' },
       { to: '/rh/analise-grupos', label: 'Análise de grupos', icon: 'GitCompare', desc: 'Compare grupos de pessoas definidos pelo RH.', cap: 'desenvolvimento:gerenciar' },
       { to: '/rh/busca-perfil', label: 'Busca de perfil', icon: 'ScanSearch', desc: 'Aderência de perfis comportamentais (com consentimento).', cap: 'perfis:consultar' },
@@ -207,6 +211,12 @@ export const EXTRAS: NavItem[] = [
   // Lista de notas do financeiro (aba do kanban) e links das notificações (?nota=…).
   { to: '/financeiro/notas', label: 'Notas fiscais', icon: 'FileCheck2', desc: '', cap: 'fin:ver', oculto: true, soApi: true },
   { to: '/notificacoes', label: 'Notificações', icon: 'Bell', desc: 'Tudo o que aconteceu recentemente.' },
+  // Ciclo de desenvolvimento: o servidor decide quem vê cada formulário, ciclo e jornada (respondente, pessoa avaliada, liderança, RH).
+  { to: '/desenvolvimento/responder/:id', label: 'Responder avaliação', icon: 'PenLine', desc: '', oculto: true, soApi: true },
+  { to: '/desenvolvimento/ciclos/:id', label: 'Ciclo de desenvolvimento', icon: 'Sprout', desc: '', oculto: true, soApi: true },
+  { to: '/desenvolvimento/pessoas/:id', label: 'Jornada de desenvolvimento', icon: 'Route', desc: '', oculto: true, soApi: true },
+  // Liderança pela estrutura (responsável direto) mesmo sem o papel de liderança.
+  { to: '/lideranca/desenvolvimento', label: 'Desenvolvimento da equipe', icon: 'UsersRound', desc: '', oculto: true, soApi: true },
   // Entrevistador(a) designado(a) sem acesso ao ATS chega aqui pela notificação; o servidor mostra só as entrevistas de que participa.
   { to: '/recrutamento/entrevistas', label: 'Entrevistas', icon: 'CalendarClock', desc: '', oculto: true },
   // Ficha do contrato: o servidor limita ao que cada pessoa pode ver (prestador, gestor do contrato, financeiro).

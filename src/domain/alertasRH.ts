@@ -50,6 +50,8 @@ export interface OpcoesAlertas {
   diasContrato?: number
   /** Antecedência (dias) para documentos e exigências. */
   diasDocumento?: number
+  /** Tela do acompanhamento de 30/60/90 dias (com o banco, o ciclo de desenvolvimento). */
+  linkMarcoInicio?: string
 }
 
 const fmt = (d: string) => d.split('-').reverse().join('/')
@@ -87,7 +89,7 @@ export function alertasRH(e: EntradaAlertas, hoje: string, o: OpcoesAlertas = {}
       const dt = somarDias(v.inicio, dias)
       const dist = diasEntre(hoje, dt)
       if (dist >= -3 && dist <= 7)
-        out.push({ chave: `marco:${c.id}:${v.id}:${dias}`, tipo: 'marco_inicio', severidade: 'atencao', titulo: `${c.nome}: ${dias} dias de parceria`, descricao: `${dist < 0 ? 'Foi' : dist === 0 ? 'É hoje' : 'Será'} em ${fmt(dt)}. Hora da conversa de acompanhamento do início.`, pessoaId: c.id, data: dt, link: '/rh/inicio-parceria' })
+        out.push({ chave: `marco:${c.id}:${v.id}:${dias}`, tipo: 'marco_inicio', severidade: 'atencao', titulo: `${c.nome}: ${dias} dias de parceria`, descricao: `${dist < 0 ? 'Foi' : dist === 0 ? 'É hoje' : 'Será'} em ${fmt(dt)}. Hora da conversa de acompanhamento do início.`, pessoaId: c.id, data: dt, link: o.linkMarcoInicio ?? '/rh/inicio-parceria' })
     }
     if (c.encerramentoAgendado && c.encerramentoAgendado.data <= somarDias(hoje, 15))
       out.push({ chave: `agend:${c.id}:${c.encerramentoAgendado.data}`, tipo: 'encerramento_agendado', severidade: 'atencao', titulo: `Encerramento de ${c.nome} em ${fmt(c.encerramentoAgendado.data)}`, descricao: 'Agendado. No dia, o acesso é encerrado automaticamente; confira contratos e pendências.', pessoaId: c.id, data: c.encerramentoAgendado.data, link: `/rh/pessoas/${c.id}` })
